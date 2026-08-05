@@ -39,7 +39,8 @@ describe("guestPinActionUrl", () => {
     expect(parsed.searchParams.get("date")).toBe("2026-08-20");
     expect(parsed.searchParams.get("guests")).toBe("3");
     expect(parsed.searchParams.get("company")).toBe("coastal");
-    expect(parsed.searchParams.get("guide")).toBe("jan");
+    // `distributor`, not `guide` — see buildBookingUrl's doc comment.
+    expect(parsed.searchParams.get("distributor")).toBe("jan");
   });
 
   it("passes campaignParams through to the booking hand-off when set", () => {

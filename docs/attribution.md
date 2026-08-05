@@ -103,9 +103,21 @@ that the webhook call failed — so please don't retry on that basis.
 | The webhook route itself | **Real, running.** `src/app/api/webhooks/boatlocal-booking/route.ts` — you can `curl` it today. |
 | Click id generation + booking URL builder | **Real.** `src/lib/attribution.ts`. |
 | Where attributed bookings are stored | **Dummy.** In-memory (`src/lib/attributionStore.ts`) — resets on every server restart. Swaps to the real Event table the moment the schema exists; no other file needs to change. |
-| The exact query param names boatlocal.nl's booking page expects | **Placeholder** (`tour`, `ref`, `date`, `guests`, `company`, `guide`). Confirm with BoatLocal's team and update `buildBookingUrl()` in `src/lib/attribution.ts` — one function, nothing else touches it. |
-| The webhook URL's real (production) host | **Placeholder** — depends on where this app deploys. |
-| The shared signing secret | **Unset.** Generate with `openssl rand -hex 32` when ready. |
+| The exact query param names boatlocal.nl's booking page expects | **Partly confirmed.** `tour`, `ref`, `date`, `guests`, `company` unchanged. `guide` renamed to `distributor` — their codebase has an unrelated "Guides" concept (SEO blog content), and `partner` was already taken by their own affiliate-attribution param. See `buildBookingUrl()` in `src/lib/attribution.ts` — one function, nothing else touches it. |
+| The webhook URL's real (production) host | **Placeholder** — depends on where this app deploys. **This is now the actual blocker**: BoatLocal's test-trigger endpoint (once built) fires an outbound POST to whatever URL we give it — `localhost` is unreachable from their servers. Needs at minimum a Vercel preview deployment before the test loop can run for real. |
+| The shared signing secret | **Unset.** Generate with `openssl rand -hex 32` when ready — use a distinct one for BoatLocal's test/sandbox environment, never the eventual production secret. |
+
+## What we learned from analyzing boatlocal.nl's real codebase
+
+A feasibility analysis against BoatLocal's actual system (Next.js + Supabase + Stripe, with FareHarbor proxied as a request/response API only — FareHarbor never calls back to BoatLocal) confirmed the load-bearing question directly, with evidence rather than assumption:
+
+**A tracking parameter surviving to a completed booking is not hypothetical — it already happens today, twice.** `?partner=` (affiliate attribution) and Google Ads' `gclid` both follow the exact same three-hop path our `ref` param needs: URL → an Edge middleware cookie → read and re-validated server-side at checkout creation → written onto the `checkouts` row → copied onto the final `bookings` row when the Stripe webhook fires. Our `ref`/`click_id` needs the same plumbing added — a real gap (no column exists for it yet), but not an architectural one.
+
+**`src/lib/google-ads/report-conversion.ts` on their side is close to a direct blueprint** for the production version of this webhook: upsert-with-dedup on a unique key *before* calling the external API (so a Stripe webhook retry can't double-fire), called synchronously right after the booking insert, with a status column for tracking delivery/retry. Our webhook's dedupe-on-`booking_id` is the same idea from the receiving end.
+
+**Real field mapping confirmed**: `bookings.stripe_amount_total`/`stripe_currency` are already integer cents + a currency string — no conversion needed. `total_customers` → `guests`, `item_pk` → `tour_id`, `id` → `booking_id`, `created_at` → `booked_at`.
+
+**No staging database** — BoatLocal isolates test data per-table via a `test_` prefix convention (`test_bookings`, `test_checkouts`), which is exactly the pattern proposed for our own sandbox test.
 
 ## See it work right now, with no setup
 

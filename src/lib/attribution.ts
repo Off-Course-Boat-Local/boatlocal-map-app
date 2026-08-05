@@ -61,6 +61,15 @@ export interface BookingUrlParams {
  * exact ask. Every param name here is a placeholder until BoatLocal's team
  * confirms the real ones; changing them is a one-line edit to this function,
  * not a rewrite of every call site.
+ *
+ * NOTE: the guide identifier is sent as `distributor`, not `guide`. Their
+ * real codebase already has an unrelated "Guides" concept (SEO blog content
+ * under src/content/amsterdam/) — sending `guide=jan` would read as if it
+ * referred to that, in their logs and code, not to ours. `partner` was
+ * avoided too, since it already means something specific on their side
+ * (their own affiliate-attribution query param — see docs/attribution.md).
+ * `guideSlug` stays the field name here since it's accurate for our own
+ * data; only the wire param sent to their system changed.
  */
 export function buildBookingUrl(params: BookingUrlParams): string {
   const url = new URL(bookingBaseUrl());
@@ -69,7 +78,7 @@ export function buildBookingUrl(params: BookingUrlParams): string {
   if (params.date) url.searchParams.set("date", params.date);
   if (params.guests != null) url.searchParams.set("guests", String(params.guests));
   if (params.companySlug) url.searchParams.set("company", params.companySlug);
-  if (params.guideSlug) url.searchParams.set("guide", params.guideSlug);
+  if (params.guideSlug) url.searchParams.set("distributor", params.guideSlug);
   return url.toString();
 }
 

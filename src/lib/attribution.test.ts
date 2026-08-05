@@ -51,7 +51,10 @@ describe("buildBookingUrl", () => {
     expect(url.searchParams.get("date")).toBe("2026-08-20");
     expect(url.searchParams.get("guests")).toBe("3");
     expect(url.searchParams.get("company")).toBe("coastal");
-    expect(url.searchParams.get("guide")).toBe("jan");
+    // Sent as `distributor`, not `guide` — boatlocal.nl's own codebase has an
+    // unrelated "Guides" (blog) concept; see buildBookingUrl's doc comment.
+    expect(url.searchParams.get("distributor")).toBe("jan");
+    expect(url.searchParams.has("guide")).toBe(false);
   });
 
   it("produces a URL under the configured base, not a hard-coded one", () => {

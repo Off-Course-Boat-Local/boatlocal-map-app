@@ -75,7 +75,7 @@ describe("buildBoatBookingHandoff", () => {
     expect(parsed.searchParams.has("guests")).toBe(false);
   });
 
-  it("carries companySlug/guideSlug through to the company/guide params", () => {
+  it("carries companySlug/guideSlug through to the company/distributor params", () => {
     const { url } = buildBoatBookingHandoff({
       tourId: "sunset-canal",
       selection: { date: null, guests: 0 },
@@ -85,7 +85,9 @@ describe("buildBoatBookingHandoff", () => {
     });
     const parsed = new URL(url);
     expect(parsed.searchParams.get("company")).toBe("coastal");
-    expect(parsed.searchParams.get("guide")).toBe("jan");
+    // `distributor`, not `guide` — boatlocal.nl's own codebase has an
+    // unrelated "Guides" concept; see attribution.ts's buildBookingUrl.
+    expect(parsed.searchParams.get("distributor")).toBe("jan");
   });
 
   it("produces a URL under the configured booking base, matching attribution.ts's single implementation", () => {
