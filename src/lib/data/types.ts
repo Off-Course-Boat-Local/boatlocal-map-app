@@ -1,0 +1,261 @@
+// Boat Local Map App — data-access layer types.
+//
+// These mirror the columns in supabase/migrations/20260805063610_init_schema.sql
+// 1:1. They are deliberately separate from src/lib/types.ts, which stays the
+// lightweight *guest-rendering* shape (Brand, Place, BoatTour, Guide, MapPin)
+// that the map components already depend on. The mapping between the two
+// lives in this module (see e.g. recommendationToPlace) so that when a real
+// Supabase project exists, only the row-fetching functions below change —
+// no component prop shape does.
+//
+// NOTE: no rating/review_count/stars field appears anywhere in here, on
+// purpose and permanently — see CLAUDE project rules.
+
+import type { CategoryId } from "../types";
+
+export type AppRole = "admin" | "company" | "guide";
+export type CompanyType = "hotel" | "tour" | "host";
+// "setup" is an addition on top of the schema handed off from the schema
+// agent (whose migration only allowed 'active' | 'suspended' — see
+// supabase/migrations/20260805063610_init_schema.sql). Admin's onboarding
+// flow (PRD §8.3: "create/onboard a company") needs a third state to
+// distinguish "row exists, being configured, not shown to guests yet" from
+// "live" (PRD §2.3's "setup vs live status"), so the check constraint gains
+// that one value too (same migration file, same comment) — mirroring
+// exactly how GuideStatus's "invited" value was added below. Nothing else
+// about the table shape changes. "active" is what PRD prose calls "live";
+// no separate DB value is needed for that since it's just the pre-existing
+// default.
+export type CompanyStatus = "setup" | "active" | "suspended";
+// "invited" is an addition on top of the schema handed off from the schema
+// agent (whose migration only allowed 'active' | 'deactivated' — see
+// supabase/migrations/20260805063610_init_schema.sql). The Studio "Guides"
+// invite flow (PRD §7.3) needs a third state to distinguish "link generated,
+// not yet signed up" from "signed up and using the app", so the check
+// constraint gains that one value too (same migration file, same comment).
+// Nothing else about the table shape changes.
+export type GuideStatus = "invited" | "active" | "deactivated";
+export type RecommendationOwnerType = "company" | "guide";
+export type BoatTourStatus = "active" | "hidden";
+export type EventPlatform = "ios" | "android" | "desktop" | "unknown";
+
+export type EventType =
+  | "app_open"
+  | "app_install"
+  | "tip_viewed"
+  | "tip_saved"
+  | "tip_unsaved"
+  | "directions_requested"
+  | "boat_book_click"
+  | "review_click_google"
+  | "review_click_tripadvisor"
+  | "review_private_feedback"
+  | "booking_outcome";
+
+export interface CompanyRecord {
+  id: string;
+  name: string;
+  subdomain: string;
+  companyType: CompanyType;
+  appName: string;
+  brandPrimary: string;
+  brandPrimaryDark: string;
+  brandAccent: string;
+  brandSurround: string;
+  logoUrl: string | null;
+  /** Raw query-string fragment (no leading ?/&), merged into every booking URL by src/lib/attribution.ts buildBookingUrl(). */
+  campaignParams: string | null;
+  googleReviewUrl: string | null;
+  tripadvisorReviewUrl: string | null;
+  status: CompanyStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GuideRecord {
+  id: string;
+  companyId: string;
+  name: string;
+  email: string;
+  slug: string;
+  avatarUrl: string | null;
+  avatarInitial: string;
+  welcomeMessage: string;
+  status: GuideStatus;
+  /**
+   * The token embedded in the invite link Studio hands the company (PRD
+   * §7.3). Set at invite time, cleared once the guide's status leaves
+   * "invited". There is no real backend yet to redeem it against (see
+   * src/app/studio/join/[token]/page.tsx's own comment) — it exists purely
+   * so the generated URL is a real, unique, unguessable-enough value rather
+   * than a placeholder string.
+   */
+  inviteToken: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecommendationRecord {
+  id: string;
+  companyId: string;
+  ownerType: RecommendationOwnerType;
+  /** Set iff ownerType === "guide". */
+  guideId: string | null;
+  category: CategoryId;
+  name: string;
+  area: string;
+  address: string;
+  lng: number;
+  lat: number;
+  /** The guide's personal endorsement. This is the trust signal — never a rating. */
+  note: string;
+  /** Guide-entered free text, e.g. "Tue–Sun 11:00–18:00, closed Mondays". */
+  hours: string;
+  photos: string[];
+  visible: boolean;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BoatTourRecord {
+  id: string;
+  name: string;
+  area: string;
+  lng: number;
+  lat: number;
+  meta: string;
+  note: string;
+  bookingUrl: string;
+  photos: string[];
+  position: number;
+  status: BoatTourStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CompanyBoatFeatureRecord {
+  companyId: string;
+  boatTourId: string;
+  isFeatured: boolean;
+  position: number;
+  createdAt: string;
+}
+
+export interface EventRecord {
+  id: string;
+  eventType: EventType;
+  companyId: string | null;
+  guideId: string | null;
+  boatTourId: string | null;
+  recommendationId: string | null;
+  guestSessionId: string | null;
+  platform: EventPlatform;
+  metadata: Record<string, unknown>;
+  occurredAt: string;
+}
+
+/**
+ * The caller's identity for Studio/Admin reads and writes.
+ *
+ * Once real Supabase Auth exists, this is derived server-side from the
+ * session (`auth.uid()` -> `profiles` row) — see the DEV AUTH STAND-IN
+ * module for how a session resolves to one of these today. Every
+ * data-access function that touches tenant- or guide-scoped data takes an
+ * actor and enforces the same rules as the RLS policies in
+ * supabase/migrations/20260805063611_rls_policies.sql, so the fake store
+ * behaves like the real database will.
+ */
+export type StudioActor =
+  | { role: "admin" }
+  | { role: "company"; companyId: string }
+  | { role: "guide"; companyId: string; guideId: string };
+
+/** Thrown by write operations the actor is not allowed to perform. Mirrors what a denied RLS write would do (0 rows affected). */
+export class StudioPermissionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StudioPermissionError";
+  }
+}
+
+export interface SaveRecommendationInput {
+  id?: string;
+  category: CategoryId;
+  name: string;
+  area: string;
+  address: string;
+  lng: number;
+  lat: number;
+  note: string;
+  hours: string;
+  photos: string[];
+  visible?: boolean;
+}
+
+export interface SaveBoatTourInput {
+  id?: string;
+  name: string;
+  area: string;
+  lng: number;
+  lat: number;
+  meta: string;
+  note: string;
+  bookingUrl: string;
+  photos: string[];
+  position?: number;
+  status?: BoatTourStatus;
+}
+
+export interface InviteGuideInput {
+  name: string;
+  email: string;
+}
+
+/**
+ * Admin's "create/onboard a company" flow (PRD §8.3). `subdomain` is
+ * slugified and uniqueness-checked against every existing tenant (global,
+ * not per-company — mirrors the `unique` constraint on `companies.subdomain`
+ * in supabase/migrations/20260805063610_init_schema.sql). `status` defaults
+ * to "setup" (PRD §2.3) when omitted — a brand-new tenant is never
+ * guest-visible until an admin (or the company, later) flips it live.
+ *
+ * No brand colours are asked for here on purpose: PRD §7.2's colour picker
+ * is a Studio-side, company-editable concern, not part of Admin onboarding.
+ * A new company starts with a neutral placeholder brand (see
+ * ONBOARDING_DEFAULT_BRAND in source.ts) until the company customises it.
+ */
+export interface CreateCompanyInput {
+  name: string;
+  /** Free text; will be slugified. Falls back to a slug of `name` if omitted/blank. */
+  subdomain?: string;
+  companyType: CompanyType;
+  status?: CompanyStatus;
+}
+
+export interface UpdateGuideProfileInput {
+  avatarUrl?: string | null;
+  welcomeMessage?: string;
+}
+
+export interface AnalyticsSummaryRow {
+  eventType: EventType;
+  guideId: string | null;
+  count: number;
+}
+
+export interface AnalyticsRange {
+  from: Date;
+  to: Date;
+}
+
+export interface NewEventInput {
+  eventType: EventType;
+  companyId?: string | null;
+  guideId?: string | null;
+  boatTourId?: string | null;
+  recommendationId?: string | null;
+  guestSessionId?: string | null;
+  platform?: EventPlatform;
+  metadata?: Record<string, unknown>;
+}

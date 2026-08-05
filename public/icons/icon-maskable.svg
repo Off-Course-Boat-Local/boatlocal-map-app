@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    Maskable variant of icon.svg (see that file's comment) — the OS may crop
+    this to a circle, squircle, or any other shape, so the artwork keeps to
+    the "safe zone" (the inner ~80% diameter) per the maskable icon spec:
+    https://developer.mozilla.org/docs/Web/Progressive_web_apps/Manifest/Reference/icons#maskable
+    Full-bleed background, smaller centred glyph, no rounded corners of our
+    own (the OS mask supplies those).
+  -->
+  <rect width="512" height="512" fill="#17181C" />
+  <g transform="translate(148 148) scale(9)">
+    <path
+      d="M12 3v8H6l6-8zm1 0v8h5l-5-8zM3.5 14h17l-2.2 4.2a3 3 0 0 1-2.7 1.6H8.4a3 3 0 0 1-2.7-1.6L3.5 14z"
+      fill="#FFFFFF"
+    />
+  </g>
+</svg>

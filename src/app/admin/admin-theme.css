@@ -1,0 +1,40 @@
+/* Admin chrome palette.
+ *
+ * Deliberately separate from src/lib/brand.ts's five tenant brands — Admin
+ * is Boat Local's own internal tool, not a tenant-branded surface, and must
+ * never pick up (or be mistaken for) a company's brand colour. Category pin
+ * colours (src/lib/categories.ts) are a third, also-separate palette; this
+ * file has no relationship to either.
+ *
+ * A flat, neutral ink/graphite scale, scoped to `.admin-root` (not `:root`)
+ * so it can never leak into, or be overridden by, a guest brand's own CSS
+ * custom properties applied elsewhere in the tree.
+ */
+
+.admin-root {
+  --admin-bg: #f3f4f6;
+  --admin-surface: #ffffff;
+  --admin-border: #e1e3e8;
+  --admin-ink: #181b21;
+  --admin-ink-soft: #5b616d;
+  --admin-sidebar-bg: #15171c;
+  --admin-sidebar-ink: #dfe1e6;
+  --admin-sidebar-ink-dim: #8b909b;
+  --admin-accent: #4b5563;
+  --admin-accent-strong: #2b2f38;
+}
+
+@media (prefers-color-scheme: dark) {
+  .admin-root {
+    --admin-bg: #101114;
+    --admin-surface: #1a1c21;
+    --admin-border: #2b2e35;
+    --admin-ink: #e7e8ea;
+    --admin-ink-soft: #9aa0ab;
+    --admin-sidebar-bg: #0a0b0d;
+    --admin-sidebar-ink: #e7e8ea;
+    --admin-sidebar-ink-dim: #767c88;
+    --admin-accent: #8b93a3;
+    --admin-accent-strong: #b7bdc9;
+  }
+}

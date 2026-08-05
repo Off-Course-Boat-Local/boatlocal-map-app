@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    Generic placeholder app icon for the Web App Manifest (src/app/manifest.ts).
+    Neutral ink, not any one tenant's brand colour — see that file's comment
+    for why, and CompanyRecord.logoUrl (src/lib/data/types.ts) for the real,
+    guide-uploaded icon this stands in for.
+
+    The glyph is the "boats" category sailboat path from src/lib/categories.ts,
+    reused so the app's own icon language is consistent everywhere it appears.
+  -->
+  <rect width="512" height="512" rx="96" fill="#17181C" />
+  <g transform="translate(106 106) scale(12.5)">
+    <path
+      d="M12 3v8H6l6-8zm1 0v8h5l-5-8zM3.5 14h17l-2.2 4.2a3 3 0 0 1-2.7 1.6H8.4a3 3 0 0 1-2.7-1.6L3.5 14z"
+      fill="#FFFFFF"
+    />
+  </g>
+</svg>
