@@ -61,24 +61,20 @@ describe("source.ts round-tripping against the real Supabase project", () => {
     expect(brand?.primary).toMatch(/^#/);
   });
 
-  // KNOWN REAL BUG, discovered by this integration test (confirmed directly
-  // against the RPC too, independent of source.ts — see this task's return
-  // value for the full report): public.company_by_subdomain() in
-  // supabase/migrations/20260805063612_helper_functions.sql is declared
-  // `returns public.companies` (a single composite row) instead of
-  // `returns setof public.companies` / `table (...)`. Per real Postgres
-  // `language sql` function semantics, when the inner `select ... limit 1`
-  // matches zero rows, a function declared to return one composite row
-  // still returns exactly one row — with every column NULL — rather than
-  // zero rows. supabase-js's `.rpc()` therefore hands source.ts a non-null
-  // object of nulls, not `null`/no rows, so `getCompanyBrand`'s real
-  // (non-test) branch's `data ? toBrand(...) : null` never takes the
-  // `null` path for an unknown subdomain. This assertion documents the
-  // CORRECT contract (`Brand | null`, matching the fakeStore branch and
-  // this function's own return type) and is deliberately left red rather
-  // than loosened to match the bug — see the file ownership note in this
-  // task's write-up for why it isn't fixed here (owned by the migrations
-  // author, not this test suite).
+  // FIXED REAL BUG, originally caught by this integration test: per real
+  // Postgres `language sql` function semantics, a function declared to
+  // `returns` a single composite row still returns exactly one row — with
+  // every column NULL — when its inner `select ... limit 1` matches zero
+  // rows, rather than zero rows. public.company_by_subdomain() used to be
+  // declared that way, so supabase-js's `.rpc()` handed source.ts a
+  // non-null object of nulls for an unknown subdomain instead of `null`/no
+  // rows. Fixed in supabase/migrations/20260805063612_helper_functions.sql
+  // by dropping and recreating the function as `returns setof
+  // public.companies` (create-or-replace can't change a function's return
+  // type, hence the explicit drop) plus the corresponding array-unwrap in
+  // getCompanyBrand's real branch. This assertion documents the contract
+  // (`Brand | null`, matching the fakeStore branch and this function's own
+  // return type) and now passes for real.
   it("getCompanyBrand: unknown subdomain returns null, not an error", async () => {
     const brand = await getCompanyBrand("does-not-exist-integration-check");
     expect(brand).toBeNull();
@@ -98,11 +94,13 @@ describe("source.ts round-tripping against the real Supabase project", () => {
     expect(guide?.slug).toBe("jan");
   });
 
-  // Same class of KNOWN REAL BUG as getCompanyBrand above:
-  // public.guide_by_slug() is also declared `returns public.guides`
-  // (single composite row) instead of `setof`/`table`, so a
-  // zero-match lookup comes back as one all-NULL row, not "no rows".
-  // Left red on purpose — see the comment on the getCompanyBrand test above.
+  // Same class of bug as getCompanyBrand above, fixed the same way:
+  // public.guide_by_slug() was also declared `returns public.guides`
+  // (single composite row) instead of `setof`, so a zero-match lookup used
+  // to come back as one all-NULL row instead of "no rows". Fixed alongside
+  // company_by_subdomain() in
+  // supabase/migrations/20260805063612_helper_functions.sql — see the
+  // comment on the getCompanyBrand test above for the full explanation.
   it("getGuide: wrong slug returns null, not an error", async () => {
     const guide = await getGuide(companyId, "not-a-real-guide-slug");
     expect(guide).toBeNull();
