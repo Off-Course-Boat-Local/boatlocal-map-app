@@ -36,11 +36,13 @@ export async function createCompanyAction(
   await requireAdminSession();
 
   const name = String(formData.get("name") ?? "").trim();
+  const ownerEmail = String(formData.get("ownerEmail") ?? "").trim();
   const subdomain = String(formData.get("subdomain") ?? "").trim();
   const companyTypeRaw = String(formData.get("companyType") ?? "");
   const statusRaw = String(formData.get("status") ?? "setup");
 
   if (!name) return { error: "Company name is required." };
+  if (!ownerEmail) return { error: "Owner's email is required." };
   if (!COMPANY_TYPES.includes(companyTypeRaw as CompanyType)) {
     return { error: "Choose a company type." };
   }
@@ -51,6 +53,7 @@ export async function createCompanyAction(
   try {
     await createCompany(ADMIN_ACTOR, {
       name,
+      ownerEmail,
       subdomain: subdomain || undefined,
       companyType: companyTypeRaw as CompanyType,
       status: statusRaw as CompanyStatus,

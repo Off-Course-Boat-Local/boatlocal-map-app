@@ -36,6 +36,16 @@ const STATUS_LABEL: Record<CompanyStatus, string> = {
   suspended: "Suspended",
 };
 
+const OWNER_STATUS_TONE: Record<"invited" | "active", "neutral" | "positive"> = {
+  invited: "neutral",
+  active: "positive",
+};
+
+const OWNER_STATUS_LABEL: Record<"invited" | "active", string> = {
+  invited: "Invited",
+  active: "Active",
+};
+
 function statusActionButtonClass(): string {
   return "rounded-md border border-[var(--admin-border)] px-2 py-1 text-xs font-medium text-[var(--admin-ink)] hover:bg-[var(--admin-bg)]";
 }
@@ -70,6 +80,21 @@ export default async function AdminCompaniesPage() {
           {company.subdomain}
         </span>,
         COMPANY_TYPE_LABELS[company.companyType] ?? company.companyType,
+        company.ownerEmail ? (
+          <div key="owner" className="flex flex-col gap-1">
+            <span className="text-xs">{company.ownerEmail}</span>
+            {company.ownerStatus ? (
+              <StatusBadge
+                status={OWNER_STATUS_LABEL[company.ownerStatus]}
+                tone={OWNER_STATUS_TONE[company.ownerStatus]}
+              />
+            ) : null}
+          </div>
+        ) : (
+          <span key="owner" className="text-xs text-[var(--admin-ink-soft)]">
+            —
+          </span>
+        ),
         String(guides.length),
         String(performance.appOpens),
         String(performance.tipsSaved),
@@ -112,6 +137,7 @@ export default async function AdminCompaniesPage() {
           "Company",
           "Subdomain",
           "Type",
+          "Owner",
           "Guides",
           "App opens",
           "Tips saved",

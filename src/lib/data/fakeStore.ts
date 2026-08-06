@@ -54,6 +54,11 @@ function seedCompany(): CompanyRecord {
     googleReviewUrl: "https://g.page/r/example-boat-and-bike/review",
     tripadvisorReviewUrl: null,
     status: "active",
+    // Seeded before the owner-invite feature existed — matches the "every
+    // pre-existing row has no owner account" note on
+    // supabase/migrations/20260807000000_company_owner_invite.sql.
+    ownerEmail: null,
+    ownerStatus: null,
     createdAt: created,
     updatedAt: created,
   };

@@ -5,15 +5,23 @@
 // up the guide row by invite_token, create the auth user, link it to that
 // guide row by email/token, flip status to 'active'.
 //
+// Also redeems a company's OWNER invite (createCompany's owner_invite_token
+// — 20260807000000_company_owner_invite.sql), the exact same shape one
+// level up: look up the company row by owner_invite_token, create the auth
+// user with role='company' linked to that company, flip owner_status to
+// 'active'. joinAction below tries a guide match first, then a company
+// match — see page.tsx for why both live behind the same route/token space.
+//
 // Every step below uses the service-role admin client, deliberately: at the
 // point this runs, the caller has no session (they're mid-signup), so there
 // is no RLS-respecting client available yet — `profiles` has no self-insert
-// policy, and an unredeemed `guides` row (status='invited') isn't
-// anon-readable either (see page.tsx's own comment). The one exception is
-// the final sign-in, which switches to the ordinary anon-key client
-// specifically so the response carries real, cookie-backed session state.
+// policy, and an unredeemed `guides`/`companies` row isn't anon-readable
+// either (see page.tsx's own comment). The one exception is the final
+// sign-in, which switches to the ordinary anon-key client specifically so
+// the response carries real, cookie-backed session state.
 
 import { redirect } from "next/navigation";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -22,40 +30,13 @@ export interface JoinActionState {
   error?: string;
 }
 
-export async function joinAction(
-  token: string,
-  _prevState: JoinActionState,
-  formData: FormData,
+async function redeemGuideInvite(
+  supabaseAdmin: SupabaseClient,
+  guide: { id: string; email: string; company_id: string },
+  name: string,
+  email: string,
+  password: string,
 ): Promise<JoinActionState> {
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "")
-    .trim()
-    .toLowerCase();
-  const password = String(formData.get("password") ?? "");
-
-  if (!name) return { error: "Enter your name." };
-  if (password.length < 8) {
-    return { error: "Choose a password with at least 8 characters." };
-  }
-
-  const supabaseAdmin = createAdminClient();
-
-  // Re-fetch + re-check status==='invited' here, not just at page-render
-  // time: closes the race where the same link is submitted twice, or a
-  // company revokes/deactivates the invite between page load and submit.
-  const { data: guide, error: guideError } = await supabaseAdmin
-    .from("guides")
-    .select("id, name, email, status, company_id")
-    .eq("invite_token", token)
-    .maybeSingle();
-
-  if (guideError || !guide) {
-    return { error: "This invite link is invalid." };
-  }
-  if (guide.status !== "invited") {
-    return { error: "This invite has already been used or is no longer valid." };
-  }
-
   // Never trust the form's locked email field alone — the token already
   // identifies the row; this only guards against a tampered submission
   // claiming a different address than the one this invite was sent to.
@@ -147,4 +128,138 @@ export async function joinAction(
   }
 
   redirect("/studio");
+}
+
+async function redeemCompanyOwnerInvite(
+  supabaseAdmin: SupabaseClient,
+  company: { id: string; owner_email: string },
+  name: string,
+  email: string,
+  password: string,
+): Promise<JoinActionState> {
+  // Same tamper guard as the guide path above — the token already
+  // identifies the row, this only catches a submission claiming a
+  // different address than the one the invite was actually issued to.
+  if (email !== company.owner_email.toLowerCase()) {
+    return { error: "That email doesn't match this invite." };
+  }
+
+  const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email: company.owner_email,
+    password,
+    email_confirm: true,
+  });
+
+  if (createError || !created?.user) {
+    if (createError && /already/i.test(createError.message)) {
+      return { error: "An account already exists for this email — sign in instead." };
+    }
+    return { error: "Could not create your account. Please try again." };
+  }
+
+  const newUser = created.user;
+
+  // role='company' requires company_id set and guide_id null
+  // (profile_role_shape, supabase/migrations/20260805063610_init_schema.sql)
+  // — guide_id is simply omitted, defaulting to null.
+  const { error: profileError } = await supabaseAdmin.from("profiles").insert({
+    id: newUser.id,
+    role: "company",
+    company_id: company.id,
+    email: company.owner_email,
+    display_name: name,
+  });
+
+  if (profileError) {
+    await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+    return { error: "Could not finish setting up your account. Please try again." };
+  }
+
+  // Same atomic-flip pattern as the guide path: conditioned on owner_status
+  // still being 'invited' so a truly concurrent double-submit can only
+  // activate once.
+  const { data: activated, error: companyUpdateError } = await supabaseAdmin
+    .from("companies")
+    .update({
+      owner_status: "active",
+      owner_invite_token: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", company.id)
+    .eq("owner_status", "invited")
+    .select("id")
+    .maybeSingle();
+
+  if (companyUpdateError || !activated) {
+    await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+    return { error: "This invite has already been used or is no longer valid." };
+  }
+
+  const supabase = await createClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: company.owner_email,
+    password,
+  });
+
+  if (signInError) {
+    redirect("/studio/login");
+  }
+
+  redirect("/studio");
+}
+
+export async function joinAction(
+  token: string,
+  _prevState: JoinActionState,
+  formData: FormData,
+): Promise<JoinActionState> {
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  const password = String(formData.get("password") ?? "");
+
+  if (!name) return { error: "Enter your name." };
+  if (password.length < 8) {
+    return { error: "Choose a password with at least 8 characters." };
+  }
+
+  const supabaseAdmin = createAdminClient();
+
+  // Re-fetch + re-check status here, not just at page-render time: closes
+  // the race where the same link is submitted twice, or the invite is
+  // revoked between page load and submit.
+  const { data: guide, error: guideError } = await supabaseAdmin
+    .from("guides")
+    .select("id, email, status, company_id")
+    .eq("invite_token", token)
+    .maybeSingle();
+
+  if (guide && !guideError) {
+    if (guide.status !== "invited") {
+      return { error: "This invite has already been used or is no longer valid." };
+    }
+    return redeemGuideInvite(supabaseAdmin, guide, name, email, password);
+  }
+
+  const { data: company, error: companyError } = await supabaseAdmin
+    .from("companies")
+    .select("id, owner_email, owner_status")
+    .eq("owner_invite_token", token)
+    .maybeSingle();
+
+  if (companyError || !company || !company.owner_email) {
+    return { error: "This invite link is invalid." };
+  }
+  if (company.owner_status !== "invited") {
+    return { error: "This invite has already been used or is no longer valid." };
+  }
+
+  return redeemCompanyOwnerInvite(
+    supabaseAdmin,
+    { id: company.id, owner_email: company.owner_email },
+    name,
+    email,
+    password,
+  );
 }

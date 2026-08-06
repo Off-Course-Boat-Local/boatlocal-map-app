@@ -187,6 +187,16 @@ interface CompanyRow {
   google_review_url: string | null;
   tripadvisor_review_url: string | null;
   status: CompanyStatus;
+  owner_email: string | null;
+  owner_status: "invited" | "active" | null;
+  // owner_invite_token is deliberately NOT declared here. This interface
+  // shapes every `select("*")` result this module works with, and
+  // fromCompanyRow() below is the ONLY place a CompanyRow becomes a
+  // CompanyRecord — omitting the field here is what makes it impossible for
+  // the token to leak into CompanyRecord (and from there into any
+  // guest-facing Brand) by accident. The one place that legitimately needs
+  // the token — src/app/join/[token]/page.tsx — selects it with an explicit
+  // column list via the admin client instead of going through this type.
   created_at: string;
   updated_at: string;
 }
@@ -207,6 +217,8 @@ function fromCompanyRow(row: CompanyRow): CompanyRecord {
     googleReviewUrl: row.google_review_url,
     tripadvisorReviewUrl: row.tripadvisor_review_url,
     status: row.status,
+    ownerEmail: row.owner_email,
+    ownerStatus: row.owner_status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -1825,11 +1837,13 @@ const ONBOARDING_DEFAULT_BRAND = {
  * race between two concurrent onboarding attempts is still closed correctly
  * even though the pre-check alone couldn't close it.
  *
- * GAP (flagged for the Studio-auth builder, per this file's own mapping):
- * CreateCompanyInput has no field for the company's first user's email —
- * this function only creates the `companies` row. Establishing that
- * company's first authenticated user (and its `profiles` row) is a
- * separate, not-yet-designed step; nothing here creates one.
+ * Also mints the company's owner invite (owner_status: 'invited' +
+ * owner_invite_token, mirroring inviteGuide's invite_token) — this used to
+ * be a flagged gap (this function only created the `companies` row, with no
+ * path for anyone to actually sign in and manage it) until
+ * 20260807000000_company_owner_invite.sql closed it. Redemption itself
+ * (creating the auth user + profiles row) happens at src/app/join/[token],
+ * the same place a guide's invite is redeemed.
  */
 export async function createCompany(
   actor: StudioActor,
@@ -1841,6 +1855,9 @@ export async function createCompany(
 
   const name = input.name.trim();
   if (!name) throw new Error("Company name is required.");
+
+  const ownerEmail = input.ownerEmail.trim();
+  if (!ownerEmail) throw new Error("Owner email is required.");
 
   const subdomain = slugify(input.subdomain?.trim() || name);
   // slugify() only filters characters — it does not enforce the 63-char DNS
@@ -1883,6 +1900,8 @@ export async function createCompany(
       googleReviewUrl: null,
       tripadvisorReviewUrl: null,
       status: input.status ?? "setup",
+      ownerEmail,
+      ownerStatus: "invited",
       createdAt: created,
       updatedAt: created,
     };
@@ -1914,6 +1933,9 @@ export async function createCompany(
       brand_accent: ONBOARDING_DEFAULT_BRAND.accent,
       brand_surround: ONBOARDING_DEFAULT_BRAND.surround,
       status: input.status ?? "setup",
+      owner_email: ownerEmail,
+      owner_status: "invited",
+      owner_invite_token: generateInviteToken(),
     })
     .select("*")
     .single();

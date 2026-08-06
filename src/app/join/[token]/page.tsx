@@ -10,15 +10,22 @@
 // the auth user, link it to that guide row by email/token, flip status to
 // 'active'."
 //
-// The lookup below uses the service-role admin client, not the ordinary
+// Also serves a company's OWNER invite (createCompany's owner_invite_token,
+// 20260807000000_company_owner_invite.sql) — the same gap for a company's
+// first Studio user (role='company') that a guide invite already closed for
+// guides. One route serves both: a token is looked up against `guides`
+// first, then `companies`, and whichever matches drives the same JoinForm/
+// joinAction. See actions.ts for the redemption logic split.
+//
+// The lookups below use the service-role admin client, not the ordinary
 // anon-key server client, on purpose: an unredeemed invite is
-// status='invited', and `guest_public_read` on `guides`
-// (supabase/migrations/20260805063611_rls_policies.sql) only allows anon to
-// read status='active' rows. A visitor on this page has no session yet
-// (they are, by definition, not signed in), so there is no RLS-respecting
-// client that could see this row at all — bypassing RLS here is exactly
-// the "specific operation that genuinely needs to" case the admin client
-// is reserved for, not a convenience shortcut.
+// status='invited' (or owner_status='invited'), and the `guest_public_read`
+// policies (supabase/migrations/20260805063611_rls_policies.sql) only allow
+// anon to read already-active rows. A visitor on this page has no session
+// yet (they are, by definition, not signed in), so there is no
+// RLS-respecting client that could see either row at all — bypassing RLS
+// here is exactly the "specific operation that genuinely needs to" case the
+// admin client is reserved for, not a convenience shortcut.
 
 import Link from "next/link";
 
@@ -71,13 +78,40 @@ export default async function JoinPage({
     .eq("invite_token", token)
     .maybeSingle();
 
-  if (!guide) {
-    // Also covers a *redeemed* invite: the join action clears invite_token
-    // to null the moment a guide finishes signup (setGuideStatus's own
-    // documented behavior, see src/lib/data/source.ts), so a stale/replayed
-    // link is genuinely indistinguishable from a fabricated one by this
-    // query alone — both come back "not found". Surfacing the sign-in link
-    // here too, not just below, covers that (very likely) case.
+  if (guide) {
+    if (guide.status !== "invited") {
+      return (
+        <InviteUnavailable
+          heading="Invite no longer valid"
+          message="This invite has already been used or is no longer valid."
+          showLoginLink
+        />
+      );
+    }
+
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-neutral-100 p-6">
+        <JoinForm token={token} defaultName={guide.name} email={guide.email} />
+      </div>
+    );
+  }
+
+  // No guide matched — try the company-owner invite before giving up. The
+  // two token spaces never collide in practice (both are generateInviteToken()
+  // UUIDs), but even if they did, a guide match above always wins since it's
+  // checked first.
+  const { data: company } = await supabaseAdmin
+    .from("companies")
+    .select("owner_email, owner_status")
+    .eq("owner_invite_token", token)
+    .maybeSingle();
+
+  if (!company) {
+    // Also covers a *redeemed* invite: the join action clears invite_token /
+    // owner_invite_token the moment signup finishes, so a stale/replayed
+    // link is genuinely indistinguishable from a fabricated one by these
+    // queries alone — both come back "not found". Surfacing the sign-in
+    // link here too, not just below, covers that (very likely) case.
     return (
       <InviteUnavailable
         heading="Invite not found"
@@ -87,7 +121,7 @@ export default async function JoinPage({
     );
   }
 
-  if (guide.status !== "invited") {
+  if (company.owner_status !== "invited" || !company.owner_email) {
     return (
       <InviteUnavailable
         heading="Invite no longer valid"
@@ -99,7 +133,7 @@ export default async function JoinPage({
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-neutral-100 p-6">
-      <JoinForm token={token} defaultName={guide.name} email={guide.email} />
+      <JoinForm token={token} defaultName="" email={company.owner_email} />
     </div>
   );
 }

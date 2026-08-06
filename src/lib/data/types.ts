@@ -68,6 +68,16 @@ export interface CompanyRecord {
   googleReviewUrl: string | null;
   tripadvisorReviewUrl: string | null;
   status: CompanyStatus;
+  /** The company's first Studio user (role=company). Null for rows created before this existed. */
+  ownerEmail: string | null;
+  /**
+   * 'invited' until redeemed at /join/[token], 'active' once claimed. Null
+   * means no owner invite has ever been issued — distinct from 'invited',
+   * never treat null as "pending". Deliberately NOT ownerInviteToken here —
+   * that value is never exposed through this general-purpose type; see
+   * fromCompanyRow's comment in src/lib/data/source.ts for why.
+   */
+  ownerStatus: "invited" | "active" | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -231,6 +241,14 @@ export interface CreateCompanyInput {
   subdomain?: string;
   companyType: CompanyType;
   status?: CompanyStatus;
+  /**
+   * Required, not optional — mirrors PRD §6.1's guide invite exactly: this
+   * is who signs in to manage the company in Studio, not a general contact
+   * address. createCompany() generates a real invite token for it, same as
+   * inviteGuide() does; there is no path to onboard a company without
+   * establishing who its first user is.
+   */
+  ownerEmail: string;
 }
 
 export interface UpdateGuideProfileInput {

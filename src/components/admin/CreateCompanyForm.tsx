@@ -57,13 +57,25 @@ export default function CreateCompanyForm() {
       <p className="text-sm font-medium text-[var(--admin-ink)]">Onboard a new company</p>
       <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
         Starts with a neutral placeholder brand — the company customises colours and logo later in
-        Studio &gt; Branding.
+        Studio &gt; Branding. The owner&rsquo;s email is who signs in to manage this company — not a
+        general contact address; they&rsquo;ll get an invite link to set their password.
       </p>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <label className={labelClass}>
           Company name
           <input name="name" required placeholder="Hotel V Nesplein" className={inputClass} />
+        </label>
+
+        <label className={labelClass}>
+          Owner&rsquo;s email
+          <input
+            name="ownerEmail"
+            type="email"
+            required
+            placeholder="owner@hotelv.com"
+            className={inputClass}
+          />
         </label>
 
         <label className={labelClass}>

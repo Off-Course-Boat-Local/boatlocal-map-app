@@ -624,7 +624,11 @@ describe("setBoatTourPosition", () => {
 });
 
 describe("createCompany", () => {
-  const newCompanyInput = { name: "Amsterdam Adventures", companyType: "tour" as const };
+  const newCompanyInput = {
+    name: "Amsterdam Adventures",
+    companyType: "tour" as const,
+    ownerEmail: "owner@amsterdamadventures.example",
+  };
 
   it("admin can onboard a new company, defaulting to 'setup' status and a slugified subdomain", async () => {
     const company = await createCompany(adminActor, newCompanyInput);
@@ -665,6 +669,18 @@ describe("createCompany", () => {
     );
   });
 
+  it("rejects a blank owner email", async () => {
+    await expect(
+      createCompany(adminActor, { ...newCompanyInput, ownerEmail: "  " }),
+    ).rejects.toThrow(/[Oo]wner email is required/);
+  });
+
+  it("sets ownerEmail and ownerStatus 'invited' on a newly onboarded company", async () => {
+    const company = await createCompany(adminActor, newCompanyInput);
+    expect(company.ownerEmail).toBe(newCompanyInput.ownerEmail);
+    expect(company.ownerStatus).toBe("invited");
+  });
+
   it("rejects a subdomain that exceeds the 63-char DNS label limit", async () => {
     // Regression: slugify() only filters characters, it does not enforce
     // length (see its own doc comment) — a long enough name used to sail
@@ -687,6 +703,7 @@ describe("setCompanyStatus", () => {
     const created = await createCompany(adminActor, {
       name: "New Tenant",
       companyType: "host",
+      ownerEmail: "owner@newtenant.example",
     });
     expect(created.status).toBe("setup");
 

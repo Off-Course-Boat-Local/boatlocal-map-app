@@ -21,7 +21,7 @@ describe("createCompany", () => {
     await expect(
       createCompany(
         { role: "company", companyId: COMPANY_ID },
-        { name: "New Co", companyType: "hotel" },
+        { name: "New Co", companyType: "hotel", ownerEmail: "owner@newco.example" },
       ),
     ).rejects.toThrow(StudioPermissionError);
   });
@@ -29,13 +29,15 @@ describe("createCompany", () => {
   it("creates a company defaulting to setup status and a slugified subdomain from the name", async () => {
     const company = await createCompany(
       { role: "admin" },
-      { name: "Hotel V Nesplein", companyType: "hotel" },
+      { name: "Hotel V Nesplein", companyType: "hotel", ownerEmail: "owner@hotelv.example" },
     );
 
     expect(company.status).toBe("setup");
     expect(company.subdomain).toBe("hotel-v-nesplein");
     expect(company.companyType).toBe("hotel");
     expect(company.appName).toBe("Hotel V Nesplein");
+    expect(company.ownerEmail).toBe("owner@hotelv.example");
+    expect(company.ownerStatus).toBe("invited");
 
     const all = await listCompanies({ role: "admin" });
     expect(all.some((c) => c.id === company.id)).toBe(true);
@@ -44,7 +46,12 @@ describe("createCompany", () => {
   it("slugifies an explicitly provided subdomain", async () => {
     const company = await createCompany(
       { role: "admin" },
-      { name: "Canal Tours XL", subdomain: "Canal Tours!!", companyType: "tour" },
+      {
+        name: "Canal Tours XL",
+        subdomain: "Canal Tours!!",
+        companyType: "tour",
+        ownerEmail: "owner@canaltours.example",
+      },
     );
     expect(company.subdomain).toBe("canal-tours");
   });
@@ -52,29 +59,49 @@ describe("createCompany", () => {
   it("honours an explicit initial status of active (\"live\")", async () => {
     const company = await createCompany(
       { role: "admin" },
-      { name: "Jordaan B&B", companyType: "host", status: "active" },
+      { name: "Jordaan B&B", companyType: "host", status: "active", ownerEmail: "owner@jordaanbb.example" },
     );
     expect(company.status).toBe("active");
   });
 
   it("rejects a blank company name", async () => {
     await expect(
-      createCompany({ role: "admin" }, { name: "   ", companyType: "hotel" }),
+      createCompany(
+        { role: "admin" },
+        { name: "   ", companyType: "hotel", ownerEmail: "owner@example.com" },
+      ),
     ).rejects.toThrow(/name/i);
+  });
+
+  it("rejects a blank owner email", async () => {
+    await expect(
+      createCompany(
+        { role: "admin" },
+        { name: "No Owner Co", companyType: "hotel", ownerEmail: "   " },
+      ),
+    ).rejects.toThrow(/owner email/i);
   });
 
   it("rejects a subdomain already used by another company", async () => {
     await expect(
       createCompany(
         { role: "admin" },
-        { name: "Duplicate Co", subdomain: "coastal", companyType: "host" },
+        {
+          name: "Duplicate Co",
+          subdomain: "coastal",
+          companyType: "host",
+          ownerEmail: "owner@duplicateco.example",
+        },
       ),
     ).rejects.toThrow(/already in use/i);
   });
 
   it("rejects a reserved subdomain (see src/lib/slug.ts RESERVED_SUBDOMAINS)", async () => {
     await expect(
-      createCompany({ role: "admin" }, { name: "Sneaky Co", subdomain: "admin", companyType: "host" }),
+      createCompany(
+        { role: "admin" },
+        { name: "Sneaky Co", subdomain: "admin", companyType: "host", ownerEmail: "owner@sneakyco.example" },
+      ),
     ).rejects.toThrow(/reserved/i);
   });
 });
