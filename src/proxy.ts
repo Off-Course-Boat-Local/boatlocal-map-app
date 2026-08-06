@@ -6,43 +6,42 @@
 // sections rather than re-splitting this back into separate files (it
 // can't be) or tangling their logic together.
 //
-//   1. STUDIO DEV AUTH STAND-IN  — gates /studio/:path*
-//   2. ADMIN DEV AUTH STAND-IN   — gates /admin/:path*
+//   1. STUDIO SUPABASE AUTH GATE — gates /studio/:path*
+//   2. ADMIN SUPABASE AUTH GATE  — gates /admin/:path*
 //   3. GUEST BRAND RESOLUTION    — runs on every other guest-facing route
 //
 // All three are routing conveniences only, never the security boundary —
 // see each section for what actually enforces access.
+//
+// Next.js 16 runs Proxy on the Node runtime by default (not Edge), but the
+// three-layer posture below still holds regardless: Proxy is for "should
+// this request even reach the route" routing, never the sole authorization
+// check. See src/lib/supabase/proxy.ts for the client this file uses.
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { resolveGuestBrand } from "@/lib/guestBrand";
 import { GUEST_BRAND_HEADER, GUEST_GUIDE_HEADER } from "@/lib/guestHeaders";
+import { createProxyClient } from "@/lib/supabase/proxy";
 
 // =============================================================================
-// 1. STUDIO DEV AUTH STAND-IN — coarse routing gate ONLY, not a security
+// 1. STUDIO SUPABASE AUTH GATE — coarse routing gate ONLY, not a security
 //    boundary.
 //
-// This is layer #1 of the three described in the routing research notes for
-// this task: a cheap, Edge-runtime redirect so an anonymous visitor never
-// even sees a flash of the authenticated Studio shell before bouncing to
-// /studio/login. Layer #2 (src/lib/studio/devAuth.ts's requireDevSession(),
-// called from src/app/studio/(protected)/layout.tsx and again from every
-// gated page) and
-// layer #3 (every Server Action re-checking its own actor) are the layers
-// that actually matter — this file only checks that *a* session cookie is
-// present, never who it belongs to or what role it claims.
-//
-// SESSION_COOKIE_NAME is duplicated from devAuth.ts rather than imported:
-// devAuth.ts pulls in `next/headers` and `next/navigation`, which are meant
-// for Server Components/Actions, not Proxy's separate Edge bundle — see the
-// "Good to know" note in the proxy.js docs about not relying on shared
-// modules. If the cookie name ever changes, update it in both places.
+// This is layer #1 of the three-layer model: a cheap redirect so an
+// anonymous visitor never even sees a flash of the authenticated Studio
+// shell before bouncing to /studio/login. It only checks that a *valid*
+// Supabase session exists (via getClaims(), which verifies the JWT
+// signature — never getSession(), which only reads local cookie state
+// without revalidating) — never who it belongs to or what role/company it
+// maps to. Layer #2 (a server-side session/profile check called from
+// src/app/studio/(protected)/layout.tsx and again from every gated page)
+// and layer #3 (every Server Action re-checking its own actor) are the
+// layers that actually enforce role and tenant scoping.
 // =============================================================================
 
-const SESSION_COOKIE_NAME = "bl_studio_session";
-
-function studioAuthGate(request: NextRequest): NextResponse {
+async function studioAuthGate(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
   // The login page itself must stay reachable, obviously.
@@ -50,31 +49,27 @@ function studioAuthGate(request: NextRequest): NextResponse {
     return NextResponse.next();
   }
 
-  if (!request.cookies.has(SESSION_COOKIE_NAME)) {
+  const { supabase, getResponse } = createProxyClient(request);
+  const { data } = await supabase.auth.getClaims();
+
+  if (!data?.claims) {
     return NextResponse.redirect(new URL("/studio/login", request.url));
   }
 
-  return NextResponse.next();
+  return getResponse();
 }
 
 // =============================================================================
-// 2. ADMIN DEV AUTH STAND-IN — coarse routing gate ONLY, not a security
+// 2. ADMIN SUPABASE AUTH GATE — coarse routing gate ONLY, not a security
 //    boundary. Mirrors the Studio gate above exactly (see its comment for
 //    the full three-layer explanation); Admin only ever has the one role,
 //    so unlike Studio there is no wrong-*role* case to handle here — layer
-//    #2 (requireAdminSession(), called from src/app/admin/(protected)
-//    /layout.tsx) and layer #3 (every Server Action re-checking itself) are
-//    still what actually enforce access.
-//
-// SESSION_COOKIE_NAME is duplicated from src/lib/admin/devAuth.ts for the
-// same reason the Studio cookie name is duplicated above: this file runs in
-// Proxy's Edge bundle, which next/headers-based modules are not meant for.
-// If the cookie name ever changes, update it in both places.
+//    #2 (a server-side session/allowlist check called from
+//    src/app/admin/(protected)/layout.tsx) and layer #3 (every Server
+//    Action re-checking itself) are still what actually enforce access.
 // =============================================================================
 
-const ADMIN_SESSION_COOKIE_NAME = "bl_admin_session";
-
-function adminAuthGate(request: NextRequest): NextResponse {
+async function adminAuthGate(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
   // The login page itself must stay reachable, obviously.
@@ -82,11 +77,14 @@ function adminAuthGate(request: NextRequest): NextResponse {
     return NextResponse.next();
   }
 
-  if (!request.cookies.has(ADMIN_SESSION_COOKIE_NAME)) {
+  const { supabase, getResponse } = createProxyClient(request);
+  const { data } = await supabase.auth.getClaims();
+
+  if (!data?.claims) {
     return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
-  return NextResponse.next();
+  return getResponse();
 }
 
 // =============================================================================
@@ -128,7 +126,7 @@ function guestBrandResolution(request: NextRequest): NextResponse {
 // Dispatch
 // =============================================================================
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/studio")) {

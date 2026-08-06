@@ -1,6 +1,6 @@
-// DEV AUTH STAND-IN — public page, no session required. Redirects away if a
-// session already exists so a signed-in user hitting /studio/login lands
-// back on the Dashboard instead of seeing the form again.
+// Public page, no session required. Redirects away if a session already
+// exists so a signed-in user hitting /studio/login lands back on the
+// Dashboard instead of seeing the form again.
 
 import { redirect } from "next/navigation";
 

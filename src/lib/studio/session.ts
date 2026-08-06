@@ -1,23 +1,24 @@
-// DEV AUTH STAND-IN — pure session shape + (de)serialization.
+// Studio session shape — pure, dependency-free, safe on either side of the
+// client/server boundary.
 //
-// Split out of devAuth.ts for one reason: this module must be importable
-// from Client Components (LoginForm.tsx shows DEV_LOGIN_PASSWORD in the
-// sign-in hint), and devAuth.ts pulls in `next/headers`, which Next.js
-// refuses to let anywhere near a client bundle ("You're importing a module
-// that depends on next/headers... only available in Server Components").
-// Everything here is plain, dependency-free TypeScript — safe on either
-// side — while devAuth.ts stays the server-only module that actually reads
-// and writes the cookie.
+// This module deliberately carries no Supabase/next-headers imports of its
+// own: src/components/studio/RecommendationsManager.tsx imports the
+// `StudioRole` type from here (type-only, erased at compile time, so it's
+// safe from a "use client" component even though the *value* it types is
+// only ever produced server-side), and src/lib/studio/devAuth.ts (the
+// server-only module that actually talks to Supabase) re-exports
+// `actorFromSession`/`DevSession`/`StudioRole` from here so every existing
+// call site (`@/lib/studio/devAuth`'s `actorFromSession`, `requireDevSession`
+// etc.) keeps working unchanged.
+//
+// What used to live here — a hand-rolled cookie serializer/parser and a
+// shared dev password — is gone: Supabase Auth (`@supabase/ssr`) now owns
+// the actual session cookie, and DevSession is reconstructed on every
+// request from a verified JWT + the caller's own `profiles` row (see
+// devAuth.ts's getDevSession()) instead of being round-tripped through a
+// cookie this app serializes itself.
 
 import type { StudioActor } from "@/lib/data/types";
-
-/** Name of the cookie holding the serialized DevSession. Kept in sync with the constant of the same name in src/proxy.ts (duplicated there on purpose — see that file's header comment). */
-export const SESSION_COOKIE_NAME = "bl_studio_session";
-
-/** Accepted for ANY email address. This is the entire "password check". */
-export const DEV_LOGIN_PASSWORD = "boatlocal-dev";
-
-export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
 export type StudioRole = "company" | "guide";
 
@@ -36,52 +37,6 @@ export type DevSession =
       guideId: string;
       guideName: string;
     };
-
-/** Pure, testable: DevSession -> cookie value. */
-export function serializeSession(session: DevSession): string {
-  return encodeURIComponent(JSON.stringify(session));
-}
-
-/** Pure, testable: cookie value -> DevSession, or null for anything missing/malformed/tampered. */
-export function parseSessionCookie(raw: string | undefined | null): DevSession | null {
-  if (!raw) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(decodeURIComponent(raw));
-  } catch {
-    return null;
-  }
-  if (!parsed || typeof parsed !== "object") return null;
-  const obj = parsed as Record<string, unknown>;
-
-  const hasCommon =
-    typeof obj.email === "string" &&
-    typeof obj.companyId === "string" &&
-    typeof obj.companyName === "string";
-  if (!hasCommon) return null;
-
-  if (obj.role === "company") {
-    return {
-      role: "company",
-      email: obj.email as string,
-      companyId: obj.companyId as string,
-      companyName: obj.companyName as string,
-    };
-  }
-
-  if (obj.role === "guide" && typeof obj.guideId === "string" && typeof obj.guideName === "string") {
-    return {
-      role: "guide",
-      email: obj.email as string,
-      companyId: obj.companyId as string,
-      companyName: obj.companyName as string,
-      guideId: obj.guideId,
-      guideName: obj.guideName,
-    };
-  }
-
-  return null;
-}
 
 /** Maps a DevSession to the StudioActor shape src/lib/data/source.ts's Studio functions expect. */
 export function actorFromSession(session: DevSession): StudioActor {

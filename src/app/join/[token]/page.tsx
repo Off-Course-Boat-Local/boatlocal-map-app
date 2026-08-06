@@ -5,17 +5,57 @@
 // route is gated by src/proxy.ts's studioAuthGate, which would bounce a
 // logged-out invitee to /studio/login before they ever saw this page.
 //
-// This is a placeholder, not the full PRD §6.1 signup flow: there is no
-// real Supabase Auth yet to create an account against, so there is nothing
-// real for a 3-field form to submit to. Building that is a follow-up, once
-// auth exists. What this page DOES do honestly: confirm the link is real
-// and well-formed, and tell the invitee what happens next — rather than
-// 404ing on a link Studio just told them was theirs.
+// This is the real signup flow inviteGuide() (src/lib/data/source.ts) was
+// always building toward: "look up the guide row by invite_token, create
+// the auth user, link it to that guide row by email/token, flip status to
+// 'active'."
 //
-// TODO: once real Supabase Auth exists, replace this with the actual
-// signup form (name/email prefilled from the invite, password field), which
-// on submit creates the auth user, links it to the existing guide row (by
-// looking up `invite_token`), and sets that guide's status to 'active'.
+// The lookup below uses the service-role admin client, not the ordinary
+// anon-key server client, on purpose: an unredeemed invite is
+// status='invited', and `guest_public_read` on `guides`
+// (supabase/migrations/20260805063611_rls_policies.sql) only allows anon to
+// read status='active' rows. A visitor on this page has no session yet
+// (they are, by definition, not signed in), so there is no RLS-respecting
+// client that could see this row at all — bypassing RLS here is exactly
+// the "specific operation that genuinely needs to" case the admin client
+// is reserved for, not a convenience shortcut.
+
+import Link from "next/link";
+
+import { createAdminClient } from "@/lib/supabase/admin";
+
+import JoinForm from "./JoinForm";
+
+export const metadata = {
+  title: "Join Studio — Boat Local",
+};
+
+function InviteUnavailable({
+  heading,
+  message,
+  showLoginLink,
+}: {
+  heading: string;
+  message: string;
+  showLoginLink?: boolean;
+}) {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-neutral-100 p-6">
+      <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-8 text-center shadow-sm">
+        <h1 className="text-xl font-semibold text-neutral-900">{heading}</h1>
+        <p className="text-sm text-neutral-500">{message}</p>
+        {showLoginLink ? (
+          <Link
+            href="/studio/login"
+            className="inline-block text-sm font-medium text-neutral-900 underline underline-offset-2"
+          >
+            Go to sign in
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export default async function JoinPage({
   params,
@@ -24,19 +64,42 @@ export default async function JoinPage({
 }) {
   const { token } = await params;
 
+  const supabaseAdmin = createAdminClient();
+  const { data: guide } = await supabaseAdmin
+    .from("guides")
+    .select("name, email, status")
+    .eq("invite_token", token)
+    .maybeSingle();
+
+  if (!guide) {
+    // Also covers a *redeemed* invite: the join action clears invite_token
+    // to null the moment a guide finishes signup (setGuideStatus's own
+    // documented behavior, see src/lib/data/source.ts), so a stale/replayed
+    // link is genuinely indistinguishable from a fabricated one by this
+    // query alone — both come back "not found". Surfacing the sign-in link
+    // here too, not just below, covers that (very likely) case.
+    return (
+      <InviteUnavailable
+        heading="Invite not found"
+        message="This invite link is invalid, or it's already been used."
+        showLoginLink
+      />
+    );
+  }
+
+  if (guide.status !== "invited") {
+    return (
+      <InviteUnavailable
+        heading="Invite no longer valid"
+        message="This invite has already been used or is no longer valid."
+        showLoginLink
+      />
+    );
+  }
+
   return (
     <div className="flex min-h-dvh items-center justify-center bg-neutral-100 p-6">
-      <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-8 text-center shadow-sm">
-        <h1 className="text-xl font-semibold text-neutral-900">You&rsquo;ve been invited</h1>
-        <p className="text-sm text-neutral-500">
-          Your company has invited you to join as a guide. Sign-up isn&rsquo;t wired up
-          yet — this link is real and yours to keep, but there&rsquo;s no account
-          system behind it until Studio&rsquo;s real sign-in ships.
-        </p>
-        <p className="break-all rounded-lg bg-neutral-50 px-3 py-2 font-mono text-xs text-neutral-500">
-          Invite token: {token}
-        </p>
-      </div>
+      <JoinForm token={token} defaultName={guide.name} email={guide.email} />
     </div>
   );
 }

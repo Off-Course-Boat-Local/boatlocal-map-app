@@ -1,107 +1,141 @@
-// DEV AUTH STAND-IN
+// Admin auth: real Supabase Auth (magic link) gated by a staff allowlist.
 //
-// No real auth backend exists yet — no Supabase Auth, no user table, no
-// password hashing. This module is a deliberately minimal, insecure
-// stand-in so the Admin app shell can be built, demoed and tested today.
-// It accepts ANY email address paired with a single shared dev password
-// (from an env var, with a documented placeholder default) and mints a
-// base64-encoded, unsigned cookie carrying the role.
+// Admin has no invite system — it's Boat Local's own staff, not a
+// self-serve product. The only gate is ADMIN_ALLOWED_EMAILS (a comma-
+// separated env var, see .env.example): an allowlisted email's first
+// successful magic-link verification creates their `profiles` row with
+// role='admin'; anyone else is refused outright. Nobody can ever land here
+// with a default/unset role as a side effect of merely signing in — a
+// `profiles` row is only ever created by the deliberate allowlist check
+// below, never implicitly.
 //
-// This is NOT secure. The cookie is trivially forgeable (it is base64, not
-// signed or encrypted) — that is acceptable ONLY because there is no real
-// data behind it yet. Do not copy this pattern for anything that touches
-// real user data.
+// The actual sign-in form lives in src/app/admin/login/page.tsx and its
+// action (src/app/admin/login/actions.ts): it only ever calls
+// `supabase.auth.signInWithOtp()` to send the magic link. The link itself
+// is redeemed by src/app/auth/confirm/route.ts (shared with Studio),
+// which establishes the Supabase Auth session but deliberately does NOT
+// touch `profiles` — this file is what turns "there is a valid Supabase
+// session" into "there is (or now is) an admin profile for it", the first
+// time a protected Admin page is rendered after redemption.
 //
-// Swapping in real Supabase Auth later means touching ONLY this file:
-//   - verifyDevCredentials() -> a real sign-in call (supabase.auth.signInWithPassword)
-//   - the cookie payload -> the real Supabase session token
-//   - getAdminSession() -> resolve the session + look up the caller's role
-//     in `profiles` instead of decoding a local cookie
-// getAdminSession() / requireAdminSession() keep their exact signatures, so
-// every call site (layouts, pages, actions) stays untouched.
-//
-// Isolated on purpose: every file that touches this stand-in is banner-
-// commented "DEV AUTH STAND-IN" so a future find-and-replace for real auth
-// has a complete list of call sites.
+// getAdminSession() / requireAdminSession() keep the exact signatures the
+// former DEV AUTH STAND-IN used, so every call site (layouts, pages,
+// actions) needed no changes for this swap.
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-const COOKIE_NAME = "bl_admin_session";
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8; // 8h — a staff work session.
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
-// Placeholder default so the app runs out of the box in dev without any
-// env setup. Override with a real value in .env.local; this is still not a
-// real secret even when overridden — see the module comment above.
-const DEV_PASSWORD = process.env.ADMIN_DEV_PASSWORD ?? "boatlocal-dev";
+import { isEmailAllowlistedForAdmin } from "./allowlist";
 
 export interface AdminSession {
   role: "admin";
   email: string;
 }
 
-/** Pure — no cookies() call, safe to unit test directly. */
-export function verifyDevCredentials(email: string, password: string): boolean {
-  return email.trim().length > 0 && password === DEV_PASSWORD;
-}
+export { isEmailAllowlistedForAdmin };
 
-/** Pure — no cookies() call, safe to unit test directly. */
-export function encodeAdminSession(session: AdminSession): string {
-  return Buffer.from(JSON.stringify(session), "utf8").toString("base64url");
-}
+type AdminSessionResult =
+  // Nobody is signed in at all (no valid Supabase session on this request).
+  | { status: "signed-out" }
+  // Signed in, but the email is neither an existing admin profile nor on
+  // the staff allowlist — refused, not given a default role.
+  | { status: "not-authorized" }
+  | { status: "ok"; session: AdminSession };
 
-/** Pure — no cookies() call, safe to unit test directly. Returns null on any malformed input rather than throwing, since cookie contents are attacker-influenced input. */
-export function decodeAdminSession(value: string): AdminSession | null {
-  try {
-    const parsed: unknown = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      (parsed as { role?: unknown }).role === "admin" &&
-      typeof (parsed as { email?: unknown }).email === "string"
-    ) {
-      return parsed as AdminSession;
-    }
-  } catch {
-    // Malformed/tampered cookie — treat as signed out.
+/**
+ * Resolves the caller's Admin session from the real, JWT-verified Supabase
+ * user for this request (getClaims — never getSession, which only reads
+ * local cookie state without revalidating against the Auth server).
+ *
+ * If a `profiles` row already exists for this user, it must have
+ * role='admin' or the caller is refused (a Studio company/guide profile
+ * does not grant Admin access). If no row exists yet, this is either this
+ * admin's very first successful sign-in (email is allowlisted -> create
+ * the row) or someone who isn't Boat Local staff (refused).
+ *
+ * `profiles` has no self-insert RLS policy by design (nobody can hand
+ * themselves a role) — the one, narrow exception is this allowlisted
+ * first-sign-in case, which is why it goes through the service-role admin
+ * client instead of the request-scoped anon client used for everything
+ * else here.
+ */
+async function resolveAdminSession(): Promise<AdminSessionResult> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+
+  if (!claims?.sub || typeof claims.email !== "string" || !claims.email) {
+    return { status: "signed-out" };
   }
-  return null;
+
+  const userId = claims.sub;
+  const email = claims.email;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profile) {
+    return profile.role === "admin"
+      ? { status: "ok", session: { role: "admin", email: profile.email } }
+      : { status: "not-authorized" };
+  }
+
+  if (!isEmailAllowlistedForAdmin(email)) {
+    return { status: "not-authorized" };
+  }
+
+  const admin = createAdminClient();
+  const { data: created, error } = await admin
+    .from("profiles")
+    .insert({ id: userId, role: "admin", email })
+    .select("role, email")
+    .single();
+
+  if (error || !created) {
+    // Someone else (a concurrent request) may have just created this same
+    // row — refusing here rather than throwing is fine either way, since
+    // requireAdminSession() will simply re-check on the next navigation.
+    return { status: "not-authorized" };
+  }
+
+  return { status: "ok", session: { role: "admin", email: created.email } };
 }
 
-/** Route Handler / Server Action only — sets the outgoing cookie. */
-export async function createAdminSession(email: string): Promise<void> {
-  const store = await cookies();
-  store.set(COOKIE_NAME, encodeAdminSession({ role: "admin", email: email.trim() }), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
-}
-
-/** Route Handler / Server Action only — clears the outgoing cookie. */
+/** Route Handler / Server Action only — clears the Supabase Auth session. */
 export async function destroyAdminSession(): Promise<void> {
-  const store = await cookies();
-  store.delete(COOKIE_NAME);
+  const supabase = await createClient();
+  await supabase.auth.signOut();
 }
 
-/** Server Component read of the current session, or null if signed out. */
+/**
+ * Server Component read of the current session, or null if signed out, not
+ * yet authorized, or refused by the allowlist.
+ */
 export async function getAdminSession(): Promise<AdminSession | null> {
-  const store = await cookies();
-  const raw = store.get(COOKIE_NAME)?.value;
-  return raw ? decodeAdminSession(raw) : null;
+  const result = await resolveAdminSession();
+  return result.status === "ok" ? result.session : null;
 }
 
 /**
  * Layer 2 of the three-layer auth model (see the layout that calls this):
- * redirects signed-out visitors to /admin/login. This is a UX convenience,
- * not the only check — every Server Action under src/app/admin still needs
- * to be safe to call directly, since a "use server" action is effectively a
- * public POST endpoint regardless of what layout wraps its page.
+ * redirects a signed-out visitor to /admin/login, and a signed-in-but-
+ * refused visitor to /admin/login with a plain "not authorized" reason
+ * (never a generic error) rather than silently bouncing them with no
+ * explanation. This is a UX convenience, not the only check — every Server
+ * Action under src/app/admin still needs to be safe to call directly,
+ * since a "use server" action is effectively a public POST endpoint
+ * regardless of what layout wraps its page.
  */
 export async function requireAdminSession(): Promise<AdminSession> {
-  const session = await getAdminSession();
-  if (!session) redirect("/admin/login");
-  return session;
+  const result = await resolveAdminSession();
+  if (result.status === "ok") return result.session;
+  if (result.status === "not-authorized") {
+    redirect("/admin/login?error=not_authorized");
+  }
+  redirect("/admin/login");
 }

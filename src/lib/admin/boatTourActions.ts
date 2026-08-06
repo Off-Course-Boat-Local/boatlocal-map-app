@@ -7,10 +7,10 @@
 // (src/lib/studio/boatTourActions.ts's toggleBoatFeaturedAction /
 // moveBoatFeaturedAction), never the tour record itself.
 //
-// DEV AUTH STAND-IN — every action re-verifies the session itself via
-// requireAdminSession() (src/lib/admin/devAuth.ts), the same "every Server
-// Action re-checks, since it's effectively a public POST endpoint" rule
-// Studio's actions follow.
+// Every action re-verifies the session itself via requireAdminSession()
+// (src/lib/admin/devAuth.ts), the same "every Server Action re-checks,
+// since it's effectively a public POST endpoint" rule Studio's actions
+// follow.
 //
 // Permission enforcement is NOT duplicated here beyond that: saveBoatTour /
 // deleteBoatTour / setBoatTourPosition in src/lib/data/source.ts already

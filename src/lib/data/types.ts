@@ -158,11 +158,11 @@ export interface EventRecord {
 /**
  * The caller's identity for Studio/Admin reads and writes.
  *
- * Once real Supabase Auth exists, this is derived server-side from the
- * session (`auth.uid()` -> `profiles` row) — see the DEV AUTH STAND-IN
- * module for how a session resolves to one of these today. Every
- * data-access function that touches tenant- or guide-scoped data takes an
- * actor and enforces the same rules as the RLS policies in
+ * Derived server-side from the real Supabase Auth session (`auth.uid()` ->
+ * `profiles` row) — see src/lib/studio/devAuth.ts and src/lib/admin/devAuth.ts
+ * for how a session resolves to one of these. Every data-access function
+ * that touches tenant- or guide-scoped data takes an actor and enforces the
+ * same rules as the RLS policies in
  * supabase/migrations/20260805063611_rls_policies.sql, so the fake store
  * behaves like the real database will.
  */

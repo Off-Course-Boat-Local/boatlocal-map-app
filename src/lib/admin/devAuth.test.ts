@@ -1,44 +1,51 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { decodeAdminSession, encodeAdminSession, verifyDevCredentials } from "./devAuth";
+import { isEmailAllowlistedForAdmin } from "./allowlist";
 
-// Only the pure helpers are tested here. createAdminSession/destroyAdminSession/
-// getAdminSession/requireAdminSession all call next/headers' cookies(), which
-// throws outside a request context — they are exercised by hitting the real
-// routes, not by importing them into a plain unit test.
+// Only the pure allowlist-parsing helper is tested here, imported from
+// ./allowlist rather than ./devAuth — devAuth.ts pulls in the
+// `server-only`-guarded Supabase clients (src/lib/supabase/server.ts,
+// src/lib/supabase/admin.ts), and under Vitest (plain Node, no Next.js
+// "react-server" resolve condition) importing anything in that chain
+// always throws, guard-condition or not. getAdminSession /
+// requireAdminSession / destroyAdminSession are exercised by hitting the
+// real routes, not by importing them into a plain unit test.
 
-describe("verifyDevCredentials", () => {
-  it("accepts any non-empty email with the shared dev password", () => {
-    expect(verifyDevCredentials("someone@example.com", "boatlocal-dev")).toBe(true);
-    expect(verifyDevCredentials("anyone-else@boatlocal.nl", "boatlocal-dev")).toBe(true);
-  });
+const ORIGINAL_ENV = process.env.ADMIN_ALLOWED_EMAILS;
 
-  it("rejects an empty or whitespace-only email even with the right password", () => {
-    expect(verifyDevCredentials("", "boatlocal-dev")).toBe(false);
-    expect(verifyDevCredentials("   ", "boatlocal-dev")).toBe(false);
-  });
-
-  it("rejects the wrong password", () => {
-    expect(verifyDevCredentials("someone@example.com", "wrong")).toBe(false);
-    expect(verifyDevCredentials("someone@example.com", "")).toBe(false);
-  });
+afterEach(() => {
+  if (ORIGINAL_ENV === undefined) {
+    delete process.env.ADMIN_ALLOWED_EMAILS;
+  } else {
+    process.env.ADMIN_ALLOWED_EMAILS = ORIGINAL_ENV;
+  }
 });
 
-describe("encodeAdminSession / decodeAdminSession", () => {
-  it("round-trips a session", () => {
-    const session = { role: "admin" as const, email: "jan@boatlocal.nl" };
-    expect(decodeAdminSession(encodeAdminSession(session))).toEqual(session);
+describe("isEmailAllowlistedForAdmin", () => {
+  it("returns false when the allowlist is unset (fail closed)", () => {
+    delete process.env.ADMIN_ALLOWED_EMAILS;
+    expect(isEmailAllowlistedForAdmin("jan@boatlocal.nl")).toBe(false);
   });
 
-  it("returns null for garbage input rather than throwing", () => {
-    expect(decodeAdminSession("not-base64url-json")).toBeNull();
-    expect(decodeAdminSession("")).toBeNull();
+  it("returns false when the allowlist is empty", () => {
+    process.env.ADMIN_ALLOWED_EMAILS = "";
+    expect(isEmailAllowlistedForAdmin("jan@boatlocal.nl")).toBe(false);
   });
 
-  it("returns null for well-formed but wrong-shaped payloads", () => {
-    const notASession = Buffer.from(JSON.stringify({ role: "company", companyId: "1" }), "utf8").toString(
-      "base64url",
-    );
-    expect(decodeAdminSession(notASession)).toBeNull();
+  it("accepts an exact match from a comma-separated list", () => {
+    process.env.ADMIN_ALLOWED_EMAILS = "jan@boatlocal.nl,ops@boatlocal.nl";
+    expect(isEmailAllowlistedForAdmin("jan@boatlocal.nl")).toBe(true);
+    expect(isEmailAllowlistedForAdmin("ops@boatlocal.nl")).toBe(true);
+  });
+
+  it("is case-insensitive and tolerates surrounding whitespace", () => {
+    process.env.ADMIN_ALLOWED_EMAILS = " Jan@BoatLocal.nl , ops@boatlocal.nl ";
+    expect(isEmailAllowlistedForAdmin("jan@boatlocal.nl")).toBe(true);
+    expect(isEmailAllowlistedForAdmin("  OPS@boatlocal.NL  ")).toBe(true);
+  });
+
+  it("rejects anyone not on the list", () => {
+    process.env.ADMIN_ALLOWED_EMAILS = "jan@boatlocal.nl";
+    expect(isEmailAllowlistedForAdmin("someone-else@example.com")).toBe(false);
   });
 });

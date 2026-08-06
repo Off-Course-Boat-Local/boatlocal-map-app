@@ -19,8 +19,13 @@
 -- ---------------------------------------------------------------------------
 -- company_by_subdomain — subdomain -> brand resolution (PRD §11/§13.1).
 -- ---------------------------------------------------------------------------
-create or replace function public.company_by_subdomain(p_subdomain text)
-returns public.companies
+-- `create or replace` cannot change a function's return type (scalar
+-- composite -> setof composite), so the previous single-row-typed version
+-- has to be dropped before it can be recreated as setof.
+drop function if exists public.company_by_subdomain(text);
+
+create function public.company_by_subdomain(p_subdomain text)
+returns setof public.companies
 language sql
 stable
 security invoker
@@ -40,8 +45,10 @@ grant execute on function public.company_by_subdomain(text) to anon, authenticat
 -- guide_by_slug — path segment -> guide resolution (PRD §13.1: guide comes
 -- from the first path segment, e.g. hotelv.app.boatlocal.nl/jan).
 -- ---------------------------------------------------------------------------
-create or replace function public.guide_by_slug(p_company_id uuid, p_slug text)
-returns public.guides
+drop function if exists public.guide_by_slug(uuid, text);
+
+create function public.guide_by_slug(p_company_id uuid, p_slug text)
+returns setof public.guides
 language sql
 stable
 security invoker

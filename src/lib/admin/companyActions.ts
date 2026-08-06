@@ -3,10 +3,10 @@
 // Admin Companies — write-side Server Actions: onboard a new company (PRD
 // §8.3) and flip an existing company's status (setup -> live, or
 // suspend/reactivate). Kept separate from src/app/admin/(protected)/actions.ts
-// (logout) and src/lib/admin/devAuth.ts (the DEV AUTH STAND-IN itself) for
-// the same reason src/lib/studio/guideActions.ts is split out from
+// (logout) and src/lib/admin/devAuth.ts (session/auth handling) for the
+// same reason src/lib/studio/guideActions.ts is split out from
 // src/lib/studio/devAuth.ts — these are ordinary authenticated Admin
-// actions, not part of the auth stand-in. Each one still re-checks the
+// actions, not auth plumbing itself. Each one still re-checks the
 // caller's session itself (requireAdminSession), which is layer #3 of the
 // defence-in-depth described in devAuth.ts's header comment;
 // src/lib/data/source.ts's createCompany/setCompanyStatus enforce the
