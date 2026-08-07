@@ -8,7 +8,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-hanken);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -22,5 +22,9 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Matches the original prototype (boatlocalprototype.netlify.app), which
+     renders everything in Hanken Grotesk — see src/app/layout.tsx for where
+     --font-hanken is registered via next/font/google. */
+  font-family: var(--font-hanken), "Hanken Grotesk", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Arial, sans-serif;
 }

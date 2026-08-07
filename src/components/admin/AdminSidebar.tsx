@@ -1,18 +1,27 @@
 "use client";
 
-// Admin's own nav chrome. Deliberately not reusing any guest-facing
-// component — Admin is Boat Local's internal tool, not a tenant surface,
-// and its palette (src/app/admin/admin-theme.css) is separate on purpose.
+// Admin's own nav chrome. Shares its visual design with Studio's sidebar
+// (src/components/studio/StudioSidebar.tsx) — same wordmark, same nav-pill
+// treatment, same icon style — per the founder's decision that Admin and
+// Studio ("Partner Studio" in the original prototype) are one shared
+// portal design, just different pages depending on role. Its palette
+// (src/app/admin/admin-theme.css) stays a separate CSS-variable namespace
+// from any tenant's guest brand colours, not because it looks different
+// from Studio, but so a guest brand's own CSS custom properties can never
+// leak in here.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import MapAppMark from "@/components/MapAppMark";
+import { AnchorIcon, BuildingIcon, ChartIcon, GridIcon, UsersIcon } from "@/components/PortalIcons";
+
 const NAV_ITEMS = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/boats", label: "Boats" },
-  { href: "/admin/companies", label: "Companies" },
-  { href: "/admin/guides", label: "Guides" },
-  { href: "/admin/analytics", label: "Platform analytics" },
+  { href: "/admin", label: "Overview", icon: GridIcon },
+  { href: "/admin/boats", label: "Boats", icon: AnchorIcon },
+  { href: "/admin/companies", label: "Companies", icon: BuildingIcon },
+  { href: "/admin/guides", label: "Guides", icon: UsersIcon },
+  { href: "/admin/analytics", label: "Platform analytics", icon: ChartIcon },
 ] as const;
 
 export interface AdminSidebarProps {
@@ -25,30 +34,33 @@ export default function AdminSidebar({ email, onLogoutAction }: AdminSidebarProp
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col justify-between bg-[var(--admin-sidebar-bg)] px-4 py-6 text-[var(--admin-sidebar-ink)]">
+    <aside className="flex w-64 shrink-0 flex-col justify-between border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-bg)] px-4 py-6 text-[var(--admin-sidebar-ink)]">
       <div>
         <div className="px-2">
-          <p className="text-xs font-semibold tracking-widest text-[var(--admin-sidebar-ink-dim)] uppercase">
-            Boat Local
+          <MapAppMark iconSize={24} className="text-[var(--admin-sidebar-ink)]" />
+          <p className="mt-2 text-xs font-semibold tracking-widest text-[var(--admin-sidebar-ink-dim)] uppercase">
+            Admin
           </p>
-          <p className="mt-0.5 text-sm font-semibold text-[var(--admin-sidebar-ink)]">Admin</p>
         </div>
 
         <nav className="mt-8 flex flex-col gap-1">
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
+                style={active ? { background: "var(--admin-nav-active-bg)" } : undefined}
                 className={[
-                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-semibold transition-colors",
                   active
-                    ? "bg-[var(--admin-accent)] text-white"
-                    : "text-[var(--admin-sidebar-ink-dim)] hover:bg-white/5 hover:text-[var(--admin-sidebar-ink)]",
+                    ? "text-[var(--admin-sidebar-ink)]"
+                    : "text-[var(--admin-sidebar-ink-dim)] hover:bg-[var(--admin-bg)] hover:text-[var(--admin-sidebar-ink)]",
                 ].join(" ")}
               >
+                <Icon />
                 {item.label}
               </Link>
             );

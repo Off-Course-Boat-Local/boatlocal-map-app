@@ -29,12 +29,13 @@
 
 import Link from "next/link";
 
+import MapAppMark from "@/components/MapAppMark";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import JoinForm from "./JoinForm";
 
 export const metadata = {
-  title: "Join Studio — Boat Local",
+  title: "Join Studio — Map App",
 };
 
 function InviteUnavailable({
@@ -48,17 +49,22 @@ function InviteUnavailable({
 }) {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-neutral-100 p-6">
-      <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-8 text-center shadow-sm">
-        <h1 className="text-xl font-semibold text-neutral-900">{heading}</h1>
-        <p className="text-sm text-neutral-500">{message}</p>
-        {showLoginLink ? (
-          <Link
-            href="/studio/login"
-            className="inline-block text-sm font-medium text-neutral-900 underline underline-offset-2"
-          >
-            Go to sign in
-          </Link>
-        ) : null}
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex justify-center text-neutral-900">
+          <MapAppMark iconSize={26} className="text-lg" />
+        </div>
+        <div className="space-y-4 rounded-2xl bg-white p-8 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.18)]">
+          <h1 className="text-xl font-semibold text-neutral-900">{heading}</h1>
+          <p className="text-sm text-neutral-500">{message}</p>
+          {showLoginLink ? (
+            <Link
+              href="/studio/login"
+              className="inline-block text-sm font-medium text-neutral-900 underline underline-offset-2"
+            >
+              Go to sign in
+            </Link>
+          ) : null}
+        </div>
       </div>
     </div>
   );

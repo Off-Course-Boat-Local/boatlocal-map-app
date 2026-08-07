@@ -31,15 +31,23 @@ export default function GuestActivityChart({
       </div>
 
       <div
-        className="mt-4 flex items-end gap-1.5"
+        className="mt-4 flex gap-1.5"
         style={{ height: 120 }}
         role="img"
         aria-label={`${title}: ${data.map((d) => `${d.label} ${d.value}`).join(", ")}`}
       >
+        {/* `justify-end` (not the row's align-items) is what bottom-aligns
+            the bars: a percentage `height` only resolves against a parent
+            with a DEFINITE height, and this column only gets one because
+            the row above no longer overrides the default `align-items:
+            stretch` — it used to say `items-end`, which sized each column
+            to its own content (label height only) instead of the row's
+            fixed 120px, so every bar's height:X% resolved against ~21px of
+            nothing and rendered at 0px regardless of `d.value`. */}
         {data.map((d, i) => (
           <div
             key={`${d.label}-${i}`}
-            className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
+            className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
           >
             <div
               className="w-full rounded-t"

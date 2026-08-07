@@ -8,7 +8,7 @@ import LoginForm from "@/components/studio/LoginForm";
 import { getDevSession } from "@/lib/studio/devAuth";
 
 export const metadata = {
-  title: "Studio sign in — Boat Local",
+  title: "Studio sign in — Map App",
 };
 
 export default async function StudioLoginPage() {

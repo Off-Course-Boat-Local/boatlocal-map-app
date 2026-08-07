@@ -9,11 +9,11 @@ import "./admin-theme.css";
 // never wrapped by a check that would redirect it back to itself.
 export const metadata: Metadata = {
   title: {
-    default: "Boat Local Admin",
-    template: "%s · Boat Local Admin",
+    default: "Map App Admin",
+    template: "%s · Map App Admin",
   },
   description:
-    "Boat Local staff console — platform overview, boat catalog, companies, and guides.",
+    "Map App staff console — platform overview, boat catalog, companies, and guides.",
 };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
