@@ -22,6 +22,8 @@ export interface PhotoGalleryProps {
   aspectRatio?: string;
   /** Corner radius in px. Default 12. */
   radius?: number;
+  /** Which photo to open on — e.g. jumping in from a tapped grid thumbnail. Default 0. */
+  initialIndex?: number;
   /** Fires whenever the visible slide changes. */
   onIndexChange?: (index: number) => void;
   className?: string;
@@ -33,13 +35,22 @@ export function PhotoGallery({
   alt = "Photo",
   aspectRatio = "4 / 3",
   radius = 12,
+  initialIndex = 0,
   onIndexChange,
   className,
   style,
 }: PhotoGalleryProps) {
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(initialIndex);
   const count = photos.length;
+
+  // Jump to the requested slide once the track has a real width to scroll
+  // against (mount happens with clientWidth 0 on the very first paint).
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el || !initialIndex) return;
+    el.scrollLeft = initialIndex * el.clientWidth;
+  }, [initialIndex]);
 
   const handleScroll = useCallback(() => {
     const el = trackRef.current;

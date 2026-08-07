@@ -2,14 +2,16 @@
 
 // One row of a guest list — used by both the List screen (all recommendations,
 // filterable) and the Saved screen (grouped by category). Same information
-// as a map PlaceCard reduced to list-row shape: icon, name, address (area),
+// as a map PlaceCard reduced to list-row shape: a photo, name, address (area),
 // hours (or duration/price for a boat), a Book/Directions action, a save
-// toggle.
+// toggle. Tapping anywhere on the row other than those two controls opens
+// GuestPlaceDetail (see onOpenDetail) — the full description + photo grid,
+// with the same primary action repeated near the top for a quick tap.
 //
 // DELIBERATE OMISSION, same as PlaceCard: no star rating, no review count,
 // anywhere. The guide's note is the endorsement; a list row doesn't even
-// have room for it, and that's fine — the note lives on the map card, this
-// is the index of it.
+// have room for it, and that's fine — the full note lives on GuestPlaceDetail,
+// this is the index of it.
 
 import { CategoryGlyph } from "@/components/map/Pin";
 import { categoryColor } from "@/lib/categories";
@@ -27,13 +29,36 @@ export interface GuestPlaceRowProps {
   saved: boolean;
   onToggleSaved: () => void;
   onAction: () => void;
+  /** Opens the full detail view (photos + description). Optional so existing call sites/tests keep working untouched. */
+  onOpenDetail?: () => void;
 }
 
-export function GuestPlaceRow({ item, saved, onToggleSaved, onAction }: GuestPlaceRowProps) {
+export function GuestPlaceRow({
+  item,
+  saved,
+  onToggleSaved,
+  onAction,
+  onOpenDetail,
+}: GuestPlaceRowProps) {
   const actionLabel = guestPinActionLabel(item);
+  const photo = item.photos[0];
 
   return (
     <li
+      onClick={onOpenDetail}
+      role={onOpenDetail ? "button" : undefined}
+      aria-label={onOpenDetail ? `View details for ${item.name}` : undefined}
+      tabIndex={onOpenDetail ? 0 : undefined}
+      onKeyDown={
+        onOpenDetail
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpenDetail();
+              }
+            }
+          : undefined
+      }
       style={{
         display: "flex",
         gap: 12,
@@ -42,22 +67,34 @@ export function GuestPlaceRow({ item, saved, onToggleSaved, onAction }: GuestPla
         borderBottom: `1px solid ${BORDER}`,
         fontFamily: bodyFontFamily,
         listStyle: "none",
+        cursor: onOpenDetail ? "pointer" : undefined,
+        WebkitTapHighlightColor: "transparent",
       }}
     >
       <span
         aria-hidden="true"
         style={{
           flex: "0 0 auto",
-          width: 40,
-          height: 40,
-          borderRadius: 9999,
-          background: categoryColor(item.category),
+          width: 56,
+          height: 56,
+          borderRadius: 12,
+          overflow: "hidden",
+          background: photo ? "#EDEEF1" : categoryColor(item.category),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <CategoryGlyph category={item.category} size={18} color="#FFFFFF" />
+        {photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photo}
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          <CategoryGlyph category={item.category} size={20} color="#FFFFFF" />
+        )}
       </span>
 
       <div style={{ minWidth: 0, flex: "1 1 auto" }}>
@@ -78,12 +115,14 @@ export function GuestPlaceRow({ item, saved, onToggleSaved, onAction }: GuestPla
           >
             {item.name}
           </h3>
-          <SaveHeartButton
-            saved={saved}
-            label={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
-            onClick={onToggleSaved}
-            size={32}
-          />
+          <span onClick={(e) => e.stopPropagation()}>
+            <SaveHeartButton
+              saved={saved}
+              label={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
+              onClick={onToggleSaved}
+              size={32}
+            />
+          </span>
         </div>
 
         <p
@@ -115,7 +154,10 @@ export function GuestPlaceRow({ item, saved, onToggleSaved, onAction }: GuestPla
 
         <button
           type="button"
-          onClick={onAction}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAction();
+          }}
           style={{
             marginTop: 8,
             height: 36,

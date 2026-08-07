@@ -10,8 +10,9 @@
 // (src/components/guest/GuestBottomNav.tsx) comes from the same
 // useSavedPlaces() hook this screen uses, so the two can never disagree.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
+import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import { guestPinActionUrl } from "@/lib/guestActions";
@@ -28,6 +29,7 @@ export interface GuestSavedScreenProps {
 
 export default function GuestSavedScreen({ brand, pins }: GuestSavedScreenProps) {
   const { savedIds, isSaved, toggle } = useSavedPlaces();
+  const [detailItem, setDetailItem] = useState<MapPin | null>(null);
 
   const savedPins = useMemo(() => {
     const savedSet = new Set(savedIds);
@@ -91,6 +93,7 @@ export default function GuestSavedScreen({ brand, pins }: GuestSavedScreenProps)
                     saved={isSaved(item.id)}
                     onToggleSaved={() => toggle(item.id)}
                     onAction={() => openAction(item)}
+                    onOpenDetail={() => setDetailItem(item)}
                   />
                 ))}
               </ul>
@@ -98,6 +101,16 @@ export default function GuestSavedScreen({ brand, pins }: GuestSavedScreenProps)
           ))
         )}
       </div>
+
+      {detailItem && (
+        <GuestPlaceDetail
+          item={detailItem}
+          saved={isSaved(detailItem.id)}
+          onToggleSaved={() => toggle(detailItem.id)}
+          onAction={() => openAction(detailItem)}
+          onClose={() => setDetailItem(null)}
+        />
+      )}
     </div>
   );
 }

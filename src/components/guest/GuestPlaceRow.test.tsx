@@ -42,6 +42,40 @@ describe("GuestPlaceRow", () => {
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 
+  it("fires onOpenDetail when the row is tapped, but not when the CTA or heart is tapped", async () => {
+    const onOpenDetail = vi.fn();
+    const onAction = vi.fn();
+    const onToggleSaved = vi.fn();
+    render(
+      <GuestPlaceRow
+        item={place}
+        saved={false}
+        onToggleSaved={onToggleSaved}
+        onAction={onAction}
+        onOpenDetail={onOpenDetail}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /walking directions/i }));
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(onOpenDetail).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: `Save ${place.name}` }));
+    expect(onToggleSaved).toHaveBeenCalledTimes(1);
+    expect(onOpenDetail).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByText(place.name));
+    expect(onOpenDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the place's first photo instead of the category icon when one exists", () => {
+    const { container } = render(
+      <GuestPlaceRow item={place} saved={false} onToggleSaved={() => {}} onAction={() => {}} />,
+    );
+    const img = container.querySelector("img");
+    expect(img).toHaveAttribute("src", place.photos[0]);
+  });
+
   it("fires onToggleSaved when the heart is pressed, and reflects saved state", async () => {
     const onToggleSaved = vi.fn();
     const { rerender } = render(

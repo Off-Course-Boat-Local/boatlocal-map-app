@@ -10,9 +10,10 @@
 // See that module's header comment for why a Context was the "easy" lift
 // rather than URL params or a global store.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import FilterPills from "@/components/map/FilterPills";
+import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
 import { useGuestFilter } from "@/lib/guestFilterContext";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
@@ -30,11 +31,16 @@ export interface GuestListScreenProps {
 export default function GuestListScreen({ brand, guideName, pins: allPins }: GuestListScreenProps) {
   const { filter, setFilter } = useGuestFilter();
   const { isSaved, toggle } = useSavedPlaces();
+  const [detailItem, setDetailItem] = useState<MapPin | null>(null);
 
   const pins = useMemo(
     () => (filter ? allPins.filter((p) => p.category === filter) : allPins),
     [allPins, filter],
   );
+
+  const openAction = (item: MapPin) => {
+    window.open(guestPinActionUrl(item), "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -67,14 +73,23 @@ export default function GuestListScreen({ brand, guideName, pins: allPins }: Gue
                 item={item}
                 saved={isSaved(item.id)}
                 onToggleSaved={() => toggle(item.id)}
-                onAction={() => {
-                  window.open(guestPinActionUrl(item), "_blank", "noopener,noreferrer");
-                }}
+                onAction={() => openAction(item)}
+                onOpenDetail={() => setDetailItem(item)}
               />
             ))}
           </ul>
         )}
       </div>
+
+      {detailItem && (
+        <GuestPlaceDetail
+          item={detailItem}
+          saved={isSaved(detailItem.id)}
+          onToggleSaved={() => toggle(detailItem.id)}
+          onAction={() => openAction(detailItem)}
+          onClose={() => setDetailItem(null)}
+        />
+      )}
     </div>
   );
 }
