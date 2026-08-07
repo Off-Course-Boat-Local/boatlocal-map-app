@@ -9,6 +9,15 @@
  * to `.admin-root` (not `:root`), not tenant brand colours, so a guest
  * brand's own CSS custom properties applied elsewhere in the tree can never
  * leak in or be confused with this.
+ *
+ * Deliberately no `@media (prefers-color-scheme: dark)` variant (there used
+ * to be one): Studio has no dark mode at all — its screens are hardcoded
+ * light Tailwind neutral-* classes — and the founder's explicit direction
+ * is that Admin and Studio are one shared portal design, full stop, not
+ * "the same in light mode, different in dark mode." An OS/browser set to
+ * dark used to flip Admin into a separate, un-asked-for dark theme while
+ * Studio stayed light regardless — exactly the inconsistency this file
+ * exists to prevent.
  */
 
 .admin-root {
@@ -24,21 +33,5 @@
   --admin-accent: #1b5fe3;
   --admin-accent-strong: #1b5fe3;
   --admin-nav-active-bg: #e8effc;
-}
-
-@media (prefers-color-scheme: dark) {
-  .admin-root {
-    --admin-bg: #101114;
-    --admin-surface: #1a1c21;
-    --admin-border: #2b2e35;
-    --admin-ink: #e7e8ea;
-    --admin-ink-soft: #9aa0ab;
-    --admin-sidebar-bg: #16181d;
-    --admin-sidebar-border: #2b2e35;
-    --admin-sidebar-ink: #e7e8ea;
-    --admin-sidebar-ink-dim: #8b909b;
-    --admin-accent: #6d97f2;
-    --admin-accent-strong: #6d97f2;
-    --admin-nav-active-bg: #1f2b45;
-  }
+  color-scheme: light;
 }

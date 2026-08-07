@@ -16,6 +16,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 
+import PortalSelect from "@/components/PortalSelect";
 import type { BoatTourRecord } from "@/lib/data/types";
 import {
   saveBoatTourAction,
@@ -23,6 +24,11 @@ import {
 } from "@/lib/admin/boatTourActions";
 import { NOTE_MAX_LENGTH } from "@/lib/admin/boatTourForm";
 import AdminBoatPhotosField from "./AdminBoatPhotosField";
+
+const STATUS_OPTIONS = [
+  { value: "active", label: "Active" },
+  { value: "hidden", label: "Hidden" },
+];
 
 const initialState: BoatTourFormState = {};
 
@@ -182,16 +188,21 @@ export default function BoatTourForm({
           </span>
         </label>
 
-        <label className={labelClass}>
-          Status
-          <select name="status" defaultValue={tour?.status ?? "active"} className={inputClass}>
-            <option value="active">Active</option>
-            <option value="hidden">Hidden</option>
-          </select>
+        <div>
+          <label htmlFor="tour-status" className={labelClass}>
+            Status
+          </label>
+          <PortalSelect
+            id="tour-status"
+            name="status"
+            defaultValue={tour?.status ?? "active"}
+            options={STATUS_OPTIONS}
+            className="mt-1"
+          />
           <span className="mt-1 block text-xs text-[var(--admin-ink-soft)]">
             Hidden tours can&rsquo;t be featured by any company.
           </span>
-        </label>
+        </div>
       </div>
 
       {state.error ? (

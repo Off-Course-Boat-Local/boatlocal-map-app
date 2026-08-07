@@ -12,6 +12,8 @@ import {
 } from "@/lib/data/source";
 import AdminTable from "@/components/admin/AdminTable";
 import StatCard from "@/components/admin/StatCard";
+import PortalDatePicker from "@/components/PortalDatePicker";
+import PortalSelect from "@/components/PortalSelect";
 
 export const metadata: Metadata = { title: "Platform analytics" };
 
@@ -117,43 +119,26 @@ export default async function AdminAnalyticsPage({
           <label htmlFor="company" className="block text-xs font-medium text-[var(--admin-ink-soft)]">
             Company
           </label>
-          <select
+          <PortalSelect
             id="company"
             name="company"
             defaultValue={companyId ?? ""}
-            className="mt-1 rounded-md border border-[var(--admin-border)] bg-transparent px-3 py-1.5 text-sm text-[var(--admin-ink)]"
-          >
-            <option value="">All companies</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
+            placeholder="All companies"
+            options={companies.map((company) => ({ value: company.id, label: company.name }))}
+            className="mt-1 w-48"
+          />
         </div>
         <div>
           <label htmlFor="from" className="block text-xs font-medium text-[var(--admin-ink-soft)]">
             From
           </label>
-          <input
-            id="from"
-            name="from"
-            type="date"
-            defaultValue={fromStr ?? ""}
-            className="mt-1 rounded-md border border-[var(--admin-border)] bg-transparent px-3 py-1.5 text-sm text-[var(--admin-ink)]"
-          />
+          <PortalDatePicker id="from" name="from" defaultValue={fromStr} className="mt-1" />
         </div>
         <div>
           <label htmlFor="to" className="block text-xs font-medium text-[var(--admin-ink-soft)]">
             To
           </label>
-          <input
-            id="to"
-            name="to"
-            type="date"
-            defaultValue={toStr ?? ""}
-            className="mt-1 rounded-md border border-[var(--admin-border)] bg-transparent px-3 py-1.5 text-sm text-[var(--admin-ink)]"
-          />
+          <PortalDatePicker id="to" name="to" defaultValue={toStr} className="mt-1" />
         </div>
         <button
           type="submit"

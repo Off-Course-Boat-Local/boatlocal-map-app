@@ -11,6 +11,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 
+import PortalSelect from "@/components/PortalSelect";
 import type { RecommendationRecord } from "@/lib/data/types";
 import {
   saveRecommendationAction,
@@ -63,21 +64,18 @@ export default function RecommendationForm({
       </label>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className={labelClass}>
-          Category
-          <select
+        <div>
+          <label htmlFor="recommendation-category" className={labelClass}>
+            Category
+          </label>
+          <PortalSelect
+            id="recommendation-category"
             name="category"
-            required
-            defaultValue={recommendation?.category ?? RECOMMENDATION_CATEGORIES[0]?.id}
-            className={inputClass}
-          >
-            {RECOMMENDATION_CATEGORIES.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            defaultValue={recommendation?.category ?? RECOMMENDATION_CATEGORIES[0]?.id ?? ""}
+            options={RECOMMENDATION_CATEGORIES.map((c) => ({ value: c.id, label: c.label }))}
+            className="mt-1"
+          />
+        </div>
 
         <label className={labelClass}>
           Area / neighbourhood

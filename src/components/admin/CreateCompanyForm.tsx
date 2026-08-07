@@ -13,6 +13,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 
+import PortalSelect from "@/components/PortalSelect";
 import { createCompanyAction, type CreateCompanyActionState } from "@/lib/admin/companyActions";
 import type { CompanyStatus, CompanyType } from "@/lib/data/types";
 
@@ -88,30 +89,32 @@ export default function CreateCompanyForm() {
           />
         </label>
 
-        <label className={labelClass}>
-          Type
-          <select name="companyType" required defaultValue="" className={inputClass}>
-            <option value="" disabled>
-              Choose one
-            </option>
-            {COMPANY_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div>
+          <label htmlFor="companyType" className={labelClass}>
+            Type
+          </label>
+          <PortalSelect
+            id="companyType"
+            name="companyType"
+            defaultValue=""
+            placeholder="Choose one"
+            options={COMPANY_TYPE_OPTIONS}
+            className="mt-1"
+          />
+        </div>
 
-        <label className={labelClass}>
-          Initial status
-          <select name="status" defaultValue="setup" className={inputClass}>
-            {INITIAL_STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div>
+          <label htmlFor="status" className={labelClass}>
+            Initial status
+          </label>
+          <PortalSelect
+            id="status"
+            name="status"
+            defaultValue="setup"
+            options={INITIAL_STATUS_OPTIONS}
+            className="mt-1"
+          />
+        </div>
       </div>
 
       <div className="mt-4 flex items-center gap-3">
