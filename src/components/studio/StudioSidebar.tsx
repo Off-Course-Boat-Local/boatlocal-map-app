@@ -13,7 +13,7 @@ import { usePathname } from "next/navigation";
 
 import MapAppMark, { PORTAL_NAV_ACTIVE_BG } from "@/components/MapAppMark";
 import {
-  ChartIcon,
+  AnchorIcon,
   GridIcon,
   LinkIcon,
   MegaphoneIcon,
@@ -30,7 +30,7 @@ const NAV_ICONS: Record<string, typeof GridIcon> = {
   branding: PaletteIcon,
   guides: UsersIcon,
   recommendations: PinListIcon,
-  "boat-tours": ChartIcon,
+  "boat-tours": AnchorIcon,
   campaign: MegaphoneIcon,
   report: ReportIcon,
   "link-qr": LinkIcon,

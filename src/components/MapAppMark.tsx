@@ -37,19 +37,24 @@ export default function MapAppMark({ className, iconSize = 26 }: MapAppMarkProps
           background: PORTAL_ACCENT_GRADIENT,
         }}
       >
+        {/* Exact glyph lifted from the original prototype's own logo badge
+            (boatlocalprototype.netlify.app, sampled via devtools) — a
+            sailboat: hull/wake ellipse, two sail curves off a masthead
+            ball, and the mast itself. Traced 1:1 (same path/ellipse
+            coordinates on the same 32x32 viewBox), just white-on-gradient
+            here instead of on the prototype's own gradient badge. */}
         <svg
-          width={iconSize * 0.56}
-          height={iconSize * 0.56}
-          viewBox="0 0 24 24"
+          width={iconSize * 0.6}
+          height={iconSize * 0.6}
+          viewBox="0 0 32 32"
           fill="none"
           aria-hidden="true"
         >
-          <path
-            d="M12 2.5c-3.59 0-6.5 2.84-6.5 6.35 0 4.77 5.6 11.42 5.84 11.7a.87.87 0 0 0 1.32 0c.24-.28 5.84-6.93 5.84-11.7 0-3.51-2.91-6.35-6.5-6.35Z"
-            fill="white"
-            fillOpacity="0.92"
-          />
-          <circle cx="12" cy="8.85" r="2.15" fill={PORTAL_ACCENT} />
+          <ellipse cx="16" cy="21" rx="12" ry="4.5" stroke="white" strokeWidth="2.2" />
+          <path d="M16 5 C16 5 9 13 9 18" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
+          <path d="M16 5 C16 5 23 13 23 18" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
+          <circle cx="16" cy="5" r="2.6" fill="white" />
+          <line x1="16" y1="7.6" x2="16" y2="16" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
         </svg>
       </span>
       <span className="font-bold tracking-tight">
