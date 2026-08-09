@@ -28,7 +28,7 @@ export default async function StudioLinkQrPage() {
 
   // Real and live today — see src/lib/studio/shareLinks.ts's header comment
   // for why this is the query-param form rather than the eventual
-  // `{company}.app.boatlocal.nl/{slug}` subdomain (PRD §13.1), and why that
+  // `{company}.map.boatlocal.nl/{slug}` subdomain (PRD §13.1), and why that
   // makes it MORE current than a hardcoded illustrative string, not less.
   const guideLink =
     company && guide ? buildGuideShareUrl({ origin, subdomain: company.subdomain, guideSlug: guide.slug }) : null;

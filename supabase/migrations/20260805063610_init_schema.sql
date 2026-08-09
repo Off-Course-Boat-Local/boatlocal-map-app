@@ -81,7 +81,7 @@ create type public.event_platform as enum ('ios', 'android', 'desktop', 'unknown
 create table public.companies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  -- Unique subdomain label, e.g. "hotelv" -> hotelv.app.boatlocal.nl (§13.1).
+  -- Unique subdomain label, e.g. "hotelv" -> hotelv.map.boatlocal.nl (§13.1).
   subdomain text not null unique,
   company_type public.company_type not null default 'hotel',
 
@@ -131,7 +131,7 @@ create table public.guides (
   company_id uuid not null references public.companies (id) on delete cascade,
   name text not null,
   email text not null,
-  -- Path slug, e.g. "jan" -> hotelv.app.boatlocal.nl/jan (PRD §5.1, §13.1).
+  -- Path slug, e.g. "jan" -> hotelv.map.boatlocal.nl/jan (PRD §5.1, §13.1).
   -- Unique per company, not globally — two companies may each have a "jan".
   slug text not null,
   avatar_url text,

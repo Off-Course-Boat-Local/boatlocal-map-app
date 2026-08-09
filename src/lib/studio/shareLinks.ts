@@ -2,7 +2,7 @@
 // invite token) into the URL Studio actually hands out for a QR code or a
 // "copy link" button.
 //
-// Deliberately the query-param form, not the `{subdomain}.app.boatlocal.nl`
+// Deliberately the query-param form, not the `{subdomain}.map.boatlocal.nl`
 // subdomain form the PRD describes as the eventual real routing (§13.1):
 // there is no wildcard DNS/hosting for that yet, so a subdomain-shaped link
 // would 404. `src/lib/guestBrand.ts`'s resolveGuestBrand() already accepts
@@ -12,7 +12,7 @@
 // this very deployment, not just illustrative placeholders.
 //
 // TODO: once real wildcard DNS exists, change buildGuideShareUrl/
-// buildCompanyShareUrl to return `https://{subdomain}.app.boatlocal.nl[/slug]`
+// buildCompanyShareUrl to return `https://{subdomain}.map.boatlocal.nl[/slug]`
 // instead — a one-line change here, not a rewrite of every caller (same
 // "narrow the seam" shape as buildBookingUrl in src/lib/attribution.ts).
 

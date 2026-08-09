@@ -43,7 +43,7 @@ grant execute on function public.company_by_subdomain(text) to anon, authenticat
 
 -- ---------------------------------------------------------------------------
 -- guide_by_slug — path segment -> guide resolution (PRD §13.1: guide comes
--- from the first path segment, e.g. hotelv.app.boatlocal.nl/jan).
+-- from the first path segment, e.g. hotelv.map.boatlocal.nl/jan).
 -- ---------------------------------------------------------------------------
 drop function if exists public.guide_by_slug(uuid, text);
 

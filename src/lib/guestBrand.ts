@@ -2,7 +2,7 @@
 // into "which tenant is this?".
 //
 // Real routing (per the founder's decisions / PRD §11, §13.1) is
-// `{company}.app.boatlocal.nl/{guideSlug}` — a wildcard subdomain per
+// `{company}.map.boatlocal.nl/{guideSlug}` — a wildcard subdomain per
 // company, with the guide as the first path segment. There is no real
 // wildcard DNS/subdomain yet, so until it exists this same function also
 // accepts `?company=<subdomain>&guide=<slug>` query params as a fallback.
@@ -16,7 +16,7 @@
 // algorithm can run in two places that must never disagree:
 //   - src/proxy.ts (edge, real Next.js Proxy/middleware) — parses the real
 //     hostname on every request. Inert today because no request ever
-//     arrives on a real `*.app.boatlocal.nl` host; wired now so flipping on
+//     arrives on a real `*.map.boatlocal.nl` host; wired now so flipping on
 //     real DNS later needs zero code changes here.
 //   - src/lib/guestServerContext.ts (server components) — reads the result
 //     back out of the headers proxy.ts attaches, then does the actual
@@ -33,7 +33,7 @@ import { DEFAULT_BRAND } from "./brand";
 export const DEFAULT_GUIDE_SLUG = "jan";
 
 /** The real (future) platform host. Subdomains of this resolve a company. */
-const PLATFORM_HOST_SUFFIX = ".app.boatlocal.nl";
+const PLATFORM_HOST_SUFFIX = ".map.boatlocal.nl";
 
 export interface GuestBrandResolution {
   /**
@@ -81,7 +81,7 @@ function firstPathSegment(pathname: string | null | undefined): string | null {
  * Resolves a brand id + guide slug from a hostname and/or search params.
  *
  * Resolution order:
- *  1. Real subdomain — `{brandId}.app.boatlocal.nl`. The guide slug is the
+ *  1. Real subdomain — `{brandId}.map.boatlocal.nl`. The guide slug is the
  *     first path segment, e.g. `/jan`. Not exercised until real DNS/hosting
  *     exists.
  *  2. Query-param fallback — `?company=<brandId>&guide=<slug>`.

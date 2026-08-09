@@ -10,7 +10,7 @@
 // request-time API, which is what keeps this manifest per-request instead of
 // built once and cached forever (see the "Good to know" note in the docs
 // above). That makes the installed app's name/colour correct for the real
-// `{brand}.app.boatlocal.nl` subdomain routing this proxy already implements.
+// `{brand}.map.boatlocal.nl` subdomain routing this proxy already implements.
 //
 // The gap: under TODAY's `?company=`/`?guide=` query-param stand-in (no real
 // subdomains yet — see src/lib/guestBrand.ts), the browser's manifest fetch

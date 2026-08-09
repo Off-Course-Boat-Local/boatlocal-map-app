@@ -91,14 +91,14 @@ async function adminAuthGate(request: NextRequest): Promise<NextResponse> {
 // 3. GUEST BRAND RESOLUTION — hostname/searchParams -> { brandId, guideSlug }.
 //
 // WHY THIS EXISTS TODAY EVEN THOUGH IT DOES NOTHING NEW YET: the founder's
-// decision is real wildcard-subdomain routing (`{company}.app.boatlocal.nl`)
+// decision is real wildcard-subdomain routing (`{company}.map.boatlocal.nl`)
 // once DNS/hosting for it exists, with `?company=`/`?guide=` query params as
 // today's stand-in (see src/lib/guestBrand.ts for the shared resolution
 // logic both branches use). Wiring the real Proxy now — instead of only the
 // query-param path — means turning on real subdomains later is a DNS/hosting
 // change, not a code change: this branch already parses `request.nextUrl
 // .hostname` on every request, it just never matches anything today because
-// no request ever arrives on a real `*.app.boatlocal.nl` host in dev/preview.
+// no request ever arrives on a real `*.map.boatlocal.nl` host in dev/preview.
 //
 // What it does: resolves { brandId, guideSlug } once, at the edge, and
 // attaches them as request headers so every Server Component under

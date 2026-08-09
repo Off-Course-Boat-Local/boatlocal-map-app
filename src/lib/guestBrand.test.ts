@@ -65,7 +65,7 @@ describe("resolveGuestBrand", () => {
   it("resolves brand + guide from a real subdomain and its first path segment", () => {
     expect(
       resolveGuestBrand({
-        hostname: "coral.app.boatlocal.nl",
+        hostname: "coral.map.boatlocal.nl",
         pathname: "/jan/map",
       }),
     ).toEqual({ brandId: "coral", guideSlug: "jan" });
@@ -73,19 +73,19 @@ describe("resolveGuestBrand", () => {
 
   it("is case-insensitive on the hostname", () => {
     expect(
-      resolveGuestBrand({ hostname: "CORAL.APP.BOATLOCAL.NL", pathname: "/jan" }),
+      resolveGuestBrand({ hostname: "CORAL.MAP.BOATLOCAL.NL", pathname: "/jan" }),
     ).toEqual({ brandId: "coral", guideSlug: "jan" });
   });
 
   it("strips a port from the hostname before matching", () => {
     expect(
-      resolveGuestBrand({ hostname: "coral.app.boatlocal.nl:3000", pathname: "/jan" }),
+      resolveGuestBrand({ hostname: "coral.map.boatlocal.nl:3000", pathname: "/jan" }),
     ).toEqual({ brandId: "coral", guideSlug: "jan" });
   });
 
   it("falls back to the default guide slug when a real subdomain has no path segment", () => {
     expect(
-      resolveGuestBrand({ hostname: "coral.app.boatlocal.nl", pathname: "/" }),
+      resolveGuestBrand({ hostname: "coral.map.boatlocal.nl", pathname: "/" }),
     ).toEqual({ brandId: "coral", guideSlug: DEFAULT_GUIDE_SLUG });
   });
 
@@ -97,7 +97,7 @@ describe("resolveGuestBrand", () => {
     // brand rather than passing the real subdomain through.
     expect(
       resolveGuestBrand({
-        hostname: "hotelv.app.boatlocal.nl",
+        hostname: "hotelv.map.boatlocal.nl",
         pathname: "/jan",
         searchParams: new URLSearchParams("company=ink"),
       }),
@@ -107,7 +107,7 @@ describe("resolveGuestBrand", () => {
   it("prefers a matched subdomain over query params", () => {
     expect(
       resolveGuestBrand({
-        hostname: "coral.app.boatlocal.nl",
+        hostname: "coral.map.boatlocal.nl",
         pathname: "/jan",
         searchParams: new URLSearchParams("company=ink&guide=someone-else"),
       }),

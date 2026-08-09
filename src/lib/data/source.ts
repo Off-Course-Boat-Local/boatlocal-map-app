@@ -397,7 +397,7 @@ function toBoatTourView(tour: BoatTourRecord): BoatTourView {
 
 /**
  * Subdomain -> brand resolution (PRD §11 / §13.1). Called from middleware in
- * the real app to resolve `{company}.app.boatlocal.nl` before rendering.
+ * the real app to resolve `{company}.map.boatlocal.nl` before rendering.
  *
  * Real backend: anon client, RPC `company_by_subdomain(p_subdomain)`.
  * guest_public_read (status='active') does the filtering inside the
@@ -484,7 +484,7 @@ export async function getActiveCompanyRecord(
 
 /**
  * Path segment -> guide (PRD §13.1: guide comes from the first path
- * segment, e.g. hotelv.app.boatlocal.nl/jan).
+ * segment, e.g. hotelv.map.boatlocal.nl/jan).
  *
  * Real backend: anon client, RPC `guide_by_slug(p_company_id, p_slug)`.
  * Relies on RLS's guest_public_read (status='active' AND

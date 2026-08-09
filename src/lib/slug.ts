@@ -1,5 +1,5 @@
 // Guide name -> URL slug (PRD §6.2: "auto-generated unique link... slug
-// from the name", e.g. hotelv.app.boatlocal.nl/jan). Pure, dependency-free,
+// from the name", e.g. hotelv.map.boatlocal.nl/jan). Pure, dependency-free,
 // used by inviteGuide (src/lib/data/source.ts) so the invite flow never has
 // to ask the company to type a slug by hand.
 
@@ -55,7 +55,7 @@ export function initialFromName(name: string): string {
 // ---------------------------------------------------------------------------
 // Company subdomain validation (PRD §8.1 "onboard a company (+ assign
 // subdomain)" / §13.1: the subdomain becomes the literal DNS label in
-// `{subdomain}.app.boatlocal.nl`). Separate from the guide-slug helpers
+// `{subdomain}.map.boatlocal.nl`). Separate from the guide-slug helpers
 // above: a guide slug only has to be unique within one company and is
 // always auto-derived, never typed in; a company subdomain is a real DNS
 // label an admin chooses deliberately, must be globally unique, and must
@@ -83,12 +83,12 @@ export function isUrlSafeSubdomain(value: string): boolean {
  * either collide with Boat Local's own fixed hosts (PRD §13.1: Admin/Studio
  * live on `admin.boatlocal.nl` / `studio.boatlocal.nl`, not the tenant
  * wildcard) or are common enough to cause confusion (`www`, `api`, the
- * wildcard's own `app` label).
+ * wildcard's own `map` label).
  */
 export const RESERVED_SUBDOMAINS: ReadonlySet<string> = new Set([
   "admin",
   "studio",
-  "app",
+  "map",
   "api",
   "www",
   "boatlocal",
