@@ -11,13 +11,15 @@ import { getMapPins } from "@/lib/data/source";
 import { getGuestContext } from "@/lib/guestServerContext";
 
 export default async function ListPage() {
-  const { brand, companyId, guide } = await getGuestContext();
+  const { brand, companyId, guide, guideSlug } = await getGuestContext();
   const pins = companyId ? await getMapPins(companyId) : [];
 
   return (
     <GuestListScreen
       brand={brand}
       guideName={guide?.name ?? "your guide"}
+      guideSlug={guide ? guideSlug : null}
+      companyId={companyId}
       pins={pins}
     />
   );

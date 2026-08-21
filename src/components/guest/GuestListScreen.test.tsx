@@ -1,24 +1,29 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { recordGuestEvent } from "@/lib/guestEvents";
 import GuestListScreen from "./GuestListScreen";
 import { GuestFilterProvider } from "@/lib/guestFilterContext";
 import { ALL_PINS } from "@/lib/data";
 import { BRANDS } from "@/lib/brand";
 
-const brand = BRANDS.coastal;
+vi.mock("@/lib/guestEvents", () => ({ recordGuestEvent: vi.fn().mockResolvedValue(undefined) }));
 
-function renderList(pins = ALL_PINS) {
+const brand = BRANDS.coastal;
+const boat = ALL_PINS.find((p) => p.isBoat)!;
+
+function renderList(pins = ALL_PINS, props: Partial<Parameters<typeof GuestListScreen>[0]> = {}) {
   return render(
     <GuestFilterProvider>
-      <GuestListScreen brand={brand} guideName="Jan" pins={pins} />
+      <GuestListScreen brand={brand} guideName="Jan" pins={pins} {...props} />
     </GuestFilterProvider>,
   );
 }
 
 beforeEach(() => {
   window.localStorage.clear();
+  vi.mocked(recordGuestEvent).mockClear();
 });
 
 describe("GuestListScreen", () => {
@@ -48,5 +53,50 @@ describe("GuestListScreen", () => {
     renderList(ALL_PINS.filter((p) => p.category !== "shop"));
     await userEvent.click(screen.getByRole("button", { name: "Shop" }));
     expect(screen.getByText(/no recommendations/i)).toBeInTheDocument();
+  });
+
+  it("carries companySlug/guideSlug attribution and fires boat_book_click when booking a boat from a row", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    renderList([boat], { guideSlug: "jan", companyId: "coastal-co" });
+
+    await userEvent.click(screen.getByRole("button", { name: /book this tour/i }));
+
+    expect(recordGuestEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "boat_book_click",
+        companyId: "coastal-co",
+        boatTourId: boat.id,
+      }),
+    );
+    const url = new URL(openSpy.mock.calls[0][0] as string);
+    expect(url.searchParams.get("company")).toBe(brand.id);
+    expect(url.searchParams.get("distributor")).toBe("jan");
+    openSpy.mockRestore();
+  });
+
+  it("does not fire boat_book_click for a non-boat action", async () => {
+    const place = ALL_PINS.find((p) => !p.isBoat)!;
+    vi.spyOn(window, "open").mockImplementation(() => null);
+    renderList([place]);
+
+    await userEvent.click(screen.getByRole("button", { name: /walking directions/i }));
+
+    expect(recordGuestEvent).not.toHaveBeenCalled();
+  });
+
+  it("carries the same attribution/analytics wiring when booking from the detail overlay", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    renderList([boat], { guideSlug: "jan", companyId: "coastal-co" });
+
+    await userEvent.click(screen.getByRole("button", { name: `View details for ${boat.name}` }));
+    const dialog = screen.getByRole("dialog", { name: boat.name });
+    await userEvent.click(within(dialog).getByRole("button", { name: /book this tour/i }));
+
+    expect(recordGuestEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "boat_book_click", companyId: "coastal-co", boatTourId: boat.id }),
+    );
+    const url = new URL(openSpy.mock.calls[0][0] as string);
+    expect(url.searchParams.get("distributor")).toBe("jan");
+    openSpy.mockRestore();
   });
 });

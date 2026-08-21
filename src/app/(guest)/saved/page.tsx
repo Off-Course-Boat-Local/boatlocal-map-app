@@ -13,8 +13,15 @@ import { getMapPins } from "@/lib/data/source";
 import { getGuestContext } from "@/lib/guestServerContext";
 
 export default async function SavedPage() {
-  const { brand, companyId } = await getGuestContext();
+  const { brand, companyId, guide, guideSlug } = await getGuestContext();
   const pins = companyId ? await getMapPins(companyId) : [];
 
-  return <GuestSavedScreen brand={brand} pins={pins} />;
+  return (
+    <GuestSavedScreen
+      brand={brand}
+      guideSlug={guide ? guideSlug : null}
+      companyId={companyId}
+      pins={pins}
+    />
+  );
 }

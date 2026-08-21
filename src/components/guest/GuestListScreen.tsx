@@ -18,6 +18,8 @@ import { GuestPlaceRow } from "./GuestPlaceRow";
 import { useGuestFilter } from "@/lib/guestFilterContext";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import { guestPinActionUrl } from "@/lib/guestActions";
+import { recordGuestEvent } from "@/lib/guestEvents";
+import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
 import { displayFontFamily } from "@/lib/fonts";
 import type { MapPin } from "@/lib/data";
 import type { Brand } from "@/lib/types";
@@ -25,10 +27,20 @@ import type { Brand } from "@/lib/types";
 export interface GuestListScreenProps {
   brand: Brand;
   guideName: string;
+  /** Guide's URL slug — folded into the booking hand-off's `guide` param, same as GuestMapScreen. Null when no guide resolved for this tenant. */
+  guideSlug?: string | null;
+  /** Company subdomain — folded into the booking hand-off's `company` param, and into "boat_book_click" analytics. */
+  companyId?: string | null;
   pins: MapPin[];
 }
 
-export default function GuestListScreen({ brand, guideName, pins: allPins }: GuestListScreenProps) {
+export default function GuestListScreen({
+  brand,
+  guideName,
+  guideSlug,
+  companyId,
+  pins: allPins,
+}: GuestListScreenProps) {
   const { filter, setFilter } = useGuestFilter();
   const { isSaved, toggle } = useSavedPlaces();
   const [detailItem, setDetailItem] = useState<MapPin | null>(null);
@@ -38,8 +50,28 @@ export default function GuestListScreen({ brand, guideName, pins: allPins }: Gue
     [allPins, filter],
   );
 
+  // Mirrors GuestMapScreen's onAction wiring (companySlug/guideSlug
+  // attribution + boat_book_click analytics) so a booking tap from this
+  // screen is tracked the same way as one from the Map tab. No trip-date/
+  // guest-count picker exists on this screen, so the booking hand-off gets
+  // no `selection` — guestPinActionUrl already treats that as "no trip
+  // details set" rather than an error.
   const openAction = (item: MapPin) => {
-    window.open(guestPinActionUrl(item), "_blank", "noopener,noreferrer");
+    const url = guestPinActionUrl(item, {
+      companySlug: brand.id,
+      guideSlug: guideSlug ?? undefined,
+    });
+    if (item.isBoat) {
+      recordGuestEvent({
+        eventType: "boat_book_click",
+        companyId,
+        boatTourId: item.id,
+        platform: installPlatformToEventPlatform(
+          detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
+        ),
+      }).catch(() => {});
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -60,7 +92,7 @@ export default function GuestListScreen({ brand, guideName, pins: allPins }: Gue
         <FilterPills value={filter} onChange={setFilter} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-white">
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white">
         {pins.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-neutral-500">
             No recommendations in this category yet.
