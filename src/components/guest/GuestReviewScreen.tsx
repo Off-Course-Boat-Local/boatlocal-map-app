@@ -108,7 +108,7 @@ export default function GuestReviewScreen({
   const placeholderNotice = reviewOptions.find((option) => option.isPlaceholder);
 
   return (
-    <div className="flex h-full flex-col gap-7 overflow-y-auto px-6 pb-6 pt-8">
+    <div className="no-scrollbar flex h-full flex-col gap-7 overflow-y-auto px-6 pb-6 pt-8">
       {/* Branded ask -------------------------------------------------- */}
       <div className="text-center">
         <p

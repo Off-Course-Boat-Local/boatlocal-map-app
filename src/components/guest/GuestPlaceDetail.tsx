@@ -116,7 +116,7 @@ export function GuestPlaceDetail({
       </div>
 
       {/* Scrollable content ------------------------------------------ */}
-      <div style={{ minHeight: 0, flex: "1 1 auto", overflowY: "auto" }}>
+      <div className="no-scrollbar" style={{ minHeight: 0, flex: "1 1 auto", overflowY: "auto" }}>
         {item.photos[0] && (
           <button
             type="button"

@@ -121,7 +121,7 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
 
   return (
     <div
-      className="flex h-full flex-col overflow-y-auto px-6 pb-8 pt-8 text-center"
+      className="no-scrollbar flex h-full flex-col overflow-y-auto px-6 pb-8 pt-8 text-center"
       style={{ fontFamily: bodyFontFamily, color: INK }}
     >
       <h1

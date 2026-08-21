@@ -283,7 +283,7 @@ export default function GuestWelcomeScreen({
   const { isSaved, toggle } = useSavedPlaces();
 
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto bg-white">
+    <div className="no-scrollbar flex h-full w-full flex-col overflow-y-auto bg-white">
       <InstallBanner qs={qs} />
 
       {/* Header — guide avatar, app identity, personal welcome quote. */}

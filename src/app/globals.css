@@ -28,3 +28,20 @@ body {
   font-family: var(--font-hanken), "Hanken Grotesk", -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, Arial, sans-serif;
 }
+
+/* Hides scrollbar chrome without disabling scrolling — the element stays
+   fully scrollable (wheel, trackpad, touch, keyboard), just without the
+   visible OS-drawn bar. The guest app is meant to read as a real phone app,
+   where content scrolls but no scrollbar is ever shown; a desktop browser's
+   native scrollbar breaks that illusion (most visibly inside the phone-frame
+   mockup on desktop, src/components/PhoneFrame.tsx). Same technique
+   PhotoGallery.tsx already uses for its own horizontal scroller. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
