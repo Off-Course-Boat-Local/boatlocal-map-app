@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
-import { mockPlatformEffectiveness } from "@/lib/admin/mockAnalytics";
+import { platformEffectiveness } from "@/lib/admin/analytics";
 import {
   getGuidesForCompany,
   getPlatformAnalyticsSummary,
@@ -62,13 +62,11 @@ export default async function AdminOverviewPage() {
   const activeBoatTours = boatTours.filter((t) => t.status === "active").length;
   const totalEvents = analytics.reduce((sum, row) => sum + row.count, 0);
 
-  // PRD §2.3 "effectiveness dashboard" — MOCK numbers (see
-  // src/lib/admin/mockAnalytics.ts's header comment: fakeStore seeds zero
-  // rows into `events`, so a real rollup would read 0 for every metric here
-  // today). Fixed seed for a stable "all companies, all time" snapshot; the
-  // filterable, per-company/date-range breakdown lives on Admin > Platform
-  // analytics, which uses the same mock module.
-  const effectiveness = mockPlatformEffectiveness("platform::overview::all");
+  // PRD §2.3 "effectiveness dashboard" — real aggregation over `events`
+  // (src/lib/admin/analytics.ts). No range argument here on purpose: this is
+  // the all-companies, default-window snapshot. The filterable
+  // per-company/date-range breakdown lives on Admin > Platform analytics.
+  const effectiveness = await platformEffectiveness();
 
   const companyPreview = companies.slice(0, COMPANY_PREVIEW_LIMIT);
   const hiddenCompanyCount = companies.length - companyPreview.length;

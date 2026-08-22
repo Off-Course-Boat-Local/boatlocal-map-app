@@ -20,6 +20,7 @@ export default async function MapPage() {
       brand={brand}
       guideName={guide?.name ?? "your guide"}
       guideSlug={guide ? guideSlug : null}
+      guideId={guide?.id ?? null}
       companyId={companyId}
       pins={pins}
     />

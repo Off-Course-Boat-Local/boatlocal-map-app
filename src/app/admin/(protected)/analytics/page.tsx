@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
 import { parseDateRangeParams } from "@/lib/admin/dateRange";
-import { mockPlatformEffectiveness } from "@/lib/admin/mockAnalytics";
+import { platformEffectiveness } from "@/lib/admin/analytics";
 import {
   getBoatTours,
   getGuidesForCompany,
@@ -89,12 +89,10 @@ export default async function AdminAnalyticsPage({
     });
   }
 
-  // Placeholder PRD §2.3 effectiveness metrics — see
-  // src/lib/admin/mockAnalytics.ts. Seeded off the current filter state so
-  // the date-range and company filters visibly change something even
-  // before real event volume exists to aggregate.
-  const effectivenessSeed = `${selectedCompany?.id ?? "all"}::${fromStr ?? ""}::${toStr ?? ""}`;
-  const effectiveness = mockPlatformEffectiveness(effectivenessSeed);
+  // Real PRD §2.3 effectiveness metrics, aggregated over `events` and
+  // scoped to the same company + date filters as everything else on this
+  // page (src/lib/admin/analytics.ts).
+  const effectiveness = await platformEffectiveness(range, selectedCompany?.id);
 
   return (
     <div>
@@ -176,9 +174,7 @@ export default async function AdminAnalyticsPage({
           Effectiveness (PRD §2.3 supporting metrics)
         </h2>
         <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
-          Placeholder numbers — the fake store seeds zero events, so real figures would all read 0
-          today. Deterministically generated from the filters above; see
-          src/lib/admin/mockAnalytics.ts.
+          Live counts aggregated from <code>events</code>, scoped to the filters above.
         </p>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {effectiveness.map((metric) => (

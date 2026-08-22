@@ -1,9 +1,18 @@
 "use client";
 
 // Add / edit form for one place (PRD §7.4 company base list, §6.3 guide
-// personal additions). Manual entry only — no Google Places autocomplete
-// (house rule) — so address is free text and location is entered as plain
-// longitude/latitude, with a hint for where to find those numbers.
+// personal additions).
+//
+// LOCATION: the longitude/latitude number inputs are gone — a guide types
+// an address or a venue name, picks a suggestion, and drags the pin to
+// correct it (see ./AddressField.tsx, which still submits `lng`/`lat` as
+// hidden fields, so nothing downstream changed).
+//
+// VISIBILITY sits at the TOP of the form, not buried at the bottom above
+// the Save button — founder's call: "the toggle for making the
+// recommendation active or not should be at the top... so they can quickly
+// toggle it off or not." It is also a switch rather than a checkbox, and
+// the same switch is repeated per-row in the table for the same reason.
 //
 // The category <select> deliberately excludes "boats": boat tours live in
 // their own table and are managed from the Boat tours tab, never here (see
@@ -12,12 +21,14 @@
 import { useActionState, useEffect, useState } from "react";
 
 import PortalSelect from "@/components/PortalSelect";
+import PortalToggle from "@/components/PortalToggle";
 import type { RecommendationRecord } from "@/lib/data/types";
 import {
   saveRecommendationAction,
   type RecommendationFormState,
 } from "@/lib/studio/recommendationActions";
 import { NOTE_MAX_LENGTH, RECOMMENDATION_CATEGORIES } from "@/lib/studio/recommendationForm";
+import AddressField from "./AddressField";
 import RecommendationPhotosField from "./RecommendationPhotosField";
 
 const initialState: RecommendationFormState = {};
@@ -41,6 +52,10 @@ export default function RecommendationForm({
 }: RecommendationFormProps) {
   const [state, formAction, pending] = useActionState(saveRecommendationAction, initialState);
   const [noteLength, setNoteLength] = useState(recommendation?.note.length ?? 0);
+  const [visible, setVisible] = useState(recommendation?.visible ?? true);
+  // Controlled so a picked address suggestion can fill it in — the guide can
+  // still overwrite whatever the geocoder guessed.
+  const [area, setArea] = useState(recommendation?.area ?? "");
 
   // useActionState re-renders this component with the new state as soon as
   // the action resolves, so this fires exactly once per successful submit.
@@ -51,6 +66,20 @@ export default function RecommendationForm({
   return (
     <form action={formAction} className="space-y-4">
       {recommendation ? <input type="hidden" name="id" value={recommendation.id} /> : null}
+
+      <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+        <PortalToggle
+          name="visible"
+          checked={visible}
+          onChange={setVisible}
+          label={visible ? "Live on the guest map" : "Hidden from guests"}
+          hint={
+            visible
+              ? "Guests can see this place right now."
+              : "Saved, but not shown to guests until you switch this back on."
+          }
+        />
+      </div>
 
       <label className={labelClass}>
         Name
@@ -82,56 +111,20 @@ export default function RecommendationForm({
           <input
             name="area"
             required
-            defaultValue={recommendation?.area}
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
             placeholder="Centrum"
             className={inputClass}
           />
         </label>
       </div>
 
-      <label className={labelClass}>
-        Address
-        <input
-          name="address"
-          required
-          defaultValue={recommendation?.address}
-          placeholder="Nieuwe Doelenstraat 20"
-          className={inputClass}
-        />
-      </label>
-
-      <div>
-        <div className="grid grid-cols-2 gap-4">
-          <label className={labelClass}>
-            Longitude
-            <input
-              name="lng"
-              type="number"
-              step="any"
-              required
-              defaultValue={recommendation?.lng}
-              placeholder="4.8965"
-              className={inputClass}
-            />
-          </label>
-          <label className={labelClass}>
-            Latitude
-            <input
-              name="lat"
-              type="number"
-              step="any"
-              required
-              defaultValue={recommendation?.lat}
-              placeholder="52.3676"
-              className={inputClass}
-            />
-          </label>
-        </div>
-        <p className="mt-1 text-xs text-neutral-500">
-          No address lookup — drop a pin in your map app of choice, then copy its
-          coordinates here.
-        </p>
-      </div>
+      <AddressField
+        initialAddress={recommendation?.address}
+        initialLng={recommendation?.lng}
+        initialLat={recommendation?.lat}
+        onAreaSuggested={(suggested) => setArea((current) => current.trim() || suggested)}
+      />
 
       <label className={labelClass}>
         Opening hours
@@ -164,16 +157,6 @@ export default function RecommendationForm({
       </label>
 
       <RecommendationPhotosField initialPhotos={recommendation?.photos ?? []} />
-
-      <label className="flex items-center gap-2 text-sm text-neutral-700">
-        <input
-          type="checkbox"
-          name="visible"
-          defaultChecked={recommendation?.visible ?? true}
-          className="h-4 w-4 rounded border-neutral-300"
-        />
-        Visible on the guest map
-      </label>
 
       {state.error ? (
         <p role="alert" className="text-sm text-red-600">

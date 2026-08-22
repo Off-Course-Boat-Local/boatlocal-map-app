@@ -24,7 +24,7 @@ import ShareQr from "@/components/ShareQr";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import type { MapPin } from "@/lib/data";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
-import { guestPinActionUrl } from "@/lib/guestActions";
+import { guestPinAction } from "@/lib/guestActions";
 import { withGuestQuery } from "@/lib/guestLinks";
 import type { Brand } from "@/lib/types";
 
@@ -288,8 +288,13 @@ export default function GuestWelcomeScreen({
 
       {/* Header — guide avatar, app identity, personal welcome quote. */}
       <header
-        className="shrink-0 px-6 pb-7 pt-8 text-center text-white"
-        style={{ background: "var(--brand-primary)" }}
+        className="shrink-0 px-6 pb-7 text-center text-white"
+        // See GuestListScreen's header comment — safe-area top for
+        // standalone/notched phones, env() is 0 in a browser tab.
+        style={{
+          background: "var(--brand-primary)",
+          paddingTop: "calc(env(safe-area-inset-top) + 32px)",
+        }}
       >
         <GuideAvatar initial={guideAvatarInitial} />
         <p className="mt-3 text-[11px] font-semibold uppercase tracking-widest opacity-80">
@@ -354,11 +359,17 @@ export default function GuestWelcomeScreen({
               onToggleSaved={(id) => toggle(id)}
               // Closes over `topPick` (a full MapPin) rather than using the
               // callback's own item argument — PlaceCardItem (PlaceCard's
-              // prop type) omits lat/lng, which guestPinActionUrl's walking-
+              // prop type) omits lat/lng, which guestPinAction's walking-
               // directions fallback needs.
-              onAction={() =>
-                window.open(guestPinActionUrl(topPick), "_blank", "noopener,noreferrer")
-              }
+              //
+              // NOTE: unlike the Map/List/Saved screens, this tap does not
+              // record a boat_book_click event — this screen has no
+              // companyId/guideId in scope to attribute it with (see this
+              // component's props). Same gap category as the guideId fix
+              // elsewhere in this change, left for a follow-up since it
+              // needs new plumbing (company/guide context) into this screen,
+              // not just a fix to an event that already fires.
+              onAction={() => window.open(guestPinAction(topPick).url, "_blank", "noopener,noreferrer")}
             />
           </div>
         ) : null}

@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { guestPinActionLabel, guestPinActionUrl } from "./guestActions";
+import { guestPinAction, guestPinActionLabel } from "./guestActions";
 
-describe("guestPinActionUrl", () => {
+describe("guestPinAction", () => {
   it("routes a boat pin through the attributed booking hand-off, not its raw bookingUrl", () => {
     // The raw per-tour bookingUrl (BoatTourRecord.bookingUrl) is the
     // reference URL for the tour, not the final redirect target — the
     // guest is sent through buildBoatBookingHandoff (src/lib/boatBookingHandoff.ts)
     // instead, so every "Book this tour" tap carries a click id.
-    const url = guestPinActionUrl({
+    const { url, clickId } = guestPinAction({
       id: "sunset-canal",
       lat: 52.37,
       lng: 4.89,
@@ -18,10 +18,14 @@ describe("guestPinActionUrl", () => {
     const parsed = new URL(url);
     expect(parsed.searchParams.get("tour")).toBe("sunset-canal");
     expect(parsed.searchParams.get("ref")).toMatch(/^bkl_/);
+    // The returned clickId must be the exact same id embedded in the URL —
+    // it's what a caller records alongside the "boat_book_click" analytics
+    // event so the BoatLocal conversion webhook can later match the two.
+    expect(clickId).toBe(parsed.searchParams.get("ref"));
   });
 
   it("carries optional trip details (date/guests) and company/guide slugs through to the hand-off", () => {
-    const url = guestPinActionUrl(
+    const { url } = guestPinAction(
       {
         id: "sunset-canal",
         lat: 52.37,
@@ -44,7 +48,7 @@ describe("guestPinActionUrl", () => {
   });
 
   it("passes campaignParams through to the booking hand-off when set", () => {
-    const url = guestPinActionUrl(
+    const { url } = guestPinAction(
       {
         id: "sunset-canal",
         lat: 52.37,
@@ -58,8 +62,8 @@ describe("guestPinActionUrl", () => {
     expect(parsed.searchParams.get("utm_source")).toBe("hotel-lobby");
   });
 
-  it("falls back to a Google Maps walking-directions URL when there is no bookingUrl", () => {
-    const url = guestPinActionUrl({
+  it("falls back to a Google Maps walking-directions URL when there is no bookingUrl, with no clickId", () => {
+    const { url, clickId } = guestPinAction({
       id: "bakers-roasters",
       lat: 52.3556,
       lng: 4.8917,
@@ -68,6 +72,7 @@ describe("guestPinActionUrl", () => {
     expect(url).toContain("https://www.google.com/maps/dir/");
     expect(url).toContain("destination=52.3556%2C4.8917");
     expect(url).toContain("travelmode=walking");
+    expect(clickId).toBeUndefined();
   });
 });
 

@@ -1,5 +1,6 @@
-// Report — company only (PRD §7.7). A guide's equivalent is Link & QR /
-// Stats (src/app/studio/link-qr), scoped to just their own numbers.
+// Report — company only (PRD §7.7). A guide's equivalent is the "Your
+// stats" table on their Dashboard (src/app/studio/(protected)/page.tsx),
+// scoped to just their own numbers.
 
 import DownloadCsvButton from "@/components/studio/DownloadCsvButton";
 import { getCompanyAnalyticsSummary } from "@/lib/data/source";

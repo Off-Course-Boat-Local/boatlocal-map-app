@@ -15,7 +15,7 @@ import { useMemo, useState } from "react";
 import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
-import { guestPinActionUrl } from "@/lib/guestActions";
+import { guestPinAction } from "@/lib/guestActions";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
 import { CATEGORIES } from "@/lib/categories";
@@ -27,13 +27,21 @@ export interface GuestSavedScreenProps {
   brand: Brand;
   /** Guide's URL slug — folded into the booking hand-off's `guide` param, same as GuestMapScreen. Null when no guide resolved for this tenant. */
   guideSlug?: string | null;
+  /** Guide's real id (not the slug) — attributes "boat_book_click" to this specific guide, not just the company. Null when no guide resolved. */
+  guideId?: string | null;
   /** Company subdomain — folded into the booking hand-off's `company` param, and into "boat_book_click" analytics. */
   companyId?: string | null;
   /** Every pin the guide has for this tenant — filtered down to the saved ids. */
   pins: MapPin[];
 }
 
-export default function GuestSavedScreen({ brand, guideSlug, companyId, pins }: GuestSavedScreenProps) {
+export default function GuestSavedScreen({
+  brand,
+  guideSlug,
+  guideId,
+  companyId,
+  pins,
+}: GuestSavedScreenProps) {
   const { savedIds, isSaved, toggle } = useSavedPlaces();
   const [detailItem, setDetailItem] = useState<MapPin | null>(null);
 
@@ -58,10 +66,10 @@ export default function GuestSavedScreen({ brand, guideSlug, companyId, pins }: 
   // attribution + boat_book_click analytics) so a booking tap from this
   // screen is tracked the same way as one from the Map tab. No trip-date/
   // guest-count picker exists on this screen, so the booking hand-off gets
-  // no `selection` — guestPinActionUrl already treats that as "no trip
+  // no `selection` — guestPinAction already treats that as "no trip
   // details set" rather than an error.
   const openAction = (item: MapPin) => {
-    const url = guestPinActionUrl(item, {
+    const { url, clickId } = guestPinAction(item, {
       companySlug: brand.id,
       guideSlug: guideSlug ?? undefined,
     });
@@ -69,10 +77,15 @@ export default function GuestSavedScreen({ brand, guideSlug, companyId, pins }: 
       recordGuestEvent({
         eventType: "boat_book_click",
         companyId,
+        guideId,
         boatTourId: item.id,
         platform: installPlatformToEventPlatform(
           detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
         ),
+        // Same id as the booking URL's `ref` param — lets the BoatLocal
+        // conversion webhook find this exact click. See GuestPinAction's
+        // doc comment in guestActions.ts.
+        metadata: clickId ? { clickId } : undefined,
       }).catch(() => {});
     }
     window.open(url, "_blank", "noopener,noreferrer");
@@ -81,8 +94,13 @@ export default function GuestSavedScreen({ brand, guideSlug, companyId, pins }: 
   return (
     <div className="flex h-full w-full flex-col">
       <header
-        className="shrink-0 px-4 pb-3 pt-4 text-white"
-        style={{ background: "var(--brand-primary)" }}
+        className="shrink-0 px-4 pb-3 text-white"
+        // See GuestListScreen's header comment — safe-area top for
+        // standalone/notched phones, env() is 0 in a browser tab.
+        style={{
+          background: "var(--brand-primary)",
+          paddingTop: "calc(env(safe-area-inset-top) + 16px)",
+        }}
       >
         <h1 className="text-2xl leading-none" style={{ fontFamily: displayFontFamily }}>
           Saved

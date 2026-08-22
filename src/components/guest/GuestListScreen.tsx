@@ -17,7 +17,7 @@ import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
 import { useGuestFilter } from "@/lib/guestFilterContext";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
-import { guestPinActionUrl } from "@/lib/guestActions";
+import { guestPinAction } from "@/lib/guestActions";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
 import { displayFontFamily } from "@/lib/fonts";
@@ -29,6 +29,8 @@ export interface GuestListScreenProps {
   guideName: string;
   /** Guide's URL slug — folded into the booking hand-off's `guide` param, same as GuestMapScreen. Null when no guide resolved for this tenant. */
   guideSlug?: string | null;
+  /** Guide's real id (not the slug) — attributes "boat_book_click" to this specific guide, not just the company. Null when no guide resolved. */
+  guideId?: string | null;
   /** Company subdomain — folded into the booking hand-off's `company` param, and into "boat_book_click" analytics. */
   companyId?: string | null;
   pins: MapPin[];
@@ -38,6 +40,7 @@ export default function GuestListScreen({
   brand,
   guideName,
   guideSlug,
+  guideId,
   companyId,
   pins: allPins,
 }: GuestListScreenProps) {
@@ -54,10 +57,10 @@ export default function GuestListScreen({
   // attribution + boat_book_click analytics) so a booking tap from this
   // screen is tracked the same way as one from the Map tab. No trip-date/
   // guest-count picker exists on this screen, so the booking hand-off gets
-  // no `selection` — guestPinActionUrl already treats that as "no trip
+  // no `selection` — guestPinAction already treats that as "no trip
   // details set" rather than an error.
   const openAction = (item: MapPin) => {
-    const url = guestPinActionUrl(item, {
+    const { url, clickId } = guestPinAction(item, {
       companySlug: brand.id,
       guideSlug: guideSlug ?? undefined,
     });
@@ -65,10 +68,15 @@ export default function GuestListScreen({
       recordGuestEvent({
         eventType: "boat_book_click",
         companyId,
+        guideId,
         boatTourId: item.id,
         platform: installPlatformToEventPlatform(
           detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
         ),
+        // Same id as the booking URL's `ref` param — see GuestPinAction's
+        // doc comment in src/lib/guestActions.ts for why the conversion
+        // webhook needs this to match, not just a timestamp-adjacent guess.
+        metadata: clickId ? { clickId } : undefined,
       }).catch(() => {});
     }
     window.open(url, "_blank", "noopener,noreferrer");
@@ -77,8 +85,14 @@ export default function GuestListScreen({
   return (
     <div className="flex h-full w-full flex-col">
       <header
-        className="shrink-0 px-4 pb-3 pt-4 text-white"
-        style={{ background: "var(--brand-primary)" }}
+        className="shrink-0 px-4 pb-3 text-white"
+        // The brand colour fills behind the status bar in standalone mode
+        // (viewport-fit=cover), the text stays below it. env() is 0 in a
+        // normal browser tab, leaving the original 16px.
+        style={{
+          background: "var(--brand-primary)",
+          paddingTop: "calc(env(safe-area-inset-top) + 16px)",
+        }}
       >
         <h1 className="text-2xl leading-none" style={{ fontFamily: displayFontFamily }}>
           {brand.appName}

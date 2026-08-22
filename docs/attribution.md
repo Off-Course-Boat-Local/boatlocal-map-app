@@ -102,7 +102,8 @@ that the webhook call failed — so please don't retry on that basis.
 | Signature verification, replay protection, idempotency | **Real.** `src/lib/attributionWebhook.ts`, fully tested. |
 | The webhook route itself | **Real, running.** `src/app/api/webhooks/boatlocal-booking/route.ts` — you can `curl` it today. |
 | Click id generation + booking URL builder | **Real.** `src/lib/attribution.ts`. |
-| Where attributed bookings are stored | **Dummy.** In-memory (`src/lib/attributionStore.ts`) — resets on every server restart. Swaps to the real Event table the moment the schema exists; no other file needs to change. |
+| The click actually being recorded anywhere | **Real, as of the guideId-attribution pass.** Previously the click id only ever lived in the redirect URL — nothing recorded it server-side, so even a correctly-signed webhook call would always come back unattributed. Now `guestPinAction()`'s clickId is recorded on the same `boat_book_click` event the guest screens already fire (as `metadata.clickId`), which is also what makes it guide-attributed, not just company-attributed — see `GuestPinAction`'s doc comment in `src/lib/guestActions.ts`. |
+| Where attributed bookings are stored | **Real.** `findAttributedClick`/`recordBookingOutcome` in `src/lib/data/source.ts` read/write the real `events` table via the service-role client (RLS blocks `anon` from reading events back, and this caller — BoatLocal's own server — isn't a Studio actor either, so service-role is the correct client here, not a bypass of intent). The old in-memory `attributionStore.ts` is deleted. |
 | The exact query param names boatlocal.nl's booking page expects | **Partly confirmed.** `tour`, `ref`, `date`, `guests`, `company` unchanged. `guide` renamed to `distributor` — their codebase has an unrelated "Guides" concept (SEO blog content), and `partner` was already taken by their own affiliate-attribution param. See `buildBookingUrl()` in `src/lib/attribution.ts` — one function, nothing else touches it. |
 | The webhook URL's real (production) host | **Placeholder** — depends on where this app deploys. **This is now the actual blocker**: BoatLocal's test-trigger endpoint (once built) fires an outbound POST to whatever URL we give it — `localhost` is unreachable from their servers. Needs at minimum a Vercel preview deployment before the test loop can run for real. |
 | The shared signing secret | **Unset.** Generate with `openssl rand -hex 32` when ready — use a distinct one for BoatLocal's test/sandbox environment, never the eventual production secret. |
@@ -144,8 +145,7 @@ When BoatLocal's webhook is ready:
    differ from the placeholders above.
 3. Give BoatLocal's team the production webhook URL and the payload spec
    above (this file is copy-pasteable as-is).
-4. Swap `src/lib/attributionStore.ts`'s two functions for real queries
-   against the Event table once the schema is live. Nothing else changes.
 
-That's it — no code changes beyond step 2 and 4, both scoped to one file
-each.
+That's it — the storage layer (`findAttributedClick`/`recordBookingOutcome`
+in `src/lib/data/source.ts`) is already real, reading/writing the real
+`events` table, so there is no longer a step 4 here to swap it out.

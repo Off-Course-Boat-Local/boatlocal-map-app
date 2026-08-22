@@ -41,21 +41,39 @@ export interface GuestPinActionOptions {
 
 const NO_TRIP_DETAILS: BoatBookingSelection = { date: null, guests: 0 };
 
-/** The URL a "Book this tour" / "Walking directions" tap should open. */
-export function guestPinActionUrl(
+export interface GuestPinAction {
+  url: string;
+  /**
+   * Set only for a boat pin — the same id that rides in the booking URL's
+   * `ref` param (buildBookingUrl's clickId). The caller needs this back so
+   * it can record a `boat_book_click` event carrying an identical id in its
+   * metadata: that's what lets the BoatLocal conversion webhook later find
+   * this exact click by matching `ref` to `metadata->>'clickId'`, rather
+   * than the click and the analytics event being two disconnected records
+   * that happen to have fired at the same moment.
+   */
+  clickId?: string;
+}
+
+/** The URL a "Book this tour" / "Walking directions" tap should open — plus
+ * the click id to record alongside it, for a boat tour. */
+export function guestPinAction(
   item: Pick<MapPin, "id" | "lat" | "lng" | "name" | "bookingUrl">,
   options?: GuestPinActionOptions,
-): string {
+): GuestPinAction {
   if (item.bookingUrl) {
-    return buildBoatBookingHandoff({
+    const handoff = buildBoatBookingHandoff({
       tourId: item.id,
       selection: options?.selection ?? NO_TRIP_DETAILS,
       companySlug: options?.companySlug,
       guideSlug: options?.guideSlug,
       campaignParams: options?.campaignParams,
-    }).url;
+    });
+    return { url: handoff.url, clickId: handoff.clickId };
   }
-  return googleMapsWalkingUrl({ destLat: item.lat, destLng: item.lng, destName: item.name });
+  return {
+    url: googleMapsWalkingUrl({ destLat: item.lat, destLng: item.lng, destName: item.name }),
+  };
 }
 
 /** Label for the primary action button/row control. */

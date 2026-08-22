@@ -119,6 +119,6 @@ export async function updateGuideProfileAction(
     };
   }
 
-  revalidatePath("/studio/link-qr");
+  revalidatePath("/studio/profile");
   return { success: true };
 }

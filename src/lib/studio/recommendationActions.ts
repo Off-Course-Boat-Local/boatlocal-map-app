@@ -20,7 +20,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { deleteRecommendation, saveRecommendation } from "@/lib/data/source";
+import {
+  deleteRecommendation,
+  saveRecommendation,
+  setRecommendationVisibility,
+} from "@/lib/data/source";
 import { StudioPermissionError } from "@/lib/data/types";
 import { actorFromSession, requireDevSession } from "./devAuth";
 import { parseRecommendationForm } from "./recommendationForm";
@@ -71,4 +75,31 @@ export async function deleteRecommendationAction(id: string): Promise<{ error?: 
 
   revalidatePath("/studio/recommendations");
   return {};
+}
+
+/**
+ * The Recommendations table's quick visibility toggle. Same
+ * call-it-like-a-function-from-a-Client-Component shape as
+ * deleteRecommendationAction above.
+ *
+ * Returns the value that is actually in effect afterwards so the optimistic
+ * switch in the table can settle on the truth rather than on what it hoped
+ * happened: on a permission error the caller flips its own state back.
+ */
+export async function setRecommendationVisibilityAction(
+  id: string,
+  visible: boolean,
+): Promise<{ error?: string; visible?: boolean }> {
+  const session = await requireDevSession();
+  const actor = actorFromSession(session);
+
+  try {
+    await setRecommendationVisibility(actor, id, visible);
+  } catch (err) {
+    if (err instanceof StudioPermissionError) return { error: err.message };
+    throw err;
+  }
+
+  revalidatePath("/studio/recommendations");
+  return { visible };
 }

@@ -43,6 +43,13 @@ export interface PortalSelectProps {
   /** Applied to the visible trigger button, so a `<label htmlFor={id}>` still associates correctly. */
   id?: string;
   className?: string;
+  /**
+   * Fired whenever the selection changes. Lets this double as a plain
+   * controlling dropdown (e.g. the client-side owner filter on Studio's
+   * Recommendations table) without a surrounding <form> — the hidden input
+   * is still rendered, it just isn't what the caller reads.
+   */
+  onValueChange?: (value: string) => void;
 }
 
 const FALLBACK_BORDER = "#D4D4D4";
@@ -57,6 +64,7 @@ export function PortalSelect({
   placeholder,
   id,
   className,
+  onValueChange,
 }: PortalSelectProps) {
   const [value, setValue] = useState(defaultValue);
   const [open, setOpen] = useState(false);
@@ -72,9 +80,13 @@ export function PortalSelect({
   useEffect(() => {
     const form = rootRef.current?.closest("form");
     if (!form) return;
-    const onReset = () => setValue(defaultValue);
+    const onReset = () => {
+      setValue(defaultValue);
+      onValueChange?.(defaultValue);
+    };
     form.addEventListener("reset", onReset);
     return () => form.removeEventListener("reset", onReset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue]);
 
   useEffect(() => {
@@ -140,6 +152,7 @@ export function PortalSelect({
                 onClick={() => {
                   setValue(opt.value);
                   setOpen(false);
+                  onValueChange?.(opt.value);
                 }}
                 className="cursor-pointer px-3 py-1.5 whitespace-nowrap"
                 style={{

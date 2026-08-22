@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 
-// Studio's authenticated shell: sidebar (role-gated nav) + page content +
-// live phone preview. One layout for both "company" and "guide" roles —
+// Studio's authenticated shell: sidebar (role-gated nav) + page content,
+// plus the guest preview in whichever form the role gets — docked panel for
+// a company, sidebar-button slide-over for a guide (see
+// PhonePreviewPanel.tsx's header for why they differ).
+// One layout for both "company" and "guide" roles —
 // Studio is one back office, not two apps — with the role split happening
 // inside navForRole() and again at the top of every company-only /
 // guide-only page (defence in depth, per the routing research notes: a
@@ -18,7 +21,7 @@ import type { ReactNode } from "react";
 // completely unreachable. Caught by an actual browser login attempt, not by
 // tsc/eslint/vitest/build, none of which exercise a request's redirect
 // chain. Mirrors how src/app/admin/(protected)/ already avoided this.
-import PhonePreviewPanel from "@/components/studio/PhonePreviewPanel";
+import StudioPreviewRail from "@/components/studio/StudioPreviewRail";
 import { StudioPreviewProvider } from "@/components/studio/StudioPreviewContext";
 import StudioSidebar from "@/components/studio/StudioSidebar";
 import { getCompanyForStudio, getMapPins } from "@/lib/data/source";
@@ -59,13 +62,14 @@ export default async function StudioLayout({ children }: { children: ReactNode }
   const navItems = navForRole(session.role);
   const roleLabel = session.role === "guide" ? "Guide" : "Company";
   const name = session.role === "guide" ? session.guideName : session.companyName;
+  const isGuide = session.role === "guide";
 
   return (
     <StudioPreviewProvider initialBrand={brand} initialLogoUrl={company?.logoUrl ?? null}>
       <div className="flex h-dvh w-full overflow-hidden bg-neutral-100 text-neutral-900">
         <StudioSidebar items={navItems} roleLabel={roleLabel} name={name} />
         <main className="min-w-0 flex-1 overflow-y-auto p-6 lg:p-10">{children}</main>
-        <PhonePreviewPanel pins={pins} subtitle={subtitle} />
+        {isGuide ? null : <StudioPreviewRail pins={pins} subtitle={subtitle} />}
       </div>
     </StudioPreviewProvider>
   );

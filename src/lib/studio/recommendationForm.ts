@@ -12,10 +12,13 @@
 // saveRecommendation() rejects category "boats" for the same reason; this
 // module just keeps the <select> from ever offering it in the first place.
 //
-// NOTE: there is no Google Places autocomplete here, on purpose (house
-// rule). Address is manual free text and location is manual lng/lat entry
-// — see RecommendationForm's helper copy for what we tell the guide/company
-// to do instead.
+// NOTE: still no Google Places, on purpose (house rule, and its terms
+// forbid caching coordinates for display on a non-Google map — which is
+// exactly what this app does). Address entry IS assisted now, though:
+// src/components/studio/AddressField.tsx searches an OSM geocoder and drops
+// a draggable pin, then submits `lng`/`lat` as hidden fields. The parsing
+// below is unchanged by that — it still receives the same three fields it
+// always did, they are just no longer typed by hand.
 
 import { CATEGORIES } from "../categories";
 import type { CategoryId } from "../types";
@@ -72,11 +75,15 @@ export function parseRecommendationForm(formData: FormData): ParseRecommendation
   const latRaw = String(formData.get("lat") ?? "").trim();
   const lng = Number(lngRaw);
   const lat = Number(latRaw);
+  // Phrased for the person who will actually read it: nobody types these
+  // any more, so "enter a valid longitude" would describe a field the form
+  // no longer has. An empty lng/lat now means "searched but never picked a
+  // suggestion", which is exactly what the message says to go do.
   if (!lngRaw || !latRaw || !isFiniteNumber(lng) || !isFiniteNumber(lat)) {
-    return { ok: false, error: "Enter a valid longitude and latitude." };
+    return { ok: false, error: "Search for the address and pick a suggestion to place the pin." };
   }
   if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
-    return { ok: false, error: "Longitude must be -180..180 and latitude -90..90." };
+    return { ok: false, error: "That pin is off the map — search again and re-place it." };
   }
 
   const note = String(formData.get("note") ?? "").trim();

@@ -16,13 +16,21 @@ describe("Studio nav gating", () => {
     ]);
   });
 
-  it("gives guide only Dashboard, Recommendations and their own Link & QR / Stats", () => {
+  it("gives guide only Dashboard, Recommendations, Profile and Settings", () => {
     expect(navForRole("guide")).toBe(GUIDE_NAV);
     expect(GUIDE_NAV.map((i) => i.label)).toEqual([
       "Dashboard",
       "Recommendations",
-      "Link & QR / Stats",
+      "Profile",
+      "Settings",
     ]);
+  });
+
+  it("no longer offers the old combined Link & QR / Stats tab", () => {
+    // Split into Profile (photo, welcome message, share link + QR) and
+    // Settings (the account), with stats folded into the Dashboard. The
+    // route itself still exists as a redirect — it is just not navigation.
+    expect(GUIDE_NAV.some((i) => i.href === "/studio/link-qr")).toBe(false);
   });
 
   it("never gives a guide the company-only management tabs", () => {

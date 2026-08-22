@@ -21,7 +21,11 @@ import GuideLeaderboard from "@/components/studio/dashboard/GuideLeaderboard";
 import KpiRow from "@/components/studio/dashboard/KpiRow";
 import MostSavedTips from "@/components/studio/dashboard/MostSavedTips";
 import StudioBrandScope from "@/components/studio/StudioBrandScope";
-import { getGuidesForCompany, getRecommendationsForStudio } from "@/lib/data/source";
+import {
+  getGuideAnalyticsSummary,
+  getGuidesForCompany,
+  getRecommendationsForStudio,
+} from "@/lib/data/source";
 import { actorFromSession, requireDevSession } from "@/lib/studio/devAuth";
 import {
   mockCompanyKpis,
@@ -78,6 +82,10 @@ export default async function StudioDashboardPage() {
     (r) => r.ownerType === "guide" && r.guideId === session.guideId,
   );
   const kpis = mockGuideKpis(session.guideId, recommendations.length);
+  // Real, unlike the KPI cards above — see "Your stats" below for why the
+  // two sit side by side rather than being blended into one row.
+  const analytics = await getGuideAnalyticsSummary(actor, session.guideId);
+  const totalEvents = analytics.reduce((sum, row) => sum + row.count, 0);
 
   return (
     <div className="space-y-6">
@@ -94,8 +102,48 @@ export default async function StudioDashboardPage() {
         {ownRecommendations.length} of your own picks, plus the base list
         (read-only to you). App opens and book-clicks above are placeholders
         until real traffic flows in. See Recommendations for the full list,
-        and Link &amp; QR / Stats for your own share link.
+        and Profile for your own share link.
       </p>
+
+      {/* Moved here from the old combined "Link & QR / Stats" tab when
+          Profile and Settings were split apart — this is the ONE section on
+          this page that is not a placeholder, so it's labelled as such
+          rather than left to look like it belongs with the mock KPIs above. */}
+      <div>
+        <h2 className="text-sm font-semibold text-neutral-900">Your stats</h2>
+        <p className="mt-0.5 text-xs text-neutral-500">
+          Real event counts from your own link — unlike the cards above, these
+          are live today.
+        </p>
+        <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Event</th>
+                <th className="px-4 py-2 font-medium">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analytics.map((row) => (
+                <tr key={row.eventType} className="border-b border-neutral-100 last:border-0">
+                  <td className="px-4 py-2 text-neutral-900">{row.eventType}</td>
+                  <td className="px-4 py-2 text-neutral-600">{row.count}</td>
+                </tr>
+              ))}
+              {analytics.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-3 text-neutral-500" colSpan={2}>
+                    No events recorded yet.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+          <p className="border-t border-neutral-200 px-4 py-2 text-xs text-neutral-500">
+            {totalEvents} event{totalEvents === 1 ? "" : "s"} total.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

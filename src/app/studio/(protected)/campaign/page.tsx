@@ -46,7 +46,7 @@ export default async function StudioCampaignPage() {
             src/components/guest/Guest*Screen.tsx
           </code>
           ) call{" "}
-          <code className="rounded bg-neutral-100 px-1 py-0.5">guestPinActionUrl</code> today
+          <code className="rounded bg-neutral-100 px-1 py-0.5">guestPinAction</code> today
           without a campaignParams option, since they only fetch the lightweight{" "}
           <code className="rounded bg-neutral-100 px-1 py-0.5">Brand</code> shape, not the full{" "}
           <code className="rounded bg-neutral-100 px-1 py-0.5">CompanyRecord</code> that carries

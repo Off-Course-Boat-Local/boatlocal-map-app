@@ -1,7 +1,7 @@
 "use client";
 
 // Small "copy to clipboard" button shared by every Studio place that shows a
-// shareable link (Guides list, company QR, a guide's own Link & QR page).
+// shareable link (Guides list, company QR, a guide's own Profile page).
 // Deliberately separate from the guest app's own copy-link logic in
 // GuestWelcomeScreen.tsx's ShareSection — same idea, but that one always
 // copies `window.location.href`; this one copies an arbitrary `value` a

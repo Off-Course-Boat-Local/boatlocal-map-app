@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { POST } from "./route";
 import { signWebhookBody, TIMESTAMP_HEADER, SIGNATURE_HEADER } from "@/lib/attributionWebhook";
-import { recordClick, dangerouslyResetStore } from "@/lib/attributionStore";
+import { recordEvent } from "@/lib/data/source";
+import { resetFakeStore } from "@/lib/data/fakeStore";
 
 const SECRET = "route-test-secret";
 
@@ -32,10 +33,20 @@ const validPayload = {
 };
 
 describe("POST /api/webhooks/boatlocal-booking", () => {
-  beforeEach(() => {
-    dangerouslyResetStore();
+  beforeEach(async () => {
+    resetFakeStore();
     process.env.BOATLOCAL_WEBHOOK_SECRET = SECRET;
-    recordClick({ clickId: "bkl_known", tourId: "sunset-canal" });
+    // The "click" the webhook attributes against is just a real
+    // boat_book_click event carrying this metadata — see
+    // findAttributedClick's doc comment in src/lib/data/source.ts. Company/
+    // guide left null here on purpose: these tests only care whether
+    // attribution is FOUND, not what it resolves to (that's covered by
+    // findAttributedClick's own tests via source.test.ts's suite).
+    await recordEvent({
+      eventType: "boat_book_click",
+      boatTourId: "sunset-canal",
+      metadata: { clickId: "bkl_known" },
+    });
   });
 
   it("accepts a correctly signed, known-click payload and attributes it", async () => {

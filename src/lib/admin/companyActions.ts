@@ -20,6 +20,7 @@ import { createCompany, setCompanyStatus } from "@/lib/data/source";
 import type { CompanyStatus, CompanyType } from "@/lib/data/types";
 
 import { ADMIN_ACTOR } from "./actor";
+import { regenerateOwnerInvite, sendOwnerInvite } from "./ownerInvite";
 
 const COMPANY_TYPES: CompanyType[] = ["hotel", "tour", "host"];
 const COMPANY_STATUSES: CompanyStatus[] = ["setup", "active", "suspended"];
@@ -27,6 +28,14 @@ const COMPANY_STATUSES: CompanyStatus[] = ["setup", "active", "suspended"];
 export interface CreateCompanyActionState {
   error?: string;
   success?: boolean;
+  /**
+   * Set when the company WAS created but its invite email did not go out.
+   * Deliberately distinct from `error`: the company exists and retrying the
+   * form would fail on subdomain uniqueness, so this must never read as
+   * "creation failed". The operator's recovery is the copy-able invite link
+   * on the row, or Resend once email is configured.
+   */
+  inviteWarning?: string;
 }
 
 export async function createCompanyAction(
@@ -50,17 +59,31 @@ export async function createCompanyAction(
     return { error: "Choose a valid initial status." };
   }
 
+  let companyId: string;
   try {
-    await createCompany(ADMIN_ACTOR, {
+    const created = await createCompany(ADMIN_ACTOR, {
       name,
       ownerEmail,
       subdomain: subdomain || undefined,
       companyType: companyTypeRaw as CompanyType,
       status: statusRaw as CompanyStatus,
     });
+    companyId = created.id;
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Could not create this company." };
   }
+
+  // The company row and its invite token are now committed. Sending is a
+  // separate, best-effort step: a provider outage or unverified sending
+  // domain must not present as "creating the company failed", because the
+  // company DOES exist and re-submitting would only collide on subdomain
+  // uniqueness. A failure here downgrades to a warning plus the copy-able
+  // link on the row.
+  const send = await sendOwnerInvite(companyId);
+  const inviteWarning =
+    send.status === "failed"
+      ? `Company created, but the invite email to ${send.to} could not be sent (${send.error}). Copy the invite link from the row below and send it manually.`
+      : undefined;
 
   // /admin/companies has the full list this form lives on; /admin's
   // Overview also reads listCompanies() for its "Companies" stat card
@@ -68,7 +91,57 @@ export async function createCompanyAction(
   // Overview count stale until its own next full reload.
   revalidatePath("/admin/companies");
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, inviteWarning };
+}
+
+export interface InviteActionState {
+  message?: string;
+  error?: string;
+}
+
+/**
+ * Re-sends the EXISTING invite token. Use when the owner says the email
+ * never arrived but the address is right — any earlier copy of the link
+ * keeps working.
+ */
+export async function resendOwnerInviteAction(
+  companyId: string,
+  // Both required by the useActionState signature but unused — the company
+  // to act on came in via .bind() above. Same pattern as
+  // setCompanyStatusAction below.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _prevState: InviteActionState,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _formData: FormData,
+): Promise<InviteActionState> {
+  await requireAdminSession();
+  const result = await sendOwnerInvite(companyId);
+  revalidatePath("/admin/companies");
+
+  if (result.status === "sent") return { message: `Invite re-sent to ${result.to}.` };
+  if (result.status === "failed") return { error: result.error };
+  return { error: "This company has no pending owner invite." };
+}
+
+/**
+ * Issues a NEW token and emails it, invalidating the previous link. Use
+ * when the old invite may have gone astray — a wrong address, a forwarded
+ * email — rather than merely undelivered.
+ */
+export async function regenerateOwnerInviteAction(
+  companyId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _prevState: InviteActionState,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _formData: FormData,
+): Promise<InviteActionState> {
+  await requireAdminSession();
+  const result = await regenerateOwnerInvite(companyId);
+  revalidatePath("/admin/companies");
+
+  if (result.status === "sent") return { message: `New invite sent to ${result.to}.` };
+  if (result.status === "failed") return { error: result.error };
+  return { error: "This company has no pending owner invite to replace." };
 }
 
 /**

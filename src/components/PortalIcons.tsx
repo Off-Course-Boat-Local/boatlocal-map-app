@@ -142,3 +142,51 @@ export function ReportIcon(props: IconProps) {
     </svg>
   );
 }
+
+/**
+ * A guide's own Profile tab. A single figure, deliberately distinct from
+ * UsersIcon's pair — that one means "the guides working for this company"
+ * (a company-role management tab), this one means "me".
+ */
+export function PersonIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="8" r="3.25" />
+      <path d="M5.5 19.5c0-3.4 2.9-6 6.5-6s6.5 2.6 6.5 6" />
+    </svg>
+  );
+}
+
+/** Guest-app preview — a phone. Sits with Log out at the foot of the
+ *  Studio sidebar rather than in the nav list above it, because previewing
+ *  is a way of *looking at* the tenant's guest app, not another page of
+ *  Studio to manage. */
+export function PhoneIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="6.5" y="2.5" width="11" height="19" rx="2.5" />
+      <path d="M10.75 5.5h2.5" />
+    </svg>
+  );
+}
+
+/** Sign out — sits beside PhoneIcon at the foot of the Studio sidebar, so it
+ *  carries an icon too rather than being the one unaligned row down there. */
+export function LogoutIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M14.5 8.5V5.75a1.5 1.5 0 0 0-1.5-1.5H6.25a1.5 1.5 0 0 0-1.5 1.5v12.5a1.5 1.5 0 0 0 1.5 1.5H13a1.5 1.5 0 0 0 1.5-1.5V15.5" />
+      <path d="M10.5 12h9M16.75 8.75 19.75 12l-3 3.25" />
+    </svg>
+  );
+}
+
+/** Account settings. */
+export function GearIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2.75v2.5M12 18.75v2.5M21.25 12h-2.5M5.25 12h-2.5M18.54 5.46l-1.77 1.77M7.23 16.77l-1.77 1.77M18.54 18.54l-1.77-1.77M7.23 7.23 5.46 5.46" />
+    </svg>
+  );
+}

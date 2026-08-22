@@ -22,7 +22,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { resolveGuestBrand } from "@/lib/guestBrand";
-import { GUEST_BRAND_HEADER, GUEST_GUIDE_HEADER } from "@/lib/guestHeaders";
+import {
+  GUEST_BRAND_HEADER,
+  GUEST_GUIDE_HEADER,
+  GUEST_PREVIEW_COOKIE,
+  GUEST_PREVIEW_HEADER,
+  GUEST_PREVIEW_PARAM,
+} from "@/lib/guestHeaders";
 import { createProxyClient } from "@/lib/supabase/proxy";
 
 // =============================================================================
@@ -119,7 +125,32 @@ function guestBrandResolution(request: NextRequest): NextResponse {
   headers.set(GUEST_BRAND_HEADER, brandId);
   headers.set(GUEST_GUIDE_HEADER, guideSlug);
 
-  return NextResponse.next({ request: { headers } });
+  // Studio's preview iframe (src/app/studio/(protected)/preview) loads these
+  // same guest routes with `?preview=1`. Mark the request so nothing it does
+  // counts as guest traffic — see src/lib/guestPreview.ts for the full
+  // reasoning, and src/lib/guestEvents.ts for where the suppression happens.
+  const isPreviewEntry =
+    request.nextUrl.searchParams.get(GUEST_PREVIEW_PARAM) === "1";
+  const alreadyPreviewing =
+    request.cookies.get(GUEST_PREVIEW_COOKIE)?.value === "1";
+
+  if (isPreviewEntry || alreadyPreviewing) {
+    headers.set(GUEST_PREVIEW_HEADER, "1");
+  }
+
+  const response = NextResponse.next({ request: { headers } });
+
+  // Set on the entry request only. A session cookie (no maxAge) deliberately:
+  // preview mode should not outlive the browser session that started it.
+  if (isPreviewEntry && !alreadyPreviewing) {
+    response.cookies.set(GUEST_PREVIEW_COOKIE, "1", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+    });
+  }
+
+  return response;
 }
 
 // =============================================================================

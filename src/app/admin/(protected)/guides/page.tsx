@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
-import { mockGuidePerformance } from "@/lib/admin/mockAnalytics";
+import { guidePerformance } from "@/lib/admin/analytics";
 import { getGuidesForCompany, listCompanies } from "@/lib/data/source";
 import AdminTable from "@/components/admin/AdminTable";
 import StatusBadge from "@/components/admin/StatusBadge";
@@ -22,12 +22,11 @@ export default async function AdminGuidesPage() {
   // Every guide across every company (PRD §8.3), platform-wide — the
   // per-company equivalent lives in Studio > Guides
   // (src/app/studio/guides/page.tsx), scoped to just that company's own.
-  const rows = guidesByCompany.flatMap(({ company, guides }) =>
-    guides.map((guide) => {
-      // Placeholder performance numbers — see src/lib/admin/mockAnalytics.ts
-      // for why (the fake store seeds zero events, so real figures would
-      // all read 0 today).
-      const performance = mockGuidePerformance(guide.id);
+  const rows = await Promise.all(
+    guidesByCompany.flatMap(({ company, guides }) =>
+      guides.map(async (guide) => {
+      // Real aggregation over `events` (src/lib/admin/analytics.ts).
+      const performance = await guidePerformance(guide.id);
       return [
         guide.name,
         guide.email,
@@ -42,7 +41,8 @@ export default async function AdminGuidesPage() {
         String(performance.tipsSaved),
         String(performance.bookClicks),
       ];
-    }),
+      }),
+    ),
   );
 
   return (
@@ -53,9 +53,8 @@ export default async function AdminGuidesPage() {
         compan{companies.length === 1 ? "y" : "ies"}.
       </p>
       <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
-        App opens, tips saved and book clicks are placeholder numbers until real event volume
-        exists — see the comment on <code>mockGuidePerformance</code> in
-        src/lib/admin/mockAnalytics.ts.
+        App opens, tips saved and book clicks are live counts from <code>events</code>, over the
+        last 30 days.
       </p>
 
       <AdminTable

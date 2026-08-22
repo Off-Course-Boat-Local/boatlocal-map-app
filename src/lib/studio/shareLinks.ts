@@ -17,6 +17,7 @@
 // "narrow the seam" shape as buildBookingUrl in src/lib/attribution.ts).
 
 import { guestQueryString } from "../guestLinks";
+import { GUEST_PREVIEW_PARAM } from "../guestHeaders";
 
 export interface GuideShareLinkInput {
   /** Absolute origin of the current request, e.g. "https://coastal.example.com" — see requestOrigin.ts. */
@@ -44,6 +45,36 @@ export interface CompanyShareLinkInput {
  */
 export function buildCompanyShareUrl({ origin, subdomain }: CompanyShareLinkInput): string {
   const qs = guestQueryString({ company: subdomain });
+  return `${origin}/?${qs}`;
+}
+
+export interface PreviewLinkInput {
+  origin: string;
+  subdomain: string;
+  /** Omit for the company-level link (no single guide applies). */
+  guideSlug?: string | null;
+}
+
+/**
+ * The same guest URL as buildGuideShareUrl/buildCompanyShareUrl, plus the
+ * marker that tells src/proxy.ts this is Studio's preview and none of it
+ * counts as guest traffic (src/lib/guestPreview.ts).
+ *
+ * Built here, next to the real share links, precisely so the preview loads
+ * the REAL guest app at the REAL link rather than a lookalike — the point
+ * of the preview page is that clicking through it exercises what a guest
+ * actually gets. The ONLY difference is this one param.
+ */
+export function buildGuestPreviewUrl({
+  origin,
+  subdomain,
+  guideSlug,
+}: PreviewLinkInput): string {
+  const qs = guestQueryString({
+    company: subdomain,
+    ...(guideSlug ? { guide: guideSlug } : {}),
+    [GUEST_PREVIEW_PARAM]: "1",
+  });
   return `${origin}/?${qs}`;
 }
 

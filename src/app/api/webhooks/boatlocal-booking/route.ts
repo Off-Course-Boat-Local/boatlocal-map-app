@@ -3,11 +3,12 @@
 // See docs/attribution.md for the full contract this implements and what
 // still needs configuring on BoatLocal's side before this is live.
 //
-// This is real, working code today — it verifies signatures, rejects
-// replays, and is idempotent on booking_id — but it stores outcomes in the
-// DEV-ONLY in-memory store from attributionStore.ts, since no live database
-// exists yet. That is the one thing that changes when the schema is real;
-// everything else here is production-shaped.
+// Real, working code — verifies signatures, rejects replays, and is
+// idempotent on booking_id — and, as of this change, actually persists:
+// findAttributedClick/recordBookingOutcome (src/lib/data/source.ts) read
+// and write the real `events` table via the service-role client, replacing
+// the old dev-only in-memory store. See that pair's own doc comment for why
+// a booking outcome is just another `events` row, not a separate table.
 
 import { NextResponse } from "next/server";
 import {
@@ -16,7 +17,7 @@ import {
   verifyWebhookSignature,
 } from "@/lib/attributionWebhook";
 import { parseBookingWebhookPayload } from "@/lib/attribution";
-import { getClick, recordBooking } from "@/lib/attributionStore";
+import { recordBookingOutcome } from "@/lib/data/source";
 
 export async function POST(request: Request) {
   const secret = process.env.BOATLOCAL_WEBHOOK_SECRET;
@@ -73,17 +74,12 @@ export async function POST(request: Request) {
   // have expired, or this is a booking that didn't originate from the map
   // app at all despite carrying a ref). Attribution being unavailable is
   // not the same failure as the webhook being broken, and must not cause
-  // BoatLocal's side to retry forever.
-  const click = getClick(payload.clickId);
-  if (!click) {
-    console.warn(
-      `[boatlocal-webhook] booking ${payload.bookingId} referenced unknown click ${payload.clickId} — recording as unattributed`,
-    );
-  }
-
-  const { inserted } = recordBooking({
-    bookingId: payload.bookingId,
+  // BoatLocal's side to retry forever. recordBookingOutcome does the click
+  // lookup itself and reports back whether it found one, rather than this
+  // route looking it up twice.
+  const { inserted, attributed } = await recordBookingOutcome({
     clickId: payload.clickId,
+    bookingId: payload.bookingId,
     event: payload.event,
     tourId: payload.tourId,
     guests: payload.guests,
@@ -92,9 +88,15 @@ export async function POST(request: Request) {
     bookedAt: payload.bookedAt,
   });
 
+  if (!attributed) {
+    console.warn(
+      `[boatlocal-webhook] booking ${payload.bookingId} referenced unknown click ${payload.clickId} — recording as unattributed`,
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     deduplicated: !inserted,
-    attributed: !!click,
+    attributed,
   });
 }

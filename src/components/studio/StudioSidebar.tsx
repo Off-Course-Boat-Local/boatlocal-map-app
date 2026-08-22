@@ -14,16 +14,22 @@ import { usePathname } from "next/navigation";
 import MapAppMark, { PORTAL_NAV_ACTIVE_BG } from "@/components/MapAppMark";
 import {
   AnchorIcon,
+  GearIcon,
   GridIcon,
   LinkIcon,
+  LogoutIcon,
   MegaphoneIcon,
   PaletteIcon,
+  PersonIcon,
+  PhoneIcon,
   PinListIcon,
   ReportIcon,
   UsersIcon,
 } from "@/components/PortalIcons";
 import { logoutAction } from "@/lib/studio/actions";
 import type { StudioNavItem } from "@/lib/studio/nav";
+
+const PREVIEW_HREF = "/studio/preview";
 
 const NAV_ICONS: Record<string, typeof GridIcon> = {
   dashboard: GridIcon,
@@ -34,6 +40,8 @@ const NAV_ICONS: Record<string, typeof GridIcon> = {
   campaign: MegaphoneIcon,
   report: ReportIcon,
   "link-qr": LinkIcon,
+  profile: PersonIcon,
+  settings: GearIcon,
 };
 
 export interface StudioSidebarProps {
@@ -46,6 +54,7 @@ export interface StudioSidebarProps {
 
 export default function StudioSidebar({ items, roleLabel, name }: StudioSidebarProps) {
   const pathname = usePathname();
+  const previewActive = pathname.startsWith(PREVIEW_HREF);
 
   return (
     <nav
@@ -86,14 +95,37 @@ export default function StudioSidebar({ items, roleLabel, name }: StudioSidebarP
         </ul>
       </div>
 
-      <form action={logoutAction}>
-        <button
-          type="submit"
-          className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+      {/* Foot of the sidebar. Preview sits here with Log out rather than in
+          the nav list above, because it isn't another part of Studio to
+          manage — it's a way of stepping outside Studio to look at the guest
+          app. Same reason it's a link to a real page now instead of the
+          docked panel/drawer it used to be: previewing is something you go
+          and do, not something that occupies width on every screen. */}
+      <div className="space-y-1">
+        <Link
+          href={PREVIEW_HREF}
+          aria-current={previewActive ? "page" : undefined}
+          style={previewActive ? { background: PORTAL_NAV_ACTIVE_BG } : undefined}
+          className={`flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-semibold transition-colors ${
+            previewActive
+              ? "text-neutral-900"
+              : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+          }`}
         >
-          Log out
-        </button>
-      </form>
+          <PhoneIcon />
+          Preview
+        </Link>
+
+        <form action={logoutAction}>
+          <button
+            type="submit"
+            className="flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-sm font-semibold text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+          >
+            <LogoutIcon />
+            Log out
+          </button>
+        </form>
+      </div>
     </nav>
   );
 }

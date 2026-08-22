@@ -167,6 +167,24 @@ async function authedClient() {
   return createClient();
 }
 
+/**
+ * Service-role client (src/lib/supabase/admin.ts) — bypasses RLS entirely.
+ * Used only by findAttributedClick/recordBookingOutcome below, for the
+ * BoatLocal conversion webhook: that caller is neither a guest (anon can
+ * only INSERT events, never read them back — see "guest_insert_events" in
+ * supabase/migrations/20260805063611_rls_policies.sql) nor a signed-in
+ * Studio actor with a session to scope against. It's BoatLocal's own
+ * server calling ours directly, authenticated only by the HMAC signature
+ * attributionWebhook.ts already verifies before either function below is
+ * ever reached — there is no narrower real client to reach for here.
+ * Dynamically imported for the same reason authedClient() is (see file
+ * header): a static import would break source.test.ts.
+ */
+async function adminClient() {
+  const { createAdminClient } = await import("../supabase/admin");
+  return createAdminClient();
+}
+
 // =============================================================================
 // Row shapes (snake_case, mirroring supabase/migrations/20260805063610_init_schema.sql
 // column-for-column) + mappers into this file's camelCase *Record types.
@@ -358,6 +376,7 @@ function toBrand(company: CompanyRecord): Brand {
 
 function toGuideView(guide: GuideRecord): Guide {
   return {
+    id: guide.id,
     name: guide.name,
     slug: guide.slug,
     welcome: guide.welcomeMessage,
@@ -693,6 +712,145 @@ export async function recordEvent(input: NewEventInput): Promise<void> {
 }
 
 // =============================================================================
+// BoatLocal booking-attribution webhook (docs/attribution.md).
+//
+// findAttributedClick/recordBookingOutcome are what
+// src/app/api/webhooks/boatlocal-booking/route.ts calls once a signed
+// request has been verified — they replace the old dev-only in-memory
+// stand-in (src/lib/attributionStore.ts, now deleted) with real reads/
+// writes against the `events` table, following the same recordEvent()
+// shape everything else here uses rather than inventing a parallel one.
+//
+// THE CLICK IS A boat_book_click EVENT, NOT A SEPARATE RECORD. The guest
+// screens (GuestMapScreen/GuestListScreen/GuestSavedScreen) already record
+// a real "boat_book_click" event the moment a guest taps "Book this tour" —
+// this reuses that exact row rather than keeping a second, disconnected
+// "clicks" table in sync with it. The one addition on the write side is
+// that those three call sites now pass `metadata: { clickId }`, using the
+// same id embedded in the booking URL's `ref` param (see GuestPinAction's
+// doc comment in src/lib/guestActions.ts), so this can find it later.
+// =============================================================================
+
+export interface AttributedClick {
+  companyId: string | null;
+  guideId: string | null;
+  boatTourId: string | null;
+}
+
+/**
+ * Finds the boat_book_click event carrying this exact clickId in its
+ * metadata. Returns null when there is no such event — an unattributed
+ * booking, not an error (see the webhook route for why that's still a 200,
+ * not a failure).
+ */
+export async function findAttributedClick(clickId: string): Promise<AttributedClick | null> {
+  if (isTestEnv) {
+    const match = fakeStore.events.find(
+      (e) => e.eventType === "boat_book_click" && e.metadata?.clickId === clickId,
+    );
+    return match ? { companyId: match.companyId, guideId: match.guideId, boatTourId: match.boatTourId } : null;
+  }
+
+  const supabase = await adminClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select("company_id, guide_id, boat_tour_id")
+    .eq("event_type", "boat_book_click")
+    .eq("metadata->>clickId", clickId)
+    .order("occurred_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { companyId: data.company_id, guideId: data.guide_id, boatTourId: data.boat_tour_id };
+}
+
+export interface RecordBookingOutcomeInput {
+  clickId: string;
+  bookingId: string;
+  event: "booking.confirmed" | "booking.cancelled";
+  tourId: string;
+  guests: number;
+  amountCents: number;
+  currency: string;
+  bookedAt: string;
+}
+
+export interface RecordBookingOutcomeResult {
+  /** False on a retried delivery of a booking already recorded — see the webhook route's idempotency contract in docs/attribution.md. */
+  inserted: boolean;
+  /** Whether a matching click was found — independent of `inserted`; a dedup still reports the original delivery's attribution. */
+  attributed: boolean;
+}
+
+/**
+ * Records a `booking_outcome` event for a completed/cancelled BoatLocal
+ * booking, attributed to whichever company/guide/tour the original click
+ * belongs to (null fields when unattributed). Deduped on `bookingId` in
+ * metadata — BoatLocal retries any non-2xx response, so a retried delivery
+ * of the same booking must be a no-op, never a second row.
+ */
+export async function recordBookingOutcome(
+  input: RecordBookingOutcomeInput,
+): Promise<RecordBookingOutcomeResult> {
+  const click = await findAttributedClick(input.clickId);
+  const metadata = {
+    clickId: input.clickId,
+    bookingId: input.bookingId,
+    event: input.event,
+    tourId: input.tourId,
+    guests: input.guests,
+    amountCents: input.amountCents,
+    currency: input.currency,
+    bookedAt: input.bookedAt,
+  };
+
+  if (isTestEnv) {
+    const alreadyRecorded = fakeStore.events.some(
+      (e) => e.eventType === "booking_outcome" && e.metadata?.bookingId === input.bookingId,
+    );
+    if (alreadyRecorded) return { inserted: false, attributed: !!click };
+
+    fakeStore.events.push({
+      id: fakeId("event"),
+      eventType: "booking_outcome",
+      companyId: click?.companyId ?? null,
+      guideId: click?.guideId ?? null,
+      boatTourId: click?.boatTourId ?? null,
+      recommendationId: null,
+      guestSessionId: null,
+      platform: "unknown",
+      metadata,
+      occurredAt: new Date().toISOString(),
+    });
+    return { inserted: true, attributed: !!click };
+  }
+
+  const supabase = await adminClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("events")
+    .select("id")
+    .eq("event_type", "booking_outcome")
+    .eq("metadata->>bookingId", input.bookingId)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existing) return { inserted: false, attributed: !!click };
+
+  const { error } = await supabase.from("events").insert({
+    event_type: "booking_outcome",
+    company_id: click?.companyId ?? null,
+    guide_id: click?.guideId ?? null,
+    boat_tour_id: click?.boatTourId ?? null,
+    platform: "unknown",
+    metadata,
+  });
+  if (error) throw error;
+
+  return { inserted: true, attributed: !!click };
+}
+
+// =============================================================================
 // Studio reads/writes (authenticated — role-gated by StudioActor, mirroring
 // the RLS policies in 20260805063611_rls_policies.sql).
 // =============================================================================
@@ -969,6 +1127,79 @@ export async function deleteRecommendation(actor: StudioActor, id: string): Prom
 }
 
 /**
+ * Flips one recommendation's `visible` flag on its own — what the quick
+ * toggle in the Studio Recommendations table calls, so a guide can pull a
+ * place off their map without opening (and re-submitting) the whole edit
+ * form. Deliberately NOT expressed as a saveRecommendation() call with a
+ * spread-in record: that would round-trip every other field through the
+ * client and let a stale form silently overwrite a concurrent edit, where
+ * this touches exactly the one column it names.
+ *
+ * Permission rules — and the documented RLS-vs-fakeStore behaviour
+ * difference when the actor cannot even SELECT the row — are identical to
+ * deleteRecommendation's directly above; see its comment rather than
+ * duplicating the reasoning here.
+ */
+export async function setRecommendationVisibility(
+  actor: StudioActor,
+  id: string,
+  visible: boolean,
+): Promise<void> {
+  if (isTestEnv) {
+    const rec = fakeStore.recommendations.find((r) => r.id === id);
+    if (!rec) return;
+
+    const allowed =
+      actor.role === "admin" ||
+      (actor.role === "company" &&
+        rec.companyId === actor.companyId &&
+        rec.ownerType === "company") ||
+      (actor.role === "guide" &&
+        rec.companyId === actor.companyId &&
+        rec.ownerType === "guide" &&
+        rec.guideId === actor.guideId);
+
+    if (!allowed) {
+      throw new StudioPermissionError(`Actor may not edit recommendation ${id}.`);
+    }
+    rec.visible = visible;
+    rec.updatedAt = new Date().toISOString();
+    return;
+  }
+
+  const supabase = await authedClient();
+  const { data: existingData, error: fetchError } = await supabase
+    .from("recommendations")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  const existing = existingData as RecommendationRow | null;
+  if (!existing) return;
+
+  const allowed =
+    actor.role === "admin" ||
+    (actor.role === "company" &&
+      existing.company_id === actor.companyId &&
+      existing.owner_type === "company") ||
+    (actor.role === "guide" &&
+      existing.company_id === actor.companyId &&
+      existing.owner_type === "guide" &&
+      existing.guide_id === actor.guideId);
+
+  if (!allowed) {
+    throw new StudioPermissionError(`Actor may not edit recommendation ${id}.`);
+  }
+
+  const { error } = await supabase
+    .from("recommendations")
+    .update({ visible })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+
+/**
  * Guides belonging to a company (Studio "Guides" tab, PRD §7.3). Admin may
  * pass any companyId; company/guide are restricted to their own.
  *
@@ -979,7 +1210,7 @@ export async function deleteRecommendation(actor: StudioActor, id: string): Prom
  * silently narrowed by RLS to exactly one row (their own), unlike the
  * fakeStore branch, which (matching the in-code assertCompanyScope) returns
  * every guide in the company. The one real caller today
- * (src/app/studio/(protected)/link-qr/page.tsx) does
+ * (src/app/studio/(protected)/profile/page.tsx) does
  * `guides.find(g => g.id === session.guideId)`, which still finds the now-
  * single row correctly, but nobody should assume "full company guide list"
  * from a guide-actor call to this function against the real backend.

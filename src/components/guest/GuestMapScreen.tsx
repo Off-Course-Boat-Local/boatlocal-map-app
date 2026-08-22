@@ -26,7 +26,7 @@
 //     the map shows up on the Saved screen and in the bottom nav's badge —
 //     and vice versa.
 //   - The action URL (book vs. walking directions) now comes from the
-//     shared guestPinActionUrl() (src/lib/guestActions.ts) so the Map, List
+//     shared guestPinAction() (src/lib/guestActions.ts) so the Map, List
 //     and Saved screens can't disagree about what a tap does.
 //   - Picking the Boats filter now surfaces a one-off date + guest-count
 //     picker (src/components/guest/BoatBookingPicker.tsx, PRD §5.5) so a
@@ -57,7 +57,7 @@ import {
   walkCaveatFor,
   walkingDistanceMeters,
 } from "@/lib/distance";
-import { guestPinActionUrl } from "@/lib/guestActions";
+import { guestPinAction } from "@/lib/guestActions";
 import {
   DEFAULT_BOAT_BOOKING_SELECTION,
   formatBookingDateLabel,
@@ -85,6 +85,8 @@ export interface GuestMapScreenProps {
   guideName: string;
   /** Guide's URL slug (e.g. "jan") — folded into the booking hand-off's `guide` param. Null when no guide resolved for this tenant. */
   guideSlug?: string | null;
+  /** Guide's real id (not the slug) — attributes "boat_book_click" to this specific guide, not just the company. Null when no guide resolved. */
+  guideId?: string | null;
   /** Company subdomain (e.g. "coastal") — folded into the booking hand-off's `company` param, and into "boat_book_click" analytics. */
   companyId?: string | null;
   pins: MapPin[];
@@ -94,6 +96,7 @@ export default function GuestMapScreen({
   brand,
   guideName,
   guideSlug,
+  guideId,
   companyId,
   pins: allPins,
 }: GuestMapScreenProps) {
@@ -155,8 +158,13 @@ export default function GuestMapScreen({
     <div className="relative flex h-full w-full flex-col">
       {/* Header */}
       <header
-        className="shrink-0 px-4 pb-3 pt-4 text-white"
-        style={{ background: "var(--brand-primary)" }}
+        className="shrink-0 px-4 pb-3 text-white"
+        // See GuestListScreen's header comment — safe-area top for
+        // standalone/notched phones, env() is 0 in a browser tab.
+        style={{
+          background: "var(--brand-primary)",
+          paddingTop: "calc(env(safe-area-inset-top) + 16px)",
+        }}
       >
         <h1 className="text-2xl leading-none" style={{ fontFamily: displayFontFamily }}>
           {brand.appName}
@@ -281,8 +289,8 @@ export default function GuestMapScreen({
                 // (no lat/lng — see src/components/map/PlaceCard.tsx), so
                 // the coordinates come from `selected`, the full MapPin
                 // already in scope, exactly as before this screen used
-                // guestPinActionUrl.
-                const url = guestPinActionUrl(selected, {
+                // guestPinAction.
+                const { url, clickId } = guestPinAction(selected, {
                   selection: bookingSelection,
                   companySlug: brand.id,
                   guideSlug: guideSlug ?? undefined,
@@ -294,10 +302,15 @@ export default function GuestMapScreen({
                   recordGuestEvent({
                     eventType: "boat_book_click",
                     companyId,
+                    guideId,
                     boatTourId: selected.id,
                     platform: installPlatformToEventPlatform(
                       detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
                     ),
+                    // Same id as the booking URL's `ref` param — lets the
+                    // BoatLocal conversion webhook find this exact click.
+                    // See GuestPinAction's doc comment in guestActions.ts.
+                    metadata: clickId ? { clickId } : undefined,
                   }).catch(() => {});
                 }
                 window.open(url, "_blank", "noopener,noreferrer");

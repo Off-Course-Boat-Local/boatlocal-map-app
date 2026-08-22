@@ -20,11 +20,13 @@ import {
   getMapPins,
   getPlaces,
   getPlatformAnalyticsSummary,
+  findAttributedClick,
   getRecommendationsForStudio,
   inviteGuide,
   listBoatTourCatalog,
   listCompanies,
   reactivateGuide,
+  recordBookingOutcome,
   recordEvent,
   saveBoatTour,
   saveRecommendation,
@@ -123,6 +125,71 @@ describe("recordEvent", () => {
     await recordEvent({ eventType: "tip_viewed", companyId: COMPANY_ID, platform: "ios" });
     const summary = await getCompanyAnalyticsSummary({ role: "company", companyId: COMPANY_ID }, COMPANY_ID);
     expect(summary.find((r) => r.eventType === "tip_viewed")?.count).toBe(1);
+  });
+});
+
+describe("findAttributedClick — the BoatLocal webhook's click lookup", () => {
+  it("finds the boat_book_click event carrying this exact clickId", async () => {
+    await recordEvent({
+      eventType: "boat_book_click",
+      companyId: COMPANY_ID,
+      guideId: GUIDE_ID,
+      boatTourId: "sunset-canal",
+      metadata: { clickId: "bkl_abc" },
+    });
+
+    const click = await findAttributedClick("bkl_abc");
+    expect(click).toEqual({ companyId: COMPANY_ID, guideId: GUIDE_ID, boatTourId: "sunset-canal" });
+  });
+
+  it("returns null for a clickId that was never recorded", async () => {
+    expect(await findAttributedClick("bkl_never_happened")).toBeNull();
+  });
+
+  it("is not fooled by a different event type carrying the same-shaped metadata", async () => {
+    await recordEvent({ eventType: "tip_viewed", metadata: { clickId: "bkl_wrong_type" } });
+    expect(await findAttributedClick("bkl_wrong_type")).toBeNull();
+  });
+});
+
+describe("recordBookingOutcome — the BoatLocal webhook's write side", () => {
+  const CONFIRMED = {
+    clickId: "bkl_xyz",
+    bookingId: "BL-1",
+    event: "booking.confirmed" as const,
+    tourId: "sunset-canal",
+    guests: 2,
+    amountCents: 5600,
+    currency: "EUR",
+    bookedAt: "2026-08-20T18:00:00Z",
+  };
+
+  it("attributes a booking to the click's company/guide/tour and records it once", async () => {
+    await recordEvent({
+      eventType: "boat_book_click",
+      companyId: COMPANY_ID,
+      guideId: GUIDE_ID,
+      boatTourId: "sunset-canal",
+      metadata: { clickId: "bkl_xyz" },
+    });
+
+    const result = await recordBookingOutcome(CONFIRMED);
+    expect(result).toEqual({ inserted: true, attributed: true });
+
+    const summary = await getGuideAnalyticsSummary({ role: "guide", companyId: COMPANY_ID, guideId: GUIDE_ID }, GUIDE_ID);
+    expect(summary.find((r) => r.eventType === "booking_outcome")?.count).toBe(1);
+  });
+
+  it("still records an unattributed booking (null company/guide) rather than dropping it", async () => {
+    const result = await recordBookingOutcome({ ...CONFIRMED, clickId: "bkl_unknown" });
+    expect(result).toEqual({ inserted: true, attributed: false });
+  });
+
+  it("is idempotent on bookingId — a retried delivery doesn't double-record", async () => {
+    const first = await recordBookingOutcome(CONFIRMED);
+    const second = await recordBookingOutcome(CONFIRMED);
+    expect(first.inserted).toBe(true);
+    expect(second.inserted).toBe(false);
   });
 });
 

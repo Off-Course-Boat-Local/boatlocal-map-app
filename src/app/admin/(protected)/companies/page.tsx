@@ -9,11 +9,13 @@ import type { Metadata } from "next";
 
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
 import { setCompanyStatusAction } from "@/lib/admin/companyActions";
-import { mockCompanyPerformance } from "@/lib/admin/mockAnalytics";
+import { companyPerformance } from "@/lib/admin/analytics";
+import { getOwnerInvite } from "@/lib/admin/ownerInvite";
 import { getGuidesForCompany, listCompanies } from "@/lib/data/source";
 import type { CompanyStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
 import CreateCompanyForm from "@/components/admin/CreateCompanyForm";
+import OwnerInviteCell from "@/components/admin/OwnerInviteCell";
 import StatusBadge from "@/components/admin/StatusBadge";
 
 export const metadata: Metadata = { title: "Companies" };
@@ -68,11 +70,12 @@ export default async function AdminCompaniesPage() {
   const rows = await Promise.all(
     companies.map(async (company) => {
       const guides = await getGuidesForCompany(ADMIN_ACTOR, company.id);
-      // Placeholder performance numbers — see the comment on
-      // mockCompanyPerformance in src/lib/admin/mockAnalytics.ts (the fake
-      // store seeds zero events, so a real aggregation would read 0 for
-      // almost every tenant today).
-      const performance = mockCompanyPerformance(company.id);
+      // Real aggregation over `events` (src/lib/admin/analytics.ts).
+      const performance = await companyPerformance(company.id);
+      // Null once the owner has redeemed (owner_status='active') or if no
+      // invite was ever issued — so the recovery controls only appear while
+      // there is genuinely something pending.
+      const invite = await getOwnerInvite(company.id);
 
       return [
         company.name,
@@ -81,13 +84,16 @@ export default async function AdminCompaniesPage() {
         </span>,
         COMPANY_TYPE_LABELS[company.companyType] ?? company.companyType,
         company.ownerEmail ? (
-          <div key="owner" className="flex flex-col gap-1">
+          <div key="owner" className="flex flex-col gap-1.5">
             <span className="text-xs">{company.ownerEmail}</span>
             {company.ownerStatus ? (
               <StatusBadge
                 status={OWNER_STATUS_LABEL[company.ownerStatus]}
                 tone={OWNER_STATUS_TONE[company.ownerStatus]}
               />
+            ) : null}
+            {invite ? (
+              <OwnerInviteCell companyId={company.id} inviteUrl={invite.inviteUrl} />
             ) : null}
           </div>
         ) : (
@@ -124,9 +130,8 @@ export default async function AdminCompaniesPage() {
         {companies.length} tenant{companies.length === 1 ? "" : "s"} on the platform.
       </p>
       <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
-        App opens, tips saved and book clicks are placeholder numbers until real event volume
-        exists — see the comment on <code>mockCompanyPerformance</code> in
-        src/lib/admin/mockAnalytics.ts.
+        App opens, tips saved and book clicks are live counts from <code>events</code>, over the
+        last 30 days.
       </p>
 
       <CreateCompanyForm />

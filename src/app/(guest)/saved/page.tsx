@@ -20,6 +20,7 @@ export default async function SavedPage() {
     <GuestSavedScreen
       brand={brand}
       guideSlug={guide ? guideSlug : null}
+      guideId={guide?.id ?? null}
       companyId={companyId}
       pins={pins}
     />

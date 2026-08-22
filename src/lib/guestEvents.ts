@@ -14,9 +14,19 @@
 // (installing the app, tapping "book").
 
 import { recordEvent } from "./data/source";
+import { isPreviewRequest } from "./guestPreview";
 import type { NewEventInput } from "./data/types";
 
 export async function recordGuestEvent(input: NewEventInput): Promise<void> {
+  // Studio's preview renders the real guest app so it can be clicked
+  // through for real — which means the clicks arrive here looking exactly
+  // like a guest's. Drop them: a preview is not a visit, and counting it
+  // would inflate the very numbers the previewer is being shown elsewhere
+  // in Studio. This is the single analytics write path for anything a guest
+  // does (see this module's header), so suppressing here covers every
+  // screen without each one having to remember.
+  if (await isPreviewRequest()) return;
+
   try {
     await recordEvent(input);
   } catch {

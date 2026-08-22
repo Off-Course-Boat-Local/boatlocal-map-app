@@ -1,7 +1,7 @@
 // DEV-ONLY. Exercises the full click -> boatlocal.nl -> webhook round trip
-// with dummy data, without needing BoatLocal's real webhook or a live
-// database. This is the thing to hit when you want to SEE the attribution
-// flow work, not just read about it in docs/attribution.md.
+// against REAL data, without needing BoatLocal's real webhook. This is the
+// thing to hit when you want to SEE the attribution flow work, not just
+// read about it in docs/attribution.md.
 //
 // GET /api/dev/attribution-preview
 //
@@ -9,12 +9,23 @@
 // webhook using a secret pulled from the environment, and a preview
 // endpoint that can forge signed webhook calls has no business existing in
 // a deployed app.
+//
+// As of this change, "step 1" writes a REAL boat_book_click event (via
+// recordEvent, same as a genuine guest tap) instead of the old dummy
+// in-memory store — so this route now exercises the exact same code path a
+// real "Book this tour" tap does, start to finish, against whatever tenant
+// is seeded ("coastal"/"jan" below). Run `node scripts/verify-db.mjs`
+// afterwards to see the resulting rows in `events` directly.
 
 import { NextResponse } from "next/server";
 import { buildBookingUrl, createClickId } from "@/lib/attribution";
 import { signWebhookBody, TIMESTAMP_HEADER, SIGNATURE_HEADER } from "@/lib/attributionWebhook";
-import { recordClick, dangerouslyGetAllRecords } from "@/lib/attributionStore";
+import { findAttributedClick, getActiveCompanyRecord, getGuide, recordEvent } from "@/lib/data/source";
 import { POST as webhookHandler } from "@/app/api/webhooks/boatlocal-booking/route";
+
+const DEMO_COMPANY_SLUG = "coastal";
+const DEMO_GUIDE_SLUG = "jan";
+const DEMO_TOUR_ID = "sunset-canal";
 
 export async function GET() {
   if (process.env.NODE_ENV === "production") {
@@ -23,23 +34,30 @@ export async function GET() {
 
   const secret = process.env.BOATLOCAL_WEBHOOK_SECRET || "dev-preview-secret-not-for-real-use";
 
-  // Step 1 — a guest taps "Book this tour".
+  // Step 1 — a guest taps "Book this tour". Resolve the demo tenant's real
+  // ids exactly as guestServerContext.ts does, then record the same
+  // boat_book_click event GuestMapScreen's onAction fires for a real tap —
+  // this is the one thing making the webhook able to attribute anything.
+  const company = await getActiveCompanyRecord(DEMO_COMPANY_SLUG);
+  const guide = company ? await getGuide(company.id, DEMO_GUIDE_SLUG) : null;
+
   const clickId = createClickId();
-  const click = recordClick({
+  await recordEvent({
+    eventType: "boat_book_click",
+    companyId: company?.id ?? null,
+    guideId: guide?.id ?? null,
+    boatTourId: DEMO_TOUR_ID,
+    platform: "unknown",
+    metadata: { clickId },
+  });
+
+  const bookingUrl = buildBookingUrl({
+    tourId: DEMO_TOUR_ID,
     clickId,
-    tourId: "sunset-canal",
-    companySlug: "coastal",
-    guideSlug: "jan",
     date: "2026-08-20",
     guests: 2,
-  });
-  const bookingUrl = buildBookingUrl({
-    tourId: click.tourId,
-    clickId,
-    date: click.date,
-    guests: click.guests,
-    companySlug: click.companySlug,
-    guideSlug: click.guideSlug,
+    companySlug: DEMO_COMPANY_SLUG,
+    guideSlug: DEMO_GUIDE_SLUG,
   });
 
   // Step 2 — simulate BoatLocal's system calling us back once that booking
@@ -49,8 +67,8 @@ export async function GET() {
     event: "booking.confirmed",
     click_id: clickId,
     booking_id: `BL-DEMO-${Date.now()}`,
-    tour_id: click.tourId,
-    guests: click.guests,
+    tour_id: DEMO_TOUR_ID,
+    guests: 2,
     amount_cents: 5600,
     currency: "EUR",
     booked_at: new Date().toISOString(),
@@ -81,7 +99,13 @@ export async function GET() {
   const webhookResult = await webhookResponse.json();
 
   return NextResponse.json({
-    step1_guestTapsBook: { clickId, bookingUrl },
+    step1_guestTapsBook: {
+      clickId,
+      bookingUrl,
+      attributedTo: company
+        ? { companyId: company.id, companyName: company.name, guideId: guide?.id ?? null, guideName: guide?.name ?? null }
+        : { warning: `No company seeded at subdomain "${DEMO_COMPANY_SLUG}" — click was recorded unattributed.` },
+    },
     step2_boatlocalCallsWebhook: {
       body: JSON.parse(webhookBody),
       headers: { [TIMESTAMP_HEADER]: timestamp, [SIGNATURE_HEADER]: signature },
@@ -90,6 +114,8 @@ export async function GET() {
       status: webhookResponse.status,
       body: webhookResult,
     },
-    storeContents: dangerouslyGetAllRecords(),
+    // Re-reads the same lookup the webhook itself just used, so you can see
+    // this isn't a fluke of the response body — the click is really there.
+    verifiedInDatabase: await findAttributedClick(clickId),
   });
 }

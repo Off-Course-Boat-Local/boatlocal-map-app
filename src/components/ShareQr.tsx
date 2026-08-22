@@ -10,7 +10,7 @@
 // `toString({ type: "svg" })` respectively. Left off by default so the
 // guest-facing usages (the Welcome screen's "share with a travel companion",
 // the (guest) layout header) keep their current compact look; Studio's
-// Guides list, company QR, and a guide's own Link & QR page pass it.
+// Guides list, company QR, and a guide's own Profile page pass it.
 //
 // It encodes the page's own URL, so it is always correct — including the
 // company subdomain and the guide path — rather than a value someone has to

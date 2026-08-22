@@ -131,12 +131,25 @@ export default function CreateCompanyForm() {
             {state.error}
           </p>
         ) : null}
-        {state.success ? (
+        {/* The company was created either way — an invite that didn't send
+            is a warning, never an error, since re-submitting this form
+            would now collide on subdomain uniqueness. See
+            CreateCompanyActionState.inviteWarning. */}
+        {state.success && !state.inviteWarning ? (
           <p role="status" className="text-sm text-emerald-700">
-            Company created — find it in the list below.
+            Company created — invite sent to the owner.
           </p>
         ) : null}
       </div>
+
+      {state.success && state.inviteWarning ? (
+        <p
+          role="status"
+          className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          {state.inviteWarning}
+        </p>
+      ) : null}
     </form>
   );
 }
