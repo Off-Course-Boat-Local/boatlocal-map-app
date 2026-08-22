@@ -11,6 +11,7 @@
 // stay legible over any image. The only tinted affordance is the active dot,
 // which stays white for contrast.
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
@@ -155,16 +156,7 @@ export function PhotoGallery({
               onClick={() => goTo(index - 1)}
               style={{ ...arrow, left: 8 }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M15 5 8 12l7 7"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <ChevronLeft size={20} strokeWidth={2.2} aria-hidden />
             </button>
           )}
           {index < count - 1 && (
@@ -174,16 +166,7 @@ export function PhotoGallery({
               onClick={() => goTo(index + 1)}
               style={{ ...arrow, right: 8 }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="m9 5 7 7-7 7"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <ChevronRight size={20} strokeWidth={2.2} aria-hidden />
             </button>
           )}
 

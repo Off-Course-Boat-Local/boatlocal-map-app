@@ -2,11 +2,18 @@
 
 // One row of a guest list — used by both the List screen (all recommendations,
 // filterable) and the Saved screen (grouped by category). Same information
-// as a map PlaceCard reduced to list-row shape: a photo, name, address (area),
-// hours (or duration/price for a boat), a Book/Directions action, a save
+// as a map PlaceCard reduced to list-row shape: a photo, name, one merged
+// locator line (area · hours/price), a Book/Directions action, a save
 // toggle. Tapping anywhere on the row other than those two controls opens
 // GuestPlaceDetail (see onOpenDetail) — the full description + photo grid,
 // with the same primary action repeated near the top for a quick tap.
+//
+// LAYOUT (from the founder's UI audit): the photo is a left rail that
+// stretches the FULL height of the row, not a small floating square — the
+// old 56px thumbnail in a ~138px row left an L-shaped dead zone under the
+// image that read as broken proportion. Title is the sans face at 16px
+// (the serif is reserved for ≥22px display sizes — see src/lib/fonts.ts),
+// and the CTA + heart both meet the 44px minimum touch target.
 //
 // DELIBERATE OMISSION, same as PlaceCard: no star rating, no review count,
 // anywhere. The guide's note is the endorsement; a list row doesn't even
@@ -16,7 +23,7 @@
 import { CategoryGlyph } from "@/components/map/Pin";
 import { categoryColor } from "@/lib/categories";
 import { guestPinActionLabel } from "@/lib/guestActions";
-import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
+import { bodyFontFamily } from "@/lib/fonts";
 import type { MapPin } from "@/lib/data";
 import { SaveHeartButton } from "./SaveHeartButton";
 
@@ -61,8 +68,8 @@ export function GuestPlaceRow({
       }
       style={{
         display: "flex",
-        gap: 12,
-        alignItems: "flex-start",
+        gap: 14,
+        alignItems: "stretch",
         padding: "12px 16px",
         borderBottom: `1px solid ${BORDER}`,
         fontFamily: bodyFontFamily,
@@ -71,13 +78,15 @@ export function GuestPlaceRow({
         WebkitTapHighlightColor: "transparent",
       }}
     >
+      {/* Photo rail — stretches the full height of the row. */}
       <span
         aria-hidden="true"
         style={{
           flex: "0 0 auto",
-          width: 56,
-          height: 56,
-          borderRadius: 12,
+          alignSelf: "stretch",
+          width: 92,
+          minHeight: 96,
+          borderRadius: 14,
           overflow: "hidden",
           background: photo ? "#EDEEF1" : categoryColor(item.category),
           display: "flex",
@@ -93,19 +102,21 @@ export function GuestPlaceRow({
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         ) : (
-          <CategoryGlyph category={item.category} size={20} color="#FFFFFF" />
+          <CategoryGlyph category={item.category} size={24} color="#FFFFFF" />
         )}
       </span>
 
-      <div style={{ minWidth: 0, flex: "1 1 auto" }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", justifyContent: "space-between" }}>
+      <div style={{ minWidth: 0, flex: "1 1 auto", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", gap: 4, alignItems: "flex-start", justifyContent: "space-between" }}>
           <h3
             style={{
               margin: 0,
-              fontFamily: displayFontFamily,
-              fontWeight: 700,
+              paddingTop: 6,
+              fontFamily: bodyFontFamily,
+              fontWeight: 600,
               fontSize: 16,
-              lineHeight: "20px",
+              lineHeight: "21px",
+              letterSpacing: "-0.01em",
               color: INK,
               minWidth: 0,
               overflow: "hidden",
@@ -115,41 +126,32 @@ export function GuestPlaceRow({
           >
             {item.name}
           </h3>
-          <span onClick={(e) => e.stopPropagation()}>
+          <span onClick={(e) => e.stopPropagation()} style={{ margin: "-4px -10px 0 0" }}>
             <SaveHeartButton
               saved={saved}
               label={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
               onClick={onToggleSaved}
-              size={32}
             />
           </span>
         </div>
 
-        <p
-          style={{
-            margin: "2px 0 0",
-            fontSize: 12.5,
-            lineHeight: "17px",
-            color: MUTED,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {item.area}
-        </p>
+        {/* One merged locator line, not two stacked grey lines. Wraps up to
+            2 lines (line-clamp) rather than truncating with an ellipsis —
+            a real opening-hours string like "Mon–Sat 09:00–17:00, closed
+            Sundays" was getting cut off mid-word at a single nowrap line. */}
         <p
           style={{
             margin: "1px 0 0",
-            fontSize: 12.5,
-            lineHeight: "17px",
+            fontSize: 13,
+            lineHeight: "18px",
             color: MUTED,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
             overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
           }}
         >
-          {item.meta}
+          {[item.area, item.meta].filter(Boolean).join(" · ")}
         </p>
 
         <button
@@ -159,11 +161,12 @@ export function GuestPlaceRow({
             onAction();
           }}
           style={{
-            marginTop: 8,
-            height: 36,
-            padding: "0 14px",
-            borderRadius: 10,
-            fontSize: 13,
+            marginTop: "auto",
+            alignSelf: "flex-start",
+            height: 44,
+            padding: "0 18px",
+            borderRadius: 12,
+            fontSize: 14,
             fontWeight: 600,
             fontFamily: bodyFontFamily,
             cursor: "pointer",

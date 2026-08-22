@@ -32,6 +32,9 @@ const HEAD_R = 11.5;
 /** Tip of the teardrop (the exact coordinate). */
 const TIP_Y = 42;
 
+/** Rendered edge length of the glyph inside the pin head (24 x the old 0.625 scale). */
+const GLYPH_BOX = 15;
+
 /**
  * Classic map-pin silhouette: a full circle head that tapers into a point.
  * Drawn tip-first so the two flanks are symmetric cubics.
@@ -59,8 +62,10 @@ export interface CategoryGlyphProps {
 }
 
 /**
- * The 24x24 category glyph, standalone. Used by the pin, the filter pills and
- * anywhere else that needs the category mark.
+ * The category glyph, standalone — the category's Lucide icon. Used by the
+ * pin, the filter pills and anywhere else that needs the category mark.
+ * Stroke width leans heavy (2.25) because these render small (14–20px),
+ * where Lucide's default 2 starts to thin out.
  */
 export function CategoryGlyph({
   category,
@@ -68,21 +73,18 @@ export function CategoryGlyph({
   color = "currentColor",
   className,
 }: CategoryGlyphProps) {
-  const glyph = CATEGORY_MAP[category]?.glyph;
-  if (!glyph) return null;
+  const Icon = CATEGORY_MAP[category]?.glyph;
+  if (!Icon) return null;
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      fill={color}
+    <Icon
+      size={size}
+      color={color}
+      strokeWidth={2.25}
       aria-hidden="true"
       focusable="false"
       className={className}
       style={{ display: "block", flexShrink: 0 }}
-    >
-      <path d={glyph} />
-    </svg>
+    />
   );
 }
 
@@ -116,6 +118,7 @@ export function Pin({
   style,
 }: PinProps) {
   const color = categoryColor(category);
+  const GlyphIcon = CATEGORY_MAP[category]?.glyph;
   const width = size;
   const height = (size * VB_H) / VB_W;
 
@@ -203,14 +206,22 @@ export function Pin({
             strokeWidth={2}
             strokeLinejoin="round"
           />
-          {/* Glyph, centred in the round part of the head. */}
-          <g
-            transform={`translate(${HEAD_CX - 12 * 0.625} ${
-              HEAD_CY - 12 * 0.625
-            }) scale(0.625)`}
-          >
-            <path d={CATEGORY_MAP[category]?.glyph ?? ""} fill="#FFFFFF" />
-          </g>
+          {/* Glyph, centred in the round part of the head. A nested <svg> is
+              valid SVG, and Lucide passes x/y/width/height straight through
+              to its root element — stroke leans heavy (2.5) because the icon
+              draws ~15px tall here, where the default 2 thins out. */}
+          {GlyphIcon ? (
+            <GlyphIcon
+              x={HEAD_CX - GLYPH_BOX / 2}
+              y={HEAD_CY - GLYPH_BOX / 2}
+              width={GLYPH_BOX}
+              height={GLYPH_BOX}
+              color="#FFFFFF"
+              strokeWidth={2.5}
+              aria-hidden="true"
+              focusable="false"
+            />
+          ) : null}
           {/* Faint highlight so the head reads as a dome, not a flat disc. */}
           <circle
             cx={HEAD_CX}

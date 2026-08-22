@@ -108,22 +108,32 @@ export default function GuestReviewScreen({
   const placeholderNotice = reviewOptions.find((option) => option.isPlaceholder);
 
   return (
-    <div className="no-scrollbar flex h-full flex-col gap-7 overflow-y-auto px-6 pb-6 pt-8">
-      {/* Branded ask -------------------------------------------------- */}
-      <div className="text-center">
-        <p
-          className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: MUTED, fontFamily: bodyFontFamily }}
-        >
-          Your trip
-        </p>
-        <h1
-          className="mt-1 text-2xl leading-snug"
-          style={{ color: INK, fontFamily: displayFontFamily }}
-        >
-          Did you enjoy your experience with {companyName}?
-        </h1>
-      </div>
+    <div
+      className="no-scrollbar flex h-full flex-col overflow-y-auto px-6"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
+      {/* `my-auto` (not justify-center on the scroller) vertically centres
+          the ask when there's room, and degrades to normal top-aligned
+          scrolling when there isn't — justify-center on an overflowing flex
+          container clips its top edge unreachably. The audit flagged this
+          screen's old top-stacked layout: content in the top third, then a
+          dead two-thirds of blank white before a floating "Maybe later". */}
+      <div className="my-auto flex flex-col gap-7 py-8">
+        {/* Branded ask ------------------------------------------------ */}
+        <div className="text-center">
+          <p
+            className="text-xs font-semibold uppercase tracking-widest"
+            style={{ color: MUTED, fontFamily: bodyFontFamily }}
+          >
+            Your trip
+          </p>
+          <h1
+            className="mx-auto mt-2 max-w-sm text-[26px] leading-snug"
+            style={{ color: INK, fontFamily: displayFontFamily }}
+          >
+            Did you enjoy your experience with {companyName}?
+          </h1>
+        </div>
 
       {/* Public review link(s) — flow (a) ------------------------------ */}
       <div className="flex flex-col gap-2">
@@ -247,8 +257,12 @@ export default function GuestReviewScreen({
         )}
       </div>
 
-      {/* Soft skip ------------------------------------------------------ */}
-      <div className="mt-auto pb-2 text-center">
+      {/* Soft skip — kept INSIDE the centred block (not a separate flex
+          child) so it sits right under the buttons as one visual group,
+          instead of the auto-margin centring leaving a second dead gap
+          between the buttons and a "Maybe later" stranded near the tab
+          bar. */}
+      <div className="text-center">
         <Link
           href={mapHref}
           className="text-sm font-semibold"
@@ -261,6 +275,7 @@ export default function GuestReviewScreen({
         >
           Maybe later
         </Link>
+      </div>
       </div>
     </div>
   );

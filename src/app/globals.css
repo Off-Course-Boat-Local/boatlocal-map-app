@@ -45,3 +45,32 @@ body {
   width: 0;
   height: 0;
 }
+
+/* Tailwind v4's Preflight — unlike v3's — no longer maps `button` to
+   `cursor: pointer`, it leaves the CSS-spec default of `cursor: auto`
+   (which resolves to the arrow). That silently turned every unstyled
+   button in Studio/Admin into an arrow-cursor control: verified in the
+   browser, 16 of the 36 buttons on /studio/recommendations alone computed
+   `cursor: default`, with the rest only reading as pointer because some
+   components happened to set `cursor-pointer` themselves.
+   Restoring it here — at the base layer, once — is deliberately preferred
+   over sprinkling `cursor-pointer` onto individual components: the next
+   button anyone adds is then correct by default rather than correct only
+   if they remember. `:disabled` is excluded so a disabled control keeps
+   reading as non-interactive; `[role="button"]`/`summary` are included
+   because they are clickable for the same reason a <button> is. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]),
+  label:has(> input[type="file"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}

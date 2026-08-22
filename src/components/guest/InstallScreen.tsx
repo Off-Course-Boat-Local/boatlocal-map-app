@@ -62,6 +62,29 @@ function getStandaloneServerSnapshot(): boolean {
   return false;
 }
 
+/**
+ * True for a mouse/trackpad-driven browser — what the "scan this QR code
+ * with your phone's camera" fallback actually assumes about the reader.
+ *
+ * NOT the same question as `platform === "other"`. That only means
+ * "detectInstallPlatform's UA regexes didn't match iOS or Android" — which
+ * also catches a real guest on some other/unusual mobile browser. Telling
+ * that guest to "scan this with your phone's camera" makes no sense; they
+ * ARE the phone. `(hover: hover) and (pointer: fine)` is the standard test
+ * for "the primary input can hover and is precise" — true for a mouse,
+ * false for anything touch-primary, which is the actual desktop/phone line
+ * the QR fallback needs, not platform detection's three-way UA guess.
+ */
+function isDesktopPointer(): boolean {
+  return window.matchMedia?.("(hover: hover) and (pointer: fine)").matches === true;
+}
+function getDesktopPointerSnapshot(): boolean {
+  return isDesktopPointer();
+}
+function getDesktopPointerServerSnapshot(): boolean {
+  return false;
+}
+
 export interface InstallScreenProps {
   brand: Brand;
   companyId: string | null;
@@ -77,6 +100,11 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
     noopSubscribe,
     getStandaloneSnapshot,
     getStandaloneServerSnapshot,
+  );
+  const isDesktop = useSyncExternalStore(
+    noopSubscribe,
+    getDesktopPointerSnapshot,
+    getDesktopPointerServerSnapshot,
   );
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
@@ -121,21 +149,30 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
 
   return (
     <div
-      className="no-scrollbar flex h-full flex-col overflow-y-auto px-6 pb-8 pt-8 text-center"
-      style={{ fontFamily: bodyFontFamily, color: INK }}
+      className="no-scrollbar flex h-full flex-col overflow-y-auto px-6 text-center"
+      style={{
+        fontFamily: bodyFontFamily,
+        color: INK,
+        paddingTop: "env(safe-area-inset-top)",
+      }}
     >
-      <h1
-        className="text-2xl leading-tight"
-        style={{ fontFamily: displayFontFamily }}
-      >
-        Install {brand.appName}
-      </h1>
-      <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed" style={{ color: MUTED }}>
-        Add it to your home screen — it opens straight to the map, no app
-        store needed.
-      </p>
+      {/* `my-auto` vertically centres the block when there's room and
+          degrades to normal scrolling when there isn't — same rebalance as
+          GuestReviewScreen (the audit flagged both screens' old
+          content-in-the-top-third, dead-space-below layout). */}
+      <div className="my-auto py-8">
+        <h1
+          className="text-[26px] leading-tight"
+          style={{ fontFamily: displayFontFamily }}
+        >
+          Install {brand.appName}
+        </h1>
+        <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed" style={{ color: MUTED }}>
+          Add it to your home screen — it opens straight to the map, no app
+          store needed.
+        </p>
 
-      <div className="mx-auto mt-8 w-full max-w-xs">
+        <div className="mx-auto mt-8 w-full max-w-xs">
         {standalone || justInstalled ? (
           <StatusCard tone="success">
             {justInstalled
@@ -149,13 +186,29 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
             canOneTap={deferredPrompt !== null}
             onInstall={handleOneTapInstall}
           />
-        ) : (
+        ) : isDesktop ? (
+          // Only a genuine mouse/trackpad browser gets told to scan a QR
+          // code with "your phone's camera" — that instruction assumes the
+          // reader isn't holding a phone. See isDesktopPointer's doc
+          // comment for why `platform === "other"` alone isn't a safe
+          // enough signal for that assumption (it also matches a real
+          // guest on some other/unusual mobile browser).
           <StatusCard tone="neutral">
             This works best on a phone. Scan the QR code in the panel beside
             this screen with your phone&rsquo;s camera, then install it from
             there.
           </StatusCard>
+        ) : (
+          // A touch-primary device we couldn't specifically classify as
+          // iOS or Android — still a phone/tablet, so generic (not
+          // "scan with your phone") instructions.
+          <StatusCard tone="neutral">
+            Open your browser&rsquo;s menu and look for &ldquo;Add to Home
+            Screen&rdquo; or &ldquo;Install app&rdquo; to add {brand.appName}{" "}
+            here.
+          </StatusCard>
         )}
+        </div>
       </div>
     </div>
   );

@@ -10,10 +10,11 @@
 // (the "Book this tour" fill and the saved-heart fill). Nothing else here
 // changes when the skin changes.
 
+import { Heart, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { CategoryId } from "@/lib/types";
-import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
+import { bodyFontFamily } from "@/lib/fonts";
 import { PhotoGallery } from "./PhotoGallery";
 
 /* Neutral chrome — never re-skins. */
@@ -191,15 +192,7 @@ export function PlaceCard({
             touchAction: "manipulation",
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M6 6l12 12M18 6L6 18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-          </svg>
+          <X size={17} strokeWidth={2.1} aria-hidden />
         </button>
       )}
 
@@ -284,15 +277,18 @@ export function PlaceCard({
         )}
 
         <div style={{ minWidth: 0, flex: "1 1 auto", paddingRight: onClose ? 28 : 0 }}>
+          {/* Sans, not the serif: 19px is below the display face's ~22px
+              floor (src/lib/fonts.ts) — bold serif at this size was one of
+              the audit's "gappy word spacing" complaints. */}
           <h2
             id={titleId}
             style={{
               margin: 0,
-              fontFamily: displayFontFamily,
-              fontWeight: 700,
-              fontSize: 19,
-              lineHeight: "24px",
-              letterSpacing: "-0.01em",
+              fontFamily: bodyFontFamily,
+              fontWeight: 650,
+              fontSize: 17.5,
+              lineHeight: "23px",
+              letterSpacing: "-0.015em",
               color: INK,
               display: "-webkit-box",
               WebkitLineClamp: 2,
@@ -385,15 +381,13 @@ export function PlaceCard({
             border: `1px solid ${isSaved ? "var(--brand-primary)" : BORDER}`,
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M12 20.4 4.6 13a4.8 4.8 0 0 1 6.8-6.8l.6.6.6-.6A4.8 4.8 0 0 1 19.4 13L12 20.4Z"
-              fill={isSaved ? "var(--brand-primary)" : "none"}
-              stroke={isSaved ? "var(--brand-primary)" : "#9AA0A9"}
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Heart
+            size={20}
+            strokeWidth={1.9}
+            color={isSaved ? "var(--brand-primary)" : "#9AA0A9"}
+            fill={isSaved ? "var(--brand-primary)" : "none"}
+            aria-hidden
+          />
         </button>
       </div>
     </section>

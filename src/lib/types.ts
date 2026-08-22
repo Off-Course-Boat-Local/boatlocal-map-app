@@ -1,6 +1,8 @@
 // Boat Local Map App — shared types for the map spike.
 // These mirror the PRD §12 data model, trimmed to what the spike needs.
 
+import type { LucideIcon } from "lucide-react";
+
 export type CategoryId =
   | "boats"
   | "breakfast"
@@ -16,8 +18,12 @@ export interface Category {
   label: string;
   /** Pin fill colour. Categories keep their own colour across all brands. */
   color: string;
-  /** Inline SVG path data for the glyph, drawn in a 24x24 viewBox. */
-  glyph: string;
+  /**
+   * The category's Lucide icon component (was hand-drawn SVG path data
+   * before the founder's UI audit — Lucide is the one icon language across
+   * the whole product now, same set the portal sidebars use).
+   */
+  glyph: LucideIcon;
 }
 
 export interface Brand {
@@ -66,6 +72,16 @@ export interface BoatTour {
 }
 
 export interface Guide {
+  /**
+   * The real guide id (GuideRecord.id) — optional because the map spike's
+   * demo data (src/lib/data.ts's GUIDE constant) has no backing row to draw
+   * one from. Every real guest request resolves this via getGuide() ->
+   * toGuideView() (src/lib/data/source.ts), which always sets it. Needed so
+   * the guest screens can attribute a "boat_book_click"/"app_open" event to
+   * this specific guide, not just the company — see GuestPinAction's doc
+   * comment in src/lib/guestActions.ts for why that matters.
+   */
+  id?: string;
   name: string;
   slug: string;
   welcome: string;

@@ -9,11 +9,10 @@ const place = ALL_PINS.find((p) => p.id === "cafe-de-jaren")!;
 const boat = ALL_PINS.find((p) => p.id === "sunset-canal")!;
 
 describe("GuestPlaceRow", () => {
-  it("shows name, area and meta (hours/price)", () => {
+  it("shows name, area and meta (hours/price) as one merged locator line", () => {
     render(<GuestPlaceRow item={place} saved={false} onToggleSaved={() => {}} onAction={() => {}} />);
     expect(screen.getByText(place.name)).toBeInTheDocument();
-    expect(screen.getByText(place.area)).toBeInTheDocument();
-    expect(screen.getByText(place.meta)).toBeInTheDocument();
+    expect(screen.getByText(`${place.area} · ${place.meta}`)).toBeInTheDocument();
   });
 
   it("never renders a star rating", () => {

@@ -9,7 +9,7 @@ const place = ALL_PINS.find((p) => p.id === "cafe-de-jaren")!;
 const boat = ALL_PINS.find((p) => p.id === "sunset-canal")!;
 
 describe("GuestPlaceDetail", () => {
-  it("shows the name, full note, and every photo (hero + grid)", () => {
+  it("shows the name, full note, and every photo in the swipeable hero gallery", () => {
     const { container } = render(
       <GuestPlaceDetail item={place} saved={false} onToggleSaved={() => {}} onAction={() => {}} onClose={() => {}} />,
     );
@@ -62,13 +62,15 @@ describe("GuestPlaceDetail", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("opens the full-screen photo lightbox when a grid photo is tapped", async () => {
+  it("opens the full-screen photo lightbox from the hero gallery's expand button", async () => {
     render(
       <GuestPlaceDetail item={place} saved={false} onToggleSaved={() => {}} onAction={() => {}} onClose={() => {}} />,
     );
     expect(screen.queryByRole("dialog", { name: `${place.name} photos` })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Show photo 2 of 3" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: `View ${place.photos.length} photos of ${place.name} full-screen` }),
+    );
     expect(screen.getByRole("dialog", { name: `${place.name} photos` })).toBeInTheDocument();
   });
 });

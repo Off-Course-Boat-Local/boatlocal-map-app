@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Hanken_Grotesk } from "next/font/google";
 import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
@@ -27,6 +27,17 @@ const hankenGrotesk = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "Map App",
   description: "A white-labelled local guide app, with Boat Local tours always one tap away.",
+};
+
+// `viewportFit: "cover"` is load-bearing, not cosmetic: every
+// `env(safe-area-inset-*)` in the app (GuestBottomNav's bottom padding,
+// GuestPlaceDetail's scroller) resolves to 0 unless the viewport meta says
+// cover — which is why the tab bar used to sit flush against the iPhone
+// home indicator and read as cramped/cut off.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
