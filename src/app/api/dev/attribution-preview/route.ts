@@ -31,6 +31,11 @@ import { POST as webhookHandler } from "@/app/api/webhooks/boatlocal-booking/rou
 const DEMO_COMPANY_ID = "11111111-1111-1111-1111-111111111111";
 const DEMO_GUIDE_SLUG = "jan";
 const DEMO_TOUR_ID = "sunset-canal";
+// A stand-in for the tour's own boat_tours.booking_url — BoatLocal's
+// catalogue feed, not Map App, owns this value for real; see
+// buildBookingUrl's doc comment in src/lib/attribution.ts for why there's no
+// fixed base to build one from any more.
+const DEMO_BOOKING_URL = "https://boatlocal.nl/cruise/sunset-canal-cruise";
 
 export async function GET() {
   if (process.env.NODE_ENV === "production") {
@@ -57,7 +62,7 @@ export async function GET() {
   });
 
   const bookingUrl = buildBookingUrl({
-    tourId: DEMO_TOUR_ID,
+    bookingUrl: DEMO_BOOKING_URL,
     clickId,
     date: "2026-08-20",
     guests: 2,

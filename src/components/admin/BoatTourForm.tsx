@@ -162,10 +162,10 @@ export default function BoatTourForm({
           className={inputClass}
         />
         <span className="mt-1 block text-xs text-[var(--admin-ink-soft)]">
-          The tour&rsquo;s canonical boatlocal.nl page. A guest&rsquo;s actual
-          &ldquo;Book&rdquo; tap builds its own tracked link at click time
-          (tour + campaign params); this is what marks the tour bookable and
-          where the booking really lives.
+          The tour&rsquo;s real boatlocal.nl booking page. A guest&rsquo;s
+          actual &ldquo;Book&rdquo; tap appends tracking params (date, guests,
+          campaign, etc.) onto this exact URL — it&rsquo;s the real redirect
+          target, not just a reference link.
         </span>
       </label>
 

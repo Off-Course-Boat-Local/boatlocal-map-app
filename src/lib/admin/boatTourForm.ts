@@ -25,12 +25,16 @@
 // "Price & duration" — one field, one source of truth, matching the
 // existing convention exactly.
 //
-// NOTE on "booking URL": see saveBoatTour's own comment in
-// src/lib/data/source.ts for why this field's *contents* aren't actually
-// what the guest is redirected to at booking time (that's built fresh by
-// src/lib/attribution.ts). It's still a required, validated field here —
-// the tour's canonical boatlocal.nl reference URL, and the flag that marks
-// a pin as bookable at all.
+// NOTE on "booking URL": this field IS what the guest is ultimately
+// redirected to — src/lib/attribution.ts's buildBookingUrl appends tracking
+// params (ref/date/guests/company/distributor/src) onto exactly this URL at
+// click time, rather than building a redirect from some other fixed base
+// (see that function's own doc comment for why). For a tour synced from
+// BoatLocal's catalogue feed (src/lib/data/source.ts's
+// syncCruiseFromBoatLocal), this gets written automatically from their
+// `booking_url` and an admin never needs to touch it here; for a manually
+// admin-curated tour, it's still a required, validated field — the flag
+// that marks a pin as bookable at all.
 
 import type { BoatTourStatus, SaveBoatTourInput } from "../data/types";
 

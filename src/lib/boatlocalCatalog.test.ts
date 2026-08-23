@@ -1,0 +1,108 @@
+import { describe, expect, it } from "vitest";
+
+import { parseBoatLocalCruise, parseCruiseDeactivatedPayload } from "./boatlocalCatalog";
+
+const VALID_CRUISE = {
+  id: 1,
+  fareharbor_pk: 85146,
+  slug: "shared-old-city-center-boat-tour",
+  name: "Amsterdam Boat Tour of the Old City Center",
+  cruise_type: "shared",
+  cruise_duration: "1 hour & 30 mins",
+  starting_price: 29,
+  currency: "EUR",
+  max_participants: 12,
+  company_shortname: "offcourse",
+  images: ["https://example.com/photo.jpg"],
+  booking_url: "https://boatlocal.nl/cruise/shared-old-city-center-boat-tour",
+  active: true,
+  updated_at: "2026-08-23T09:00:00Z",
+};
+
+describe("parseBoatLocalCruise", () => {
+  it("maps a valid catalogue entry to the camelCase BoatLocalCruise shape", () => {
+    const parsed = parseBoatLocalCruise(VALID_CRUISE);
+    expect(parsed).toEqual({
+      id: 1,
+      fareharborPk: 85146,
+      slug: "shared-old-city-center-boat-tour",
+      name: "Amsterdam Boat Tour of the Old City Center",
+      cruiseType: "shared",
+      cruiseDuration: "1 hour & 30 mins",
+      startingPrice: 29,
+      currency: "EUR",
+      images: ["https://example.com/photo.jpg"],
+      bookingUrl: "https://boatlocal.nl/cruise/shared-old-city-center-boat-tour",
+      active: true,
+      updatedAt: "2026-08-23T09:00:00Z",
+    });
+  });
+
+  it("returns null for non-object input", () => {
+    expect(parseBoatLocalCruise(null)).toBeNull();
+    expect(parseBoatLocalCruise("nope")).toBeNull();
+    expect(parseBoatLocalCruise(42)).toBeNull();
+  });
+
+  it("rejects when id/name/booking_url/active are missing or the wrong type", () => {
+    for (const field of ["id", "name", "booking_url", "active"]) {
+      const broken = { ...VALID_CRUISE };
+      delete (broken as Record<string, unknown>)[field];
+      expect(parseBoatLocalCruise(broken), `${field} missing`).toBeNull();
+    }
+  });
+
+  it("tolerates a null/absent fareharbor_pk or slug rather than rejecting the whole row", () => {
+    const parsed = parseBoatLocalCruise({ ...VALID_CRUISE, fareharbor_pk: null, slug: null });
+    expect(parsed?.fareharborPk).toBeNull();
+    expect(parsed?.slug).toBeNull();
+  });
+
+  it("defaults images to an empty array rather than rejecting when absent", () => {
+    const rest: Partial<typeof VALID_CRUISE> = { ...VALID_CRUISE };
+    delete rest.images;
+    const parsed = parseBoatLocalCruise(rest);
+    expect(parsed?.images).toEqual([]);
+  });
+});
+
+describe("parseCruiseDeactivatedPayload", () => {
+  const VALID_PAYLOAD = {
+    event: "cruise.deactivated",
+    cruise: { id: 1, slug: "shared-old-city-center-boat-tour", fareharbor_pk: 85146 },
+    reason: "removed_from_fareharbor",
+    occurred_at: "2026-08-24T03:02:00Z",
+  };
+
+  it("parses the deliberately-smaller cruise.deactivated shape", () => {
+    const parsed = parseCruiseDeactivatedPayload(VALID_PAYLOAD);
+    expect(parsed).toEqual({
+      cruise: { id: 1, slug: "shared-old-city-center-boat-tour", fareharborPk: 85146 },
+      reason: "removed_from_fareharbor",
+    });
+  });
+
+  it("is not fooled into requiring the full catalogue shape (name/booking_url/active absent here)", () => {
+    // If this ever accidentally ran through parseBoatLocalCruise, it would
+    // be rejected for missing name/booking_url/active — this proves the two
+    // parsers really are independent.
+    expect(parseCruiseDeactivatedPayload(VALID_PAYLOAD)).not.toBeNull();
+  });
+
+  it("returns null when cruise.id is missing or the wrong type", () => {
+    expect(
+      parseCruiseDeactivatedPayload({ ...VALID_PAYLOAD, cruise: { slug: "x", fareharbor_pk: 1 } }),
+    ).toBeNull();
+  });
+
+  it("tolerates a missing reason (null, not a throw)", () => {
+    const rest: Partial<typeof VALID_PAYLOAD> = { ...VALID_PAYLOAD };
+    delete rest.reason;
+    expect(parseCruiseDeactivatedPayload(rest)?.reason).toBeNull();
+  });
+
+  it("returns null for non-object input or a missing cruise field", () => {
+    expect(parseCruiseDeactivatedPayload(null)).toBeNull();
+    expect(parseCruiseDeactivatedPayload({ reason: "admin_disabled" })).toBeNull();
+  });
+});

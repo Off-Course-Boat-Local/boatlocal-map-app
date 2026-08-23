@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BRANDS } from "../brand";
 import { BOAT_TOURS, GUIDE, PLACES } from "../data";
+import type { BoatLocalCruise } from "./types";
 import { resetFakeStore } from "./fakeStore";
 import {
   createCompany,
+  deactivateBoatLocalCruise,
   deactivateGuide,
   deleteBoatTour,
   deleteCompany,
@@ -27,6 +29,7 @@ import {
   listBoatTourCatalog,
   listCompanies,
   reactivateGuide,
+  reconcileBoatLocalCatalog,
   recordBookingOutcome,
   recordEvent,
   saveBoatTour,
@@ -35,6 +38,7 @@ import {
   setBoatTourPosition,
   setCompanyStatus,
   setGuideStatus,
+  syncCruiseFromBoatLocal,
   updateCompanyBranding,
   updateGuideProfile,
 } from "./source";
@@ -176,7 +180,10 @@ describe("recordBookingOutcome — the BoatLocal webhook's write side", () => {
     const result = await recordBookingOutcome(CONFIRMED);
     expect(result).toEqual({ inserted: true, attributed: true });
 
-    const summary = await getGuideAnalyticsSummary({ role: "guide", companyId: COMPANY_ID, guideId: GUIDE_ID }, GUIDE_ID);
+    // Booking outcomes are admin-only (see the "booking_outcome is admin-only"
+    // describe block below) — an admin actor is the only one who can still
+    // see this count via getGuideAnalyticsSummary.
+    const summary = await getGuideAnalyticsSummary({ role: "admin" }, GUIDE_ID);
     expect(summary.find((r) => r.eventType === "booking_outcome")?.count).toBe(1);
   });
 
@@ -185,13 +192,424 @@ describe("recordBookingOutcome — the BoatLocal webhook's write side", () => {
     expect(result).toEqual({ inserted: true, attributed: false });
   });
 
-  it("is idempotent on bookingId — a retried delivery doesn't double-record", async () => {
+  it("is idempotent on (bookingId, event) — a retried delivery doesn't double-record", async () => {
     const first = await recordBookingOutcome(CONFIRMED);
     const second = await recordBookingOutcome(CONFIRMED);
     expect(first.inserted).toBe(true);
     expect(second.inserted).toBe(false);
   });
+
+  it("still records a cancellation for a bookingId that was already confirmed, as its own event — not dropped as a duplicate", async () => {
+    const confirmed = await recordBookingOutcome(CONFIRMED);
+    expect(confirmed.inserted).toBe(true);
+
+    const cancelled = await recordBookingOutcome({ ...CONFIRMED, event: "booking.cancelled" });
+    // This is the exact bug decision 2 fixed: a bookingId-only dedup key
+    // would have reported `inserted: false` here, silently dropping the
+    // cancellation as if it were a retried delivery of the confirmation.
+    expect(cancelled.inserted).toBe(true);
+  });
+
+  it("a retried cancellation still dedupes against itself, not against the earlier confirmation", async () => {
+    await recordBookingOutcome(CONFIRMED);
+    const first = await recordBookingOutcome({ ...CONFIRMED, event: "booking.cancelled" });
+    const second = await recordBookingOutcome({ ...CONFIRMED, event: "booking.cancelled" });
+    expect(first.inserted).toBe(true);
+    expect(second.inserted).toBe(false);
+  });
+
+  it("a confirmed+cancelled pair for the same booking nets to zero in an admin-facing sum", async () => {
+    await recordEvent({
+      eventType: "boat_book_click",
+      companyId: COMPANY_ID,
+      guideId: GUIDE_ID,
+      boatTourId: "sunset-canal",
+      metadata: { clickId: "bkl_xyz" },
+    });
+    await recordBookingOutcome(CONFIRMED);
+    await recordBookingOutcome({ ...CONFIRMED, event: "booking.cancelled" });
+
+    const summary = await getGuideAnalyticsSummary({ role: "admin" }, GUIDE_ID);
+    // No row at all (net zero), not a row with count 0 — the Map<> in the
+    // fakeStore branch (and the real SQL's group-by) never creates an entry
+    // whose count happens to sum to zero, it just nets within the one it
+    // already has. Either way, summing it reads as zero.
+    const bookingRow = summary.find((r) => r.eventType === "booking_outcome");
+    expect(bookingRow?.count ?? 0).toBe(0);
+  });
+
+  describe("fallback attribution via echoed source_company/source_distributor", () => {
+    it("attributes to the echoed company when the clickId doesn't resolve", async () => {
+      const result = await recordBookingOutcome({
+        ...CONFIRMED,
+        clickId: "bkl_never_recorded",
+        bookingId: "BL-fallback-1",
+        sourceCompany: COMPANY_ID,
+      });
+      expect(result).toEqual({ inserted: true, attributed: true });
+
+      const summary = await getCompanyAnalyticsSummary({ role: "admin" }, COMPANY_ID);
+      expect(summary.find((r) => r.eventType === "booking_outcome")?.count).toBe(1);
+    });
+
+    it("also attributes the guide when source_distributor resolves under that company", async () => {
+      const result = await recordBookingOutcome({
+        ...CONFIRMED,
+        clickId: "bkl_never_recorded",
+        bookingId: "BL-fallback-2",
+        sourceCompany: COMPANY_ID,
+        sourceDistributor: GUIDE_ID,
+      });
+      expect(result).toEqual({ inserted: true, attributed: true });
+
+      const summary = await getGuideAnalyticsSummary({ role: "admin" }, GUIDE_ID);
+      expect(summary.find((r) => r.eventType === "booking_outcome")?.count).toBe(1);
+    });
+
+    it("never trusts an echoed company id that doesn't resolve to a real company", async () => {
+      const result = await recordBookingOutcome({
+        ...CONFIRMED,
+        clickId: "bkl_never_recorded",
+        bookingId: "BL-fallback-3",
+        sourceCompany: "not-a-real-company",
+      });
+      expect(result).toEqual({ inserted: true, attributed: false });
+    });
+
+    it("drops (not rejects) an echoed guide id that doesn't resolve under the echoed company, keeping company-level attribution", async () => {
+      const result = await recordBookingOutcome({
+        ...CONFIRMED,
+        clickId: "bkl_never_recorded",
+        bookingId: "BL-fallback-4",
+        sourceCompany: COMPANY_ID,
+        sourceDistributor: "not-a-real-guide",
+      });
+      // Still attributed (to the company) — a bad guide id doesn't sink the
+      // whole fallback, per resolveFallbackAttribution's own doc comment.
+      expect(result).toEqual({ inserted: true, attributed: true });
+
+      const companySummary = await getCompanyAnalyticsSummary({ role: "admin" }, COMPANY_ID);
+      expect(companySummary.find((r) => r.eventType === "booking_outcome")?.count).toBe(1);
+    });
+
+    it("does not consult fallback attribution at all when the clickId already resolved", async () => {
+      await recordEvent({
+        eventType: "boat_book_click",
+        companyId: COMPANY_ID,
+        guideId: GUIDE_ID,
+        boatTourId: "sunset-canal",
+        metadata: { clickId: "bkl_xyz" },
+      });
+      // sourceCompany intentionally points at a DIFFERENT (nonexistent)
+      // company — if this were consulted, resolveFallbackAttribution
+      // wouldn't even find it, but findAttributedClick should already have
+      // succeeded first and short-circuited the fallback entirely.
+      const result = await recordBookingOutcome({
+        ...CONFIRMED,
+        bookingId: "BL-fallback-5",
+        sourceCompany: "not-a-real-company",
+      });
+      expect(result).toEqual({ inserted: true, attributed: true });
+    });
+  });
 });
+
+describe("booking_outcome is admin-only (RLS-mirroring exclusion in the fakeStore branch)", () => {
+  beforeEach(async () => {
+    await recordEvent({
+      eventType: "boat_book_click",
+      companyId: COMPANY_ID,
+      guideId: GUIDE_ID,
+      boatTourId: "sunset-canal",
+      metadata: { clickId: "bkl_admin_only" },
+    });
+    await recordBookingOutcome({
+      clickId: "bkl_admin_only",
+      bookingId: "BL-admin-only-1",
+      event: "booking.confirmed",
+      tourId: "sunset-canal",
+      guests: 2,
+      amountCents: 5600,
+      currency: "EUR",
+      bookedAt: "2026-08-20T18:00:00Z",
+    });
+  });
+
+  it("a company actor never sees a booking_outcome row for its own tenant", async () => {
+    const rows = await getCompanyAnalyticsSummary({ role: "company", companyId: COMPANY_ID }, COMPANY_ID);
+    expect(rows.some((r) => r.eventType === "booking_outcome")).toBe(false);
+  });
+
+  it("a guide actor never sees a booking_outcome row for their own scope", async () => {
+    const rows = await getGuideAnalyticsSummary(
+      { role: "guide", companyId: COMPANY_ID, guideId: GUIDE_ID },
+      GUIDE_ID,
+    );
+    expect(rows.some((r) => r.eventType === "booking_outcome")).toBe(false);
+  });
+
+  it("an admin actor still sees it, via both functions", async () => {
+    const companyRows = await getCompanyAnalyticsSummary({ role: "admin" }, COMPANY_ID);
+    expect(companyRows.find((r) => r.eventType === "booking_outcome")?.count).toBe(1);
+
+    const guideRows = await getGuideAnalyticsSummary({ role: "admin" }, GUIDE_ID);
+    expect(guideRows.find((r) => r.eventType === "booking_outcome")?.count).toBe(1);
+  });
+
+  it("a company/guide actor still sees every other event type for their own scope", async () => {
+    await recordEvent({ eventType: "tip_saved", companyId: COMPANY_ID, guideId: GUIDE_ID });
+    const rows = await getCompanyAnalyticsSummary({ role: "company", companyId: COMPANY_ID }, COMPANY_ID);
+    expect(rows.find((r) => r.eventType === "tip_saved")?.count).toBe(1);
+  });
+});
+
+describe("BoatLocal cruise-catalogue sync", () => {
+  const CRUISE: BoatLocalCruise = {
+    id: 1,
+    fareharborPk: 85146,
+    slug: "shared-old-city-center-boat-tour",
+    name: "Amsterdam Boat Tour of the Old City Center",
+    cruiseType: "shared",
+    cruiseDuration: "1 hour & 30 mins",
+    startingPrice: 29,
+    currency: "EUR",
+    images: ["https://example.com/photo.jpg"],
+    bookingUrl: "https://boatlocal.nl/cruise/shared-old-city-center-boat-tour",
+    active: true,
+    updatedAt: "2026-08-23T09:00:00Z",
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  describe("syncCruiseFromBoatLocal", () => {
+    it("inserts a brand-new cruise as hidden regardless of BoatLocal's own active flag, pending admin geo/description completion", async () => {
+      const before = await listBoatTourCatalog(adminActor);
+      await syncCruiseFromBoatLocal(CRUISE);
+      const after = await listBoatTourCatalog(adminActor);
+
+      expect(after).toHaveLength(before.length + 1);
+      const created = after.find((t) => t.fareharborPk === 85146);
+      expect(created).toBeTruthy();
+      expect(created?.status).toBe("hidden");
+      expect(created?.boatlocalActive).toBe(true);
+      expect(created?.name).toBe(CRUISE.name);
+      expect(created?.bookingUrl).toBe(CRUISE.bookingUrl);
+      expect(created?.slug).toBe(CRUISE.slug);
+      expect(created?.boatlocalId).toBe("1");
+    });
+
+    it("updates an already-known fareharbor_pk in place rather than creating a second row", async () => {
+      await syncCruiseFromBoatLocal(CRUISE);
+      await syncCruiseFromBoatLocal({ ...CRUISE, name: "Renamed Cruise", startingPrice: 35 });
+
+      const after = await listBoatTourCatalog(adminActor);
+      const matches = after.filter((t) => t.fareharborPk === 85146);
+      expect(matches).toHaveLength(1);
+      expect(matches[0].name).toBe("Renamed Cruise");
+      expect(matches[0].meta).toContain("35");
+    });
+
+    it("keeps a brand-new row hidden on the very next sync even though BoatLocal still reports it active (the sticky safety-net gate)", async () => {
+      await syncCruiseFromBoatLocal(CRUISE);
+      // Simulates the very next scheduled reconciliation re-syncing the same
+      // still-incomplete cruise — this must NOT flip it live, or the (0,0)
+      // placeholder coordinates would put a real booking pin in the ocean.
+      await syncCruiseFromBoatLocal({ ...CRUISE });
+
+      const after = await listBoatTourCatalog(adminActor);
+      const updated = after.find((t) => t.fareharborPk === 85146);
+      expect(updated?.status).toBe("hidden");
+      expect(updated?.area).toBe("");
+    });
+
+    it("drives status from BoatLocal's active flag once an admin has completed the tour's location/description", async () => {
+      await syncCruiseFromBoatLocal(CRUISE);
+      const created = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146)!;
+
+      // Admin completes it via BoatTourForm — the only other status-setting
+      // path — and marks it live.
+      await saveBoatTour(adminActor, {
+        id: created.id,
+        name: created.name,
+        area: "Centraal Station",
+        lng: 4.9,
+        lat: 52.38,
+        meta: created.meta,
+        note: "A guide's real description.",
+        bookingUrl: created.bookingUrl,
+        photos: created.photos,
+        status: "active",
+      });
+
+      await syncCruiseFromBoatLocal({ ...CRUISE, active: false });
+      const afterDeactivate = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+      expect(afterDeactivate?.status).toBe("hidden");
+      expect(afterDeactivate?.boatlocalActive).toBe(false);
+
+      await syncCruiseFromBoatLocal({ ...CRUISE, active: true });
+      const afterReactivate = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+      expect(afterReactivate?.status).toBe("active");
+    });
+
+    it("never touches area/lng/lat/note/position once an admin has set them", async () => {
+      await syncCruiseFromBoatLocal(CRUISE);
+      const created = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146)!;
+
+      await saveBoatTour(adminActor, {
+        id: created.id,
+        name: created.name,
+        area: "Centraal Station",
+        lng: 4.9,
+        lat: 52.38,
+        meta: created.meta,
+        note: "A guide's real description.",
+        bookingUrl: created.bookingUrl,
+        photos: created.photos,
+        status: "active",
+      });
+
+      await syncCruiseFromBoatLocal({ ...CRUISE, name: "Renamed Again" });
+
+      const after = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146)!;
+      expect(after.area).toBe("Centraal Station");
+      expect(after.lng).toBe(4.9);
+      expect(after.lat).toBe(52.38);
+      expect(after.note).toBe("A guide's real description.");
+    });
+  });
+
+  describe("deactivateBoatLocalCruise", () => {
+    it("hides the matching row and stores the reason as data", async () => {
+      await syncCruiseFromBoatLocal(CRUISE);
+      await deactivateBoatLocalCruise(
+        { id: CRUISE.id, slug: CRUISE.slug, fareharborPk: CRUISE.fareharborPk },
+        "removed_from_fareharbor",
+      );
+
+      const after = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+      expect(after?.status).toBe("hidden");
+      expect(after?.deactivationReason).toBe("removed_from_fareharbor");
+    });
+
+    it("is a silent no-op for a cruise never synced, not an error", async () => {
+      await expect(
+        deactivateBoatLocalCruise({ id: 999, slug: null, fareharborPk: 99999 }, "admin_disabled"),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe("reconcileBoatLocalCatalog", () => {
+    it("fetches, upserts every returned cruise, and hides BoatLocal-sourced rows no longer returned", async () => {
+      await syncCruiseFromBoatLocal(CRUISE);
+      const staleCruise: BoatLocalCruise = {
+        ...CRUISE,
+        id: 2,
+        fareharborPk: 99999,
+        slug: "some-other-cruise",
+      };
+      await syncCruiseFromBoatLocal(staleCruise);
+      // Simulate an admin having already completed + published staleCruise —
+      // a fresh, still-pending-completion row is already hidden, which would
+      // make "reconciliation hid it" untestable (it never changes state).
+      const staleRow = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 99999)!;
+      await saveBoatTour(adminActor, {
+        id: staleRow.id,
+        name: staleRow.name,
+        area: "Centraal Station",
+        lng: 4.9,
+        lat: 52.38,
+        meta: staleRow.meta,
+        note: "Real description.",
+        bookingUrl: staleRow.bookingUrl,
+        photos: staleRow.photos,
+        status: "active",
+      });
+
+      // The re-fetch only returns CRUISE this time — staleCruise (99999) is
+      // gone from the feed and must be hidden.
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({
+          ok: true,
+          json: async () => ({ cruises: [{ ...toWireCruise(CRUISE) }], generated_at: "now", count: 1 }),
+        })),
+      );
+
+      const result = await reconcileBoatLocalCatalog();
+      expect(result).toEqual({ fetched: 1, upserted: 1, deactivated: 1, error: undefined });
+
+      const catalog = await listBoatTourCatalog(adminActor);
+      expect(catalog.find((t) => t.fareharborPk === 99999)?.status).toBe("hidden");
+      expect(catalog.find((t) => t.fareharborPk === 99999)?.deactivationReason).toBe(
+        "removed_from_fareharbor",
+      );
+      expect(catalog.find((t) => t.fareharborPk === 85146)?.status).toBe("hidden"); // brand new via this test file, still pending admin completion
+    });
+
+    it("reports an error and leaves the catalog untouched on a non-2xx response", async () => {
+      await syncCruiseFromBoatLocal(CRUISE);
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 503 })));
+
+      const before = await listBoatTourCatalog(adminActor);
+      const result = await reconcileBoatLocalCatalog();
+      expect(result.error).toBeTruthy();
+      expect(result.deactivated).toBe(0);
+
+      const after = await listBoatTourCatalog(adminActor);
+      expect(after).toEqual(before);
+    });
+
+    it("reports an error and skips deactivation entirely on a network failure, rather than throwing", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          throw new Error("network down");
+        }),
+      );
+      await expect(reconcileBoatLocalCatalog()).resolves.toMatchObject({
+        fetched: 0,
+        upserted: 0,
+        deactivated: 0,
+      });
+    });
+
+    it("never mass-deactivates the catalog when the feed returns zero cruises", async () => {
+      await syncCruiseFromBoatLocal(CRUISE);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({ ok: true, json: async () => ({ cruises: [], generated_at: "now", count: 0 }) })),
+      );
+
+      const before = await listBoatTourCatalog(adminActor);
+      const result = await reconcileBoatLocalCatalog();
+      expect(result.error).toBeTruthy();
+      expect(result.deactivated).toBe(0);
+
+      const after = await listBoatTourCatalog(adminActor);
+      expect(after).toEqual(before);
+    });
+  });
+});
+
+/** Turns a BoatLocalCruise back into the snake_case wire shape reconcileBoatLocalCatalog's fetch expects — the inverse of parseBoatLocalCruise, for building a fake `/api/public/cruises` response in tests. */
+function toWireCruise(cruise: BoatLocalCruise) {
+  return {
+    id: cruise.id,
+    fareharbor_pk: cruise.fareharborPk,
+    slug: cruise.slug,
+    name: cruise.name,
+    cruise_type: cruise.cruiseType,
+    cruise_duration: cruise.cruiseDuration,
+    starting_price: cruise.startingPrice,
+    currency: cruise.currency,
+    images: cruise.images,
+    booking_url: cruise.bookingUrl,
+    active: cruise.active,
+    updated_at: cruise.updatedAt,
+  };
+}
 
 describe("Studio recommendation reads — mirrors RLS row visibility", () => {
   it("admin sees every recommendation", async () => {

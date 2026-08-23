@@ -19,17 +19,32 @@ describe("createClickId", () => {
 });
 
 describe("buildBookingUrl", () => {
+  const TOUR_BOOKING_URL = "https://boatlocal.nl/cruise/sunset-canal-cruise";
+
   it("carries the click id as the ref param, so it survives the redirect", () => {
     const url = new URL(
-      buildBookingUrl({ tourId: "sunset-canal", clickId: "bkl_abc123" }),
+      buildBookingUrl({ bookingUrl: TOUR_BOOKING_URL, clickId: "bkl_abc123" }),
     );
     expect(url.searchParams.get("ref")).toBe("bkl_abc123");
-    expect(url.searchParams.get("tour")).toBe("sunset-canal");
+  });
+
+  it("always sends src=map-app, so BoatLocal can tell this traffic apart from their other channels", () => {
+    const url = new URL(
+      buildBookingUrl({ bookingUrl: TOUR_BOOKING_URL, clickId: "bkl_abc123" }),
+    );
+    expect(url.searchParams.get("src")).toBe("map-app");
+  });
+
+  it("appends params onto the tour's own bookingUrl rather than a fixed global base", () => {
+    const url = new URL(
+      buildBookingUrl({ bookingUrl: TOUR_BOOKING_URL, clickId: "bkl_abc123" }),
+    );
+    expect(url.origin + url.pathname).toBe(TOUR_BOOKING_URL);
   });
 
   it("omits optional params rather than sending them as empty strings", () => {
     const url = new URL(
-      buildBookingUrl({ tourId: "sunset-canal", clickId: "bkl_abc123" }),
+      buildBookingUrl({ bookingUrl: TOUR_BOOKING_URL, clickId: "bkl_abc123" }),
     );
     expect(url.searchParams.has("date")).toBe(false);
     expect(url.searchParams.has("guests")).toBe(false);
@@ -40,7 +55,7 @@ describe("buildBookingUrl", () => {
   it("includes every param when provided", () => {
     const url = new URL(
       buildBookingUrl({
-        tourId: "sunset-canal",
+        bookingUrl: TOUR_BOOKING_URL,
         clickId: "bkl_abc123",
         date: "2026-08-20",
         guests: 3,
@@ -55,12 +70,6 @@ describe("buildBookingUrl", () => {
     // unrelated "Guides" (blog) concept; see buildBookingUrl's doc comment.
     expect(url.searchParams.get("distributor")).toBe("jan");
     expect(url.searchParams.has("guide")).toBe(false);
-  });
-
-  it("produces a URL under the configured base, not a hard-coded one", () => {
-    const url = buildBookingUrl({ tourId: "x", clickId: "bkl_y" });
-    // Default until BOATLOCAL_WEBHOOK params are confirmed — see docs/attribution.md.
-    expect(url.startsWith("https://boatlocal.nl/book")).toBe(true);
   });
 });
 

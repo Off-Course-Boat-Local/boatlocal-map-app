@@ -123,6 +123,16 @@ function seedBoatTours(): BoatTourRecord[] {
     status: "active",
     createdAt: created,
     updatedAt: created,
+    // Every seeded tour is admin-curated, never BoatLocal-sourced — see
+    // BoatTourRecord's own doc comment for why every one of these is
+    // nullable and null here specifically.
+    boatlocalId: null,
+    fareharborPk: null,
+    slug: null,
+    cruiseType: null,
+    boatlocalActive: null,
+    deactivationReason: null,
+    boatlocalUpdatedAt: null,
   }));
 }
 

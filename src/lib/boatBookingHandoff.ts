@@ -6,10 +6,12 @@
 // The actual URL building and click-id minting are NOT reimplemented here —
 // that is exactly one implementation, in src/lib/attribution.ts
 // (buildBookingUrl / createClickId), per this project's "booking handoff"
-// house rule (env-configurable base URL/param names; see
-// NEXT_PUBLIC_BOOKING_BASE_URL and docs/attribution.md). This module's whole
-// job is turning picker state — a `Date | null` and a guest count — into the
-// already-typed params that function expects.
+// house rule. buildBookingUrl appends tracking params onto the tour's own
+// bookingUrl (BoatTourRecord.bookingUrl, sourced from BoatLocal's catalogue
+// feed — see docs/attribution.md) rather than a fixed global base; this
+// module's whole job is turning picker state — a `Date | null` and a guest
+// count — into the already-typed params that function expects, plus
+// threading that bookingUrl through from whichever tour is being booked.
 
 import { buildBookingUrl, createClickId } from "./attribution";
 
@@ -50,7 +52,13 @@ export function formatBookingDateLabel(date: Date): string {
 }
 
 export interface BuildBoatBookingHandoffInput {
-  tourId: string;
+  /**
+   * The tour's own boatlocal.nl page (BoatTourRecord.bookingUrl) — BoatLocal
+   * returns this ready-to-use per cruise, and buildBookingUrl appends
+   * tracking params onto it directly rather than building a URL from a
+   * fixed base + tour id (see attribution.ts's header comment for why).
+   */
+  bookingUrl: string;
   selection: BoatBookingSelection;
   companySlug?: string;
   guideSlug?: string;
@@ -106,7 +114,7 @@ export function buildBoatBookingHandoff(
   const clickId = input.clickId ?? createClickId();
   const { date, guests } = input.selection;
   const rawUrl = buildBookingUrl({
-    tourId: input.tourId,
+    bookingUrl: input.bookingUrl,
     clickId,
     date: date ? formatBookingDate(date) : undefined,
     guests: guests > 0 ? guests : undefined,

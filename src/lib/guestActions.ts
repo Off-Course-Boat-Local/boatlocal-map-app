@@ -63,7 +63,7 @@ export function guestPinAction(
 ): GuestPinAction {
   if (item.bookingUrl) {
     const handoff = buildBoatBookingHandoff({
-      tourId: item.id,
+      bookingUrl: item.bookingUrl,
       selection: options?.selection ?? NO_TRIP_DETAILS,
       companySlug: options?.companySlug,
       guideSlug: options?.guideSlug,

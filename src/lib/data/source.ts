@@ -62,6 +62,7 @@ import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
 
 import { CATEGORY_MAP } from "../categories";
 import type { MapPin } from "../data";
+import { parseBoatLocalCruise } from "../boatlocalCatalog";
 import { initialFromName, uniqueSlug } from "../slug";
 import type { Brand, CategoryId, Guide, Place } from "../types";
 import type { BoatTour as BoatTourView } from "../types";
@@ -69,6 +70,7 @@ import { fakeId, fakeStore } from "./fakeStore";
 import type {
   AnalyticsRange,
   AnalyticsSummaryRow,
+  BoatLocalCruise,
   BoatTourRecord,
   BoatTourStatus,
   CompanyRecord,
@@ -76,6 +78,7 @@ import type {
   CompanyType,
   CreateCompanyInput,
   EventPlatform,
+  EventRecord,
   EventType,
   GuideRecord,
   GuideStatus,
@@ -94,12 +97,13 @@ import { StudioPermissionError } from "./types";
 // intentionally NOT re-implemented here. The real, tested implementation —
 // click-id minting, the boatlocal.nl URL builder, and the signed inbound
 // webhook that reports booking outcomes back — already lives in
-// src/lib/attribution.ts (`createClickId`, `buildBookingUrl`). That module
-// reads `NEXT_PUBLIC_BOOKING_BASE_URL` the same way this file's other
-// functions read their env config; see docs/attribution.md for the full
-// flow. `BoatTourRecord.bookingUrl` below is exactly the value
-// `attribution.ts`'s `buildBookingUrl({ tourId, clickId, ... })` starts
-// from.
+// src/lib/attribution.ts (`createClickId`, `buildBookingUrl`); see
+// docs/attribution.md for the full flow. `BoatTourRecord.bookingUrl` below
+// is exactly the value `attribution.ts`'s
+// `buildBookingUrl({ bookingUrl, clickId, ... })` appends tracking params
+// onto — sourced verbatim from BoatLocal's own catalogue feed for a synced
+// tour (see syncCruiseFromBoatLocal further down), or admin-entered for a
+// manually curated one.
 
 // =============================================================================
 // Test-environment detection + Supabase client tiers.
@@ -322,6 +326,13 @@ interface BoatTourRow {
   status: BoatTourStatus;
   created_at: string;
   updated_at: string;
+  boatlocal_id: string | null;
+  fareharbor_pk: number | null;
+  slug: string | null;
+  cruise_type: string | null;
+  active: boolean | null;
+  deactivation_reason: string | null;
+  boatlocal_updated_at: string | null;
 }
 
 function fromBoatTourRow(row: BoatTourRow): BoatTourRecord {
@@ -339,6 +350,13 @@ function fromBoatTourRow(row: BoatTourRow): BoatTourRecord {
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    boatlocalId: row.boatlocal_id,
+    fareharborPk: row.fareharbor_pk,
+    slug: row.slug,
+    cruiseType: row.cruise_type,
+    boatlocalActive: row.active,
+    deactivationReason: row.deactivation_reason,
+    boatlocalUpdatedAt: row.boatlocal_updated_at,
   };
 }
 
@@ -834,6 +852,15 @@ export interface RecordBookingOutcomeInput {
   amountCents: number;
   currency: string;
   bookedAt: string;
+  /**
+   * Echoed fallback-attribution fields from the webhook payload (see
+   * parseBookingWebhookPayload in src/lib/attribution.ts) — used only when
+   * the clickId lookup itself comes up empty. See resolveFallbackAttribution
+   * below for the validation this goes through before either id is ever
+   * trusted into a foreign-key column.
+   */
+  sourceCompany?: string;
+  sourceDistributor?: string;
 }
 
 export interface RecordBookingOutcomeResult {
@@ -844,16 +871,102 @@ export interface RecordBookingOutcomeResult {
 }
 
 /**
+ * Fallback attribution (point 6 of the go-live plan, docs/attribution.md):
+ * when a booking's clickId doesn't resolve via findAttributedClick — the
+ * click record expired, or click tracking never fired for this particular
+ * booking — but the webhook payload echoes `source_company` (and optionally
+ * `source_distributor`), those are used instead of leaving the booking
+ * fully unattributed.
+ *
+ * This is safe to trust despite being caller-supplied data: the entire
+ * webhook body is already HMAC-verified by the time recordBookingOutcome
+ * ever runs (see attributionWebhook.ts) — the risk here isn't spoofing, it's
+ * a stale or typo'd id, which is exactly why each one is resolved against a
+ * real row before being trusted into a foreign-key column rather than
+ * inserted blind.
+ *
+ * JUDGMENT CALL: an unresolvable companyId means no fallback at all (the
+ * booking stays unattributed — a company id we can't verify is not a safer
+ * bet than no attribution). An unresolvable guideId under an otherwise-valid
+ * company, though, only drops the guide half — the booking still attributes
+ * to the company, the same "company-level, no specific guide" shape a real
+ * company-wide share link's click already produces via findAttributedClick.
+ * This distinction isn't spelled out in the go-live plan; it was chosen to
+ * mirror how a null guideId already behaves everywhere else in this file
+ * rather than invented from scratch.
+ */
+async function resolveFallbackAttribution(
+  companyId: string | undefined,
+  guideId: string | undefined,
+): Promise<AttributedClick | null> {
+  if (!companyId) return null;
+
+  if (isTestEnv) {
+    const company = fakeStore.companies.find((c) => c.id === companyId);
+    if (!company) return null;
+
+    let resolvedGuideId: string | null = null;
+    if (guideId) {
+      const guide = fakeStore.guides.find((g) => g.id === guideId && g.companyId === companyId);
+      resolvedGuideId = guide?.id ?? null;
+    }
+    return { companyId: company.id, guideId: resolvedGuideId, boatTourId: null };
+  }
+
+  const supabase = await adminClient();
+  const { data: companyRow, error: companyError } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (companyError) throw companyError;
+  if (!companyRow) return null;
+
+  let resolvedGuideId: string | null = null;
+  if (guideId) {
+    const { data: guideRow, error: guideError } = await supabase
+      .from("guides")
+      .select("id")
+      .eq("id", guideId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (guideError) throw guideError;
+    resolvedGuideId = (guideRow as { id: string } | null)?.id ?? null;
+  }
+
+  return { companyId, guideId: resolvedGuideId, boatTourId: null };
+}
+
+/**
  * Records a `booking_outcome` event for a completed/cancelled BoatLocal
  * booking, attributed to whichever company/guide/tour the original click
- * belongs to (null fields when unattributed). Deduped on `bookingId` in
- * metadata — BoatLocal retries any non-2xx response, so a retried delivery
- * of the same booking must be a no-op, never a second row.
+ * belongs to (null fields when unattributed, unless resolveFallbackAttribution
+ * above finds a validated echoed company/guide instead).
+ *
+ * Deduped on (`bookingId`, `event`) in metadata, NOT `bookingId` alone —
+ * BoatLocal retries any non-2xx response, so a retried delivery of the exact
+ * same outcome must be a no-op, never a second row. But a confirmed booking
+ * later cancelled is two DIFFERENT outcomes for the same bookingId, and both
+ * must be recorded as their own event: a bookingId-only dedup key would
+ * silently drop the cancellation as if it were a duplicate delivery of the
+ * confirmation, which is exactly the bug this shape fixes (see
+ * 20260823210000_net_cancelled_booking_outcomes.sql's own comment for the
+ * other half of this fix — how those two rows then net to zero in every
+ * "tours booked" style sum, rather than the cancellation inflating it).
+ *
+ * NOTE on rebooking: there is no "booking.rebooked" event — BoatLocal's own
+ * rebook flow already decomposes into a `booking.cancelled` (old booking id)
+ * plus a `booking.confirmed` (new booking id), which this function already
+ * handles correctly as two independent bookingIds each going through the
+ * dedup/netting logic above. No cross-linking between the two is attempted.
  */
 export async function recordBookingOutcome(
   input: RecordBookingOutcomeInput,
 ): Promise<RecordBookingOutcomeResult> {
-  const click = await findAttributedClick(input.clickId);
+  let click = await findAttributedClick(input.clickId);
+  if (!click && (input.sourceCompany || input.sourceDistributor)) {
+    click = await resolveFallbackAttribution(input.sourceCompany, input.sourceDistributor);
+  }
   const metadata = {
     clickId: input.clickId,
     bookingId: input.bookingId,
@@ -867,7 +980,10 @@ export async function recordBookingOutcome(
 
   if (isTestEnv) {
     const alreadyRecorded = fakeStore.events.some(
-      (e) => e.eventType === "booking_outcome" && e.metadata?.bookingId === input.bookingId,
+      (e) =>
+        e.eventType === "booking_outcome" &&
+        e.metadata?.bookingId === input.bookingId &&
+        e.metadata?.event === input.event,
     );
     if (alreadyRecorded) return { inserted: false, attributed: !!click };
 
@@ -893,6 +1009,7 @@ export async function recordBookingOutcome(
     .select("id")
     .eq("event_type", "booking_outcome")
     .eq("metadata->>bookingId", input.bookingId)
+    .eq("metadata->>event", input.event)
     .maybeSingle();
   if (existingError) throw existingError;
   if (existing) return { inserted: false, attributed: !!click };
@@ -908,6 +1025,382 @@ export async function recordBookingOutcome(
   if (error) throw error;
 
   return { inserted: true, attributed: !!click };
+}
+
+// =============================================================================
+// BoatLocal cruise-catalogue sync (docs/attribution.md's "cruise catalogue
+// sync" section) — shared by src/app/api/webhooks/boatlocal-cruise/route.ts
+// (cruise.activated / cruise.deactivated) and
+// src/app/api/cron/sync-boat-tours/route.ts's daily reconciliation pass.
+//
+// Like findAttributedClick/recordBookingOutcome above, every function here
+// runs with no Studio session at all (an HMAC-verified webhook call or a
+// cron job, neither of which is an `authenticated` Postgres role), so they
+// all use the service-role client, never authedClient().
+// =============================================================================
+
+/** Turns BoatLocal's duration/price fields into this table's existing free-text `meta` line — the same "one guest-facing field" convention BoatTourForm's manual entry already uses (see src/lib/admin/boatTourForm.ts's own note on why there's no separate structured price column). */
+function formatCruiseMeta(cruise: BoatLocalCruise): string {
+  const parts: string[] = [];
+  if (cruise.cruiseDuration) parts.push(cruise.cruiseDuration);
+  if (cruise.startingPrice != null) parts.push(`${cruise.currency ?? "EUR"} ${cruise.startingPrice} pp`);
+  return parts.join(" · ");
+}
+
+/**
+ * Upserts one cruise from BoatLocal's catalogue into `boat_tours`, keyed on
+ * `fareharbor_pk` (falling back to `boatlocal_id` only if fareharbor_pk is
+ * ever absent — per the confirmed schema it shouldn't be, but this is
+ * cheap insurance against a single malformed feed entry, not a bet that it
+ * will actually happen).
+ *
+ * JUDGMENT CALL, clearly flagged: BoatLocal's feed has no lat/lng, no
+ * departure-point "area", and no guide-written "note" — this table's other
+ * NOT NULL columns. On a genuinely NEW cruise (no existing row for this
+ * fareharbor_pk yet), this inserts it with empty/placeholder geo fields
+ * (area: "", lng/lat: 0,0, note: "") and `status` forced to 'hidden'
+ * REGARDLESS of BoatLocal's own `active` flag — until an admin opens it in
+ * BoatTourForm and fills in the real location/description, it must not go
+ * live on the guest map at (0,0), which would place a real "Book this tour"
+ * pin in the ocean. `active`/`fareharbor_pk`/`slug`/`boatlocal_id`/
+ * `cruise_type`/`boatlocal_updated_at`/name/meta/photos/booking_url are all
+ * still recorded immediately either way, so nothing about the cruise's
+ * identity is lost while it waits on that admin step.
+ *
+ * On every subsequent sync of an ALREADY-KNOWN fareharbor_pk, only the
+ * BoatLocal-owned fields above are re-written (BoatLocal is the source of
+ * truth for name/price/duration/photos/booking_url/active — a price change
+ * on their side should propagate on the next sync); area/lng/lat/note/
+ * position are Map App's own curation layer and are never touched here once
+ * a row exists, exactly like an admin-curated tour's fields never are.
+ *
+ * The "hidden pending completion" gate is STICKY, not one-time: `status` is
+ * only driven by BoatLocal's `active` flag once the row's `area` is no
+ * longer empty — i.e. once an admin has actually opened it in BoatTourForm
+ * and saved real values. Without this check, the very next scheduled
+ * reconciliation after a brand-new insert (which could run hours later, the
+ * same day) would immediately flip an untouched row back to 'active' purely
+ * because BoatLocal still reports it active, undoing the INSERT branch's
+ * whole reason for existing and putting a real booking pin at (0,0)
+ * unattended. `area === ""` is a safe signal for "not yet completed" only
+ * because this function is the one and only place that ever writes that
+ * empty-string placeholder — a real admin-entered area is validated
+ * non-empty by parseBoatTourForm.
+ */
+export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<void> {
+  const meta = formatCruiseMeta(cruise);
+
+  if (isTestEnv) {
+    const existing =
+      cruise.fareharborPk != null
+        ? fakeStore.boatTours.find((t) => t.fareharborPk === cruise.fareharborPk)
+        : fakeStore.boatTours.find((t) => t.boatlocalId === String(cruise.id));
+
+    if (existing) {
+      // STICKY SAFETY NET: an empty `area` is exactly the placeholder this
+      // same function's INSERT branch writes below, and the ONLY way it
+      // stops being empty is an admin explicitly completing the tour via
+      // BoatTourForm (sync never writes to area/lng/lat/note — see this
+      // function's own doc comment). Without this check, the very next
+      // scheduled reconciliation after a brand-new insert would immediately
+      // flip a still-incomplete row back to 'active' off of BoatLocal's own
+      // `active: true`, undoing the one-time "pending completion" gate the
+      // INSERT branch exists to enforce and putting a real "Book this tour"
+      // pin at (0,0) unattended.
+      const pendingCompletion = existing.area === "";
+      const status: BoatTourStatus = pendingCompletion ? "hidden" : cruise.active ? "active" : "hidden";
+
+      Object.assign(existing, {
+        name: cruise.name,
+        meta,
+        photos: cruise.images,
+        bookingUrl: cruise.bookingUrl,
+        boatlocalId: String(cruise.id),
+        fareharborPk: cruise.fareharborPk,
+        slug: cruise.slug,
+        cruiseType: cruise.cruiseType,
+        boatlocalActive: cruise.active,
+        status,
+        deactivationReason: !pendingCompletion && cruise.active ? null : existing.deactivationReason,
+        boatlocalUpdatedAt: cruise.updatedAt,
+        updatedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const created = new Date().toISOString();
+    const maxPosition = fakeStore.boatTours.reduce((max, t) => Math.max(max, t.position), 0);
+    fakeStore.boatTours.push({
+      id: fakeId("boat-tour"),
+      name: cruise.name,
+      area: "",
+      lng: 0,
+      lat: 0,
+      meta,
+      note: "",
+      bookingUrl: cruise.bookingUrl,
+      photos: cruise.images,
+      position: maxPosition + 1,
+      status: "hidden",
+      boatlocalId: String(cruise.id),
+      fareharborPk: cruise.fareharborPk,
+      slug: cruise.slug,
+      cruiseType: cruise.cruiseType,
+      boatlocalActive: cruise.active,
+      deactivationReason: null,
+      boatlocalUpdatedAt: cruise.updatedAt,
+      createdAt: created,
+      updatedAt: created,
+    });
+    return;
+  }
+
+  const supabase = await adminClient();
+  const lookupColumn = cruise.fareharborPk != null ? "fareharbor_pk" : "boatlocal_id";
+  const lookupValue: string | number =
+    cruise.fareharborPk != null ? cruise.fareharborPk : String(cruise.id);
+
+  const { data: existingData, error: fetchError } = await supabase
+    .from("boat_tours")
+    .select("id, area, deactivation_reason")
+    .eq(lookupColumn, lookupValue)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  const existing = existingData as { id: string; area: string; deactivation_reason: string | null } | null;
+
+  if (existing) {
+    // See the isTestEnv branch above for why this check exists at all.
+    const pendingCompletion = existing.area === "";
+    const status: BoatTourStatus = pendingCompletion ? "hidden" : cruise.active ? "active" : "hidden";
+
+    const updates: Partial<BoatTourRow> = {
+      name: cruise.name,
+      meta,
+      photos: cruise.images,
+      booking_url: cruise.bookingUrl,
+      boatlocal_id: String(cruise.id),
+      fareharbor_pk: cruise.fareharborPk,
+      slug: cruise.slug,
+      cruise_type: cruise.cruiseType,
+      active: cruise.active,
+      status,
+      boatlocal_updated_at: cruise.updatedAt,
+    };
+    // A reactivation clears any stale reason — it can no longer apply.
+    // Staying hidden keeps whatever reason (if any) is already on the row,
+    // since this generic sync pass has no reason of its own to attach (only
+    // the cruise.deactivated webhook / reconciliation's "missing from the
+    // feed" path do — see deactivateBoatLocalCruise/hideMissingBoatLocalTours).
+    if (!pendingCompletion && cruise.active) updates.deactivation_reason = null;
+
+    const { error } = await supabase.from("boat_tours").update(updates).eq("id", existing.id);
+    if (error) throw error;
+    return;
+  }
+
+  const { data: maxRow, error: maxError } = await supabase
+    .from("boat_tours")
+    .select("position")
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (maxError) throw maxError;
+  const maxPosition = (maxRow as Pick<BoatTourRow, "position"> | null)?.position ?? 0;
+
+  const { error } = await supabase.from("boat_tours").insert({
+    name: cruise.name,
+    area: "",
+    lng: 0,
+    lat: 0,
+    meta,
+    note: "",
+    booking_url: cruise.bookingUrl,
+    photos: cruise.images,
+    position: maxPosition + 1,
+    status: "hidden",
+    boatlocal_id: String(cruise.id),
+    fareharbor_pk: cruise.fareharborPk,
+    slug: cruise.slug,
+    cruise_type: cruise.cruiseType,
+    active: cruise.active,
+    deactivation_reason: null,
+    boatlocal_updated_at: cruise.updatedAt,
+  });
+  if (error) throw error;
+}
+
+export interface CruiseDeactivatedIdentity {
+  id: number;
+  slug: string | null;
+  fareharborPk: number | null;
+}
+
+/**
+ * Hides one cruise by BoatLocal's own identity fields (from a
+ * `cruise.deactivated` webhook — see src/lib/boatlocalCatalog.ts's
+ * parseCruiseDeactivatedPayload) and records the reason as data. A cruise
+ * we've never synced is a silent no-op, not an error — mirrors the booking
+ * webhook's "unrecognised click id still gets a 200" philosophy: the event
+ * genuinely happened, we just have no row to update.
+ */
+export async function deactivateBoatLocalCruise(
+  identity: CruiseDeactivatedIdentity,
+  reason: string | null,
+): Promise<void> {
+  if (isTestEnv) {
+    const tour =
+      identity.fareharborPk != null
+        ? fakeStore.boatTours.find((t) => t.fareharborPk === identity.fareharborPk)
+        : fakeStore.boatTours.find((t) => t.boatlocalId === String(identity.id));
+    if (!tour) return;
+    tour.status = "hidden";
+    tour.deactivationReason = reason;
+    tour.updatedAt = new Date().toISOString();
+    return;
+  }
+
+  const supabase = await adminClient();
+  const lookupColumn = identity.fareharborPk != null ? "fareharbor_pk" : "boatlocal_id";
+  const lookupValue: string | number =
+    identity.fareharborPk != null ? identity.fareharborPk : String(identity.id);
+
+  const { error } = await supabase
+    .from("boat_tours")
+    .update({ status: "hidden", deactivation_reason: reason })
+    .eq(lookupColumn, lookupValue);
+  if (error) throw error;
+}
+
+/**
+ * Hides every BoatLocal-sourced row (`fareharbor_pk is not null`) NOT among
+ * `seenFareharborPks` — the "deactivate anything no longer returned" half of
+ * reconciliation. Reason is recorded as "removed_from_fareharbor": absence
+ * from a full catalogue re-fetch is exactly the automated-FareHarbor-sync
+ * scenario the go-live plan itself calls out, as distinct from an explicit
+ * `cruise.deactivated` webhook (which carries BoatLocal's own real reason
+ * instead — see deactivateBoatLocalCruise above). Already-hidden rows are
+ * left alone so the returned count reflects real state changes, not a
+ * repeated no-op write.
+ */
+async function hideMissingBoatLocalTours(seenFareharborPks: Set<number>): Promise<number> {
+  if (isTestEnv) {
+    let count = 0;
+    for (const tour of fakeStore.boatTours) {
+      if (tour.fareharborPk != null && !seenFareharborPks.has(tour.fareharborPk) && tour.status !== "hidden") {
+        tour.status = "hidden";
+        tour.deactivationReason = "removed_from_fareharbor";
+        tour.updatedAt = new Date().toISOString();
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  const supabase = await adminClient();
+  const { data, error } = await supabase
+    .from("boat_tours")
+    .select("id, fareharbor_pk")
+    .not("fareharbor_pk", "is", null)
+    .neq("status", "hidden");
+  if (error) throw error;
+
+  const rows = (data ?? []) as Array<{ id: string; fareharbor_pk: number }>;
+  const toHide = rows.filter((r) => !seenFareharborPks.has(r.fareharbor_pk));
+  if (toHide.length === 0) return 0;
+
+  const { error: updateError } = await supabase
+    .from("boat_tours")
+    .update({ status: "hidden", deactivation_reason: "removed_from_fareharbor" })
+    .in(
+      "id",
+      toHide.map((r) => r.id),
+    );
+  if (updateError) throw updateError;
+
+  return toHide.length;
+}
+
+/** boatlocal.nl's public API host, overridable for a future staging/test target — same pattern the old NEXT_PUBLIC_BOOKING_BASE_URL used. */
+function boatLocalApiBaseUrl(): string {
+  return process.env.BOATLOCAL_CATALOG_BASE_URL || "https://boatlocal.nl";
+}
+
+export interface ReconcileBoatLocalCatalogResult {
+  fetched: number;
+  upserted: number;
+  deactivated: number;
+  error?: string;
+}
+
+/**
+ * Re-pulls BoatLocal's FULL cruise catalogue and reconciles it against
+ * `boat_tours` — "webhook-only sync always drifts eventually" is BoatLocal's
+ * own guidance (docs/attribution.md), and correct, so this is the belt to
+ * the boatlocal-cruise webhook's suspenders. Called once daily by
+ * src/app/api/cron/sync-boat-tours/route.ts, and internally by nothing else
+ * (the webhook handles single-cruise events itself via
+ * syncCruiseFromBoatLocal/deactivateBoatLocalCruise directly).
+ *
+ * MUST NOT THROW: a network failure or non-2xx response is reported via the
+ * `error` field, leaving every existing row untouched — a failed sync
+ * attempt must never wipe out an already-working catalog. The same applies
+ * if the response parses as JSON but yields zero usable cruises (either the
+ * feed's shape drifted, or it genuinely returned an empty list) — that's
+ * treated as a failed sync too, specifically so the "hide anything not
+ * returned" step never runs against an empty or malformed result and hides
+ * the entire real catalog on a fluke. This last guard is a judgment call:
+ * the go-live plan doesn't say what a legitimately-empty catalogue should
+ * do, and "do nothing rather than mass-deactivate" is the conservative
+ * reading given the stated goal ("must never wipe out an already-working
+ * catalog").
+ */
+export async function reconcileBoatLocalCatalog(): Promise<ReconcileBoatLocalCatalogResult> {
+  let json: unknown;
+  try {
+    const res = await fetch(`${boatLocalApiBaseUrl()}/api/public/cruises`, { cache: "no-store" });
+    if (!res.ok) {
+      return { fetched: 0, upserted: 0, deactivated: 0, error: `catalogue fetch failed: HTTP ${res.status}` };
+    }
+    json = await res.json();
+  } catch (err) {
+    return {
+      fetched: 0,
+      upserted: 0,
+      deactivated: 0,
+      error: err instanceof Error ? err.message : "catalogue fetch threw a non-Error value",
+    };
+  }
+
+  const rawCruises =
+    typeof json === "object" && json !== null && Array.isArray((json as { cruises?: unknown }).cruises)
+      ? ((json as { cruises: unknown[] }).cruises)
+      : [];
+  const cruises = rawCruises
+    .map(parseBoatLocalCruise)
+    .filter((c): c is BoatLocalCruise => c !== null);
+
+  if (cruises.length === 0) {
+    return {
+      fetched: rawCruises.length,
+      upserted: 0,
+      deactivated: 0,
+      error:
+        rawCruises.length === 0
+          ? "catalogue response contained no cruises — skipping deactivation to avoid wiping the catalog"
+          : "no cruises parsed from the response — feed shape may have drifted",
+    };
+  }
+
+  for (const cruise of cruises) {
+    await syncCruiseFromBoatLocal(cruise);
+  }
+
+  const seenFareharborPks = new Set(
+    cruises.map((c) => c.fareharborPk).filter((pk): pk is number => pk != null),
+  );
+  const deactivated = await hideMissingBoatLocalTours(seenFareharborPks);
+
+  return { fetched: cruises.length, upserted: cruises.length, deactivated };
 }
 
 // =============================================================================
@@ -1726,6 +2219,22 @@ function rangeParams(range?: AnalyticsRange): { p_from?: string; p_to?: string }
   return range ? { p_from: range.from.toISOString(), p_to: range.to.toISOString() } : {};
 }
 
+/**
+ * The fakeStore-side mirror of 20260823210000_net_cancelled_booking_outcomes.sql's
+ * SQL netting: a `booking_outcome` event contributes -1 when it's a
+ * cancellation, +1 otherwise (confirmed), so a confirmed+cancelled pair for
+ * the same booking sums to zero instead of the cancellation inflating the
+ * count. Every other event type is a plain +1. This has to be duplicated
+ * here (not just fixed once in the real RPCs) because the fakeStore branch
+ * is exercised by `npx vitest run` and has no SQL of its own to fall back
+ * on — see this file's header comment on why the fakeStore branch is not
+ * optional scaffolding.
+ */
+function bookingOutcomeIncrement(event: EventRecord): number {
+  if (event.eventType !== "booking_outcome") return 1;
+  return event.metadata?.event === "booking.cancelled" ? -1 : 1;
+}
+
 /** Real backend: authed client, RPC `company_analytics_summary`. */
 export async function getCompanyAnalyticsSummary(
   actor: StudioActor,
@@ -1738,9 +2247,15 @@ export async function getCompanyAnalyticsSummary(
     const counts = new Map<string, AnalyticsSummaryRow>();
     for (const e of fakeStore.events) {
       if (e.companyId !== companyId || !inRange(e.occurredAt, range)) continue;
+      // Booking financial/outcome data is admin-only (RLS:
+      // company_select_own_events excludes event_type='booking_outcome' —
+      // see 20260823220000_restrict_booking_outcome_events_rls.sql). The
+      // fakeStore branch has no RLS of its own, so this mirrors that
+      // exclusion by hand for a non-admin actor.
+      if (e.eventType === "booking_outcome" && actor.role !== "admin") continue;
       const key = `${e.eventType}::${e.guideId ?? ""}`;
       const row = counts.get(key) ?? { eventType: e.eventType, guideId: e.guideId, count: 0 };
-      row.count += 1;
+      row.count += bookingOutcomeIncrement(e);
       counts.set(key, row);
     }
     return [...counts.values()];
@@ -1784,8 +2299,11 @@ export async function getGuideAnalyticsSummary(
     const counts = new Map<string, AnalyticsSummaryRow>();
     for (const e of fakeStore.events) {
       if (e.guideId !== guideId || !inRange(e.occurredAt, range)) continue;
+      // Booking financial/outcome data is admin-only — see
+      // getCompanyAnalyticsSummary's identical comment just above.
+      if (e.eventType === "booking_outcome" && actor.role !== "admin") continue;
       const row = counts.get(e.eventType) ?? { eventType: e.eventType, guideId, count: 0 };
-      row.count += 1;
+      row.count += bookingOutcomeIncrement(e);
       counts.set(e.eventType, row);
     }
     return [...counts.values()];
@@ -1854,7 +2372,7 @@ export async function getPlatformAnalyticsSummary(
           guideId: null,
           count: 0,
         };
-      row.count += 1;
+      row.count += bookingOutcomeIncrement(e);
       counts.set(key, row);
     }
     return [...counts.values()];
@@ -2039,6 +2557,17 @@ export async function saveBoatTour(
       status: input.status ?? "active",
       createdAt: created,
       updatedAt: created,
+      // A tour created here is always admin-curated by hand, through this
+      // very function — the only way BoatLocal identity fields ever get set
+      // is syncCruiseFromBoatLocal below. See BoatTourRecord's own doc
+      // comment for why every one of these must stay nullable.
+      boatlocalId: null,
+      fareharborPk: null,
+      slug: null,
+      cruiseType: null,
+      boatlocalActive: null,
+      deactivationReason: null,
+      boatlocalUpdatedAt: null,
     };
     fakeStore.boatTours.push(record);
     return record;

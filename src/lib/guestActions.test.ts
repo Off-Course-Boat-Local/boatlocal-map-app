@@ -16,7 +16,7 @@ describe("guestPinAction", () => {
       bookingUrl: "https://boatlocal.nl/tours/sunset-canal-cruise",
     });
     const parsed = new URL(url);
-    expect(parsed.searchParams.get("tour")).toBe("sunset-canal");
+    expect(parsed.origin + parsed.pathname).toBe("https://boatlocal.nl/tours/sunset-canal-cruise");
     expect(parsed.searchParams.get("ref")).toMatch(/^bkl_/);
     // The returned clickId must be the exact same id embedded in the URL —
     // it's what a caller records alongside the "boat_book_click" analytics

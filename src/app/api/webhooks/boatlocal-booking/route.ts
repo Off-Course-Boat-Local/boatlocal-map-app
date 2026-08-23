@@ -86,6 +86,12 @@ export async function POST(request: Request) {
     amountCents: payload.amountCents,
     currency: payload.currency,
     bookedAt: payload.bookedAt,
+    // Fallback attribution (docs/attribution.md point 6) — only ever
+    // consulted by recordBookingOutcome when the clickId lookup above comes
+    // up empty; BoatLocal may not send these yet, which is fine, since
+    // they're optional on the parsed payload too.
+    sourceCompany: payload.sourceCompany,
+    sourceDistributor: payload.sourceDistributor,
   });
 
   if (!attributed) {

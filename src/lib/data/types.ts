@@ -146,6 +146,59 @@ export interface BoatTourRecord {
   status: BoatTourStatus;
   createdAt: string;
   updatedAt: string;
+  /**
+   * BoatLocal catalogue identity/lifecycle fields (docs/attribution.md's
+   * "cruise catalogue sync" section) — all null for an admin-curated tour
+   * that was never synced from BoatLocal, which is every tour that existed
+   * before this feature and remains a fully supported way to add one.
+   * boatlocalId is BoatLocal's internal PK, reference/dedup only — NEVER
+   * used to build a URL (it always 404s on their side); bookingUrl above is
+   * the only routable link. See syncCruiseFromBoatLocal in
+   * src/lib/data/source.ts for how these get populated.
+   */
+  boatlocalId: string | null;
+  fareharborPk: number | null;
+  slug: string | null;
+  cruiseType: string | null;
+  /**
+   * BoatLocal's own raw active flag, kept distinct from `status` above — see
+   * this table's own migration comment (20260823200000_boatlocal_catalog_sync.sql)
+   * for exactly how the two relate.
+   */
+  boatlocalActive: boolean | null;
+  /**
+   * From a `cruise.deactivated` webhook's `reason` field, or inferred as
+   * "removed_from_fareharbor" by a reconciliation pass. Stored as data only
+   * — whether Map App should ever behave differently based on this value is
+   * an explicitly open question; see docs/attribution.md.
+   */
+  deactivationReason: string | null;
+  /** The catalogue/webhook payload's own `updated_at` for this cruise. */
+  boatlocalUpdatedAt: string | null;
+}
+
+/**
+ * One entry from BoatLocal's public catalogue feed
+ * (`GET /api/public/cruises`) or a `cruise.activated` webhook's `cruise`
+ * field — same shape either way, per BoatLocal's confirmed contract (see
+ * docs/attribution.md). Field names are already camelCased here;
+ * src/lib/boatlocalCatalog.ts's parseBoatLocalCruise does the snake_case ->
+ * camelCase mapping from the wire payload, the same split attribution.ts /
+ * attributionWebhook.ts already use for the booking webhook.
+ */
+export interface BoatLocalCruise {
+  id: number;
+  fareharborPk: number | null;
+  slug: string | null;
+  name: string;
+  cruiseType: string | null;
+  cruiseDuration: string | null;
+  startingPrice: number | null;
+  currency: string | null;
+  images: string[];
+  bookingUrl: string;
+  active: boolean;
+  updatedAt: string | null;
 }
 
 export interface CompanyBoatFeatureRecord {

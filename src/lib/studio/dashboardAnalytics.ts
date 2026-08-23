@@ -24,18 +24,23 @@ function sum(rows: AnalyticsSummaryRow[], types: EventType[]): number {
 }
 
 /**
- * Company-level KPI row (PRD §7.1: active guides, app opens, tips saved,
- * tours booked). `activeGuides` is passed in rather than derived here since
- * it comes from the guide list, not the events table. "Tours booked" sums
- * `booking_outcome` — the closest real equivalent the event schema has to
- * the PRD's phrasing; there's no separate "confirmed booking" event type.
+ * Company-level KPI row (PRD §7.1: active guides, app opens, tips saved).
+ * `activeGuides` is passed in rather than derived here since it comes from
+ * the guide list, not the events table.
+ *
+ * PRD §7.1 also lists "tours booked", but booking financial/outcome data
+ * (the `booking_outcome` event type) is admin-only per the founder's
+ * explicit instruction — a company/guide must never see it, in Studio or
+ * anywhere else. That's enforced at the RLS layer now
+ * (20260823220000_restrict_booking_outcome_events_rls.sql), so `rows` here
+ * will simply never contain a booking_outcome row for a company/guide actor
+ * — this KPI is removed entirely rather than kept and left permanently at 0.
  */
 export function companyDashboardKpis(rows: AnalyticsSummaryRow[], activeGuides: number): KpiItem[] {
   return [
     { key: "active-guides", label: "Active guides", value: activeGuides },
     { key: "app-opens", label: "App opens", value: sum(rows, ["app_open"]) },
     { key: "tips-saved", label: "Tips saved", value: sum(rows, ["tip_saved"]) },
-    { key: "tours-booked", label: "Tours booked", value: sum(rows, ["booking_outcome"]) },
   ];
 }
 
