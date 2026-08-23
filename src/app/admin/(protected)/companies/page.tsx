@@ -14,7 +14,7 @@ import { getOwnerInvite } from "@/lib/admin/ownerInvite";
 import { getGuidesForCompany, listCompanies } from "@/lib/data/source";
 import type { CompanyStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
-import CreateCompanyForm from "@/components/admin/CreateCompanyForm";
+import CreateCompanyButton from "@/components/admin/CreateCompanyButton";
 import OwnerInviteCell from "@/components/admin/OwnerInviteCell";
 import StatusBadge from "@/components/admin/StatusBadge";
 
@@ -125,16 +125,19 @@ export default async function AdminCompaniesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Companies</h1>
-      <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-        {companies.length} tenant{companies.length === 1 ? "" : "s"} on the platform.
-      </p>
-      <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
-        App opens, tips saved and book clicks are live counts from <code>events</code>, over the
-        last 30 days.
-      </p>
-
-      <CreateCompanyForm />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Companies</h1>
+          <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
+            {companies.length} tenant{companies.length === 1 ? "" : "s"} on the platform.
+          </p>
+          <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
+            App opens, tips saved and book clicks are live counts from <code>events</code>, over
+            the last 30 days.
+          </p>
+        </div>
+        <CreateCompanyButton />
+      </div>
 
       <AdminTable
         className="mt-6"

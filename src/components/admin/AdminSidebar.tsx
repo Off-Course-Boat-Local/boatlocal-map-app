@@ -14,7 +14,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import MapAppMark from "@/components/MapAppMark";
-import { AnchorIcon, BuildingIcon, ChartIcon, GridIcon, UsersIcon } from "@/components/PortalIcons";
+import {
+  AnchorIcon,
+  BuildingIcon,
+  ChartIcon,
+  GridIcon,
+  LogoutIcon,
+  UsersIcon,
+} from "@/components/PortalIcons";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Overview", icon: GridIcon },
@@ -75,8 +82,9 @@ export default function AdminSidebar({ email, onLogoutAction }: AdminSidebarProp
         <form action={onLogoutAction} className="mt-2">
           <button
             type="submit"
-            className="text-xs font-medium text-[var(--admin-sidebar-ink-dim)] underline-offset-2 hover:text-[var(--admin-sidebar-ink)] hover:underline"
+            className="flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-sm font-semibold text-[var(--admin-sidebar-ink-dim)] transition-colors hover:bg-[var(--admin-bg)] hover:text-[var(--admin-sidebar-ink)]"
           >
+            <LogoutIcon />
             Sign out
           </button>
         </form>

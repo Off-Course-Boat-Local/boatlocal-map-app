@@ -104,9 +104,6 @@ export default async function AdminOverviewPage() {
           <h2 className="text-lg font-semibold text-[var(--admin-ink)]">
             Effectiveness (PRD §2.3)
           </h2>
-          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-            Placeholder data — no live analytics pipeline yet
-          </span>
         </div>
         <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
           How well the app drives bookings and reviews across the whole platform. See{" "}
