@@ -12,6 +12,8 @@
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 
+import { useIsDesktopPointer } from "@/hooks/useIsDesktopPointer";
+import { useIsStandalone } from "@/hooks/useIsStandalone";
 import { displayFontFamily, bodyFontFamily } from "@/lib/fonts";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import {
@@ -31,15 +33,6 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
-function isStandaloneDisplay(): boolean {
-  const iosStandalone = (navigator as unknown as { standalone?: boolean })
-    .standalone;
-  return (
-    window.matchMedia?.("(display-mode: standalone)").matches === true ||
-    iosStandalone === true
-  );
-}
-
 // Environment, not state — read during render via useSyncExternalStore
 // (same pattern as src/hooks/useGuestLocation.ts's readGeoSupport) rather
 // than pushed into state from an effect. That avoids both a "flash of the
@@ -55,36 +48,6 @@ function getPlatformServerSnapshot(): InstallPlatform {
   return "other";
 }
 
-function getStandaloneSnapshot(): boolean {
-  return isStandaloneDisplay();
-}
-function getStandaloneServerSnapshot(): boolean {
-  return false;
-}
-
-/**
- * True for a mouse/trackpad-driven browser — what the "scan this QR code
- * with your phone's camera" fallback actually assumes about the reader.
- *
- * NOT the same question as `platform === "other"`. That only means
- * "detectInstallPlatform's UA regexes didn't match iOS or Android" — which
- * also catches a real guest on some other/unusual mobile browser. Telling
- * that guest to "scan this with your phone's camera" makes no sense; they
- * ARE the phone. `(hover: hover) and (pointer: fine)` is the standard test
- * for "the primary input can hover and is precise" — true for a mouse,
- * false for anything touch-primary, which is the actual desktop/phone line
- * the QR fallback needs, not platform detection's three-way UA guess.
- */
-function isDesktopPointer(): boolean {
-  return window.matchMedia?.("(hover: hover) and (pointer: fine)").matches === true;
-}
-function getDesktopPointerSnapshot(): boolean {
-  return isDesktopPointer();
-}
-function getDesktopPointerServerSnapshot(): boolean {
-  return false;
-}
-
 export interface InstallScreenProps {
   brand: Brand;
   companyId: string | null;
@@ -96,16 +59,12 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
     getPlatformSnapshot,
     getPlatformServerSnapshot,
   );
-  const standalone = useSyncExternalStore(
-    noopSubscribe,
-    getStandaloneSnapshot,
-    getStandaloneServerSnapshot,
-  );
-  const isDesktop = useSyncExternalStore(
-    noopSubscribe,
-    getDesktopPointerSnapshot,
-    getDesktopPointerServerSnapshot,
-  );
+  const standalone = useIsStandalone();
+  // True for a mouse/trackpad-driven browser — what the "scan this QR code
+  // with your phone's camera" fallback actually assumes about the reader.
+  // NOT the same question as `platform === "other"` — see
+  // useIsDesktopPointer's own header comment for why.
+  const isDesktop = useIsDesktopPointer();
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [justInstalled, setJustInstalled] = useState(false);

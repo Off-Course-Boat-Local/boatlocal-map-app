@@ -21,6 +21,8 @@ import Link from "next/link";
 
 import { PlaceCard } from "@/components/map/PlaceCard";
 import ShareQr from "@/components/ShareQr";
+import { useIsDesktopPointer } from "@/hooks/useIsDesktopPointer";
+import { useIsStandalone } from "@/hooks/useIsStandalone";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import type { MapPin } from "@/lib/data";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
@@ -133,6 +135,14 @@ function readInstallBannerDismissed(): boolean {
  * iOS-vs-Android instructions split) is the Install tab's job, per
  * src/app/(guest)/install/page.tsx's stub comment. This banner just points
  * there and remembers a dismissal.
+ *
+ * BUG FIXED (found live on the production deployment): this used to render
+ * unconditionally other than its own dismiss state, so it told a guest on a
+ * plain desktop browser tab — no home screen to add anything to — to "Add
+ * this to your home screen", and told an already-installed guest to install
+ * a second time. Gated on the same two shared checks InstallScreen.tsx
+ * itself uses (src/hooks/useIsDesktopPointer.ts, useIsStandalone.ts) so the
+ * two surfaces can never disagree about when installing makes sense.
  */
 function InstallBanner({ qs }: { qs: string }) {
   // localStorage doesn't exist during server rendering, so the "was this
@@ -149,8 +159,10 @@ function InstallBanner({ qs }: { qs: string }) {
   // this local flag is what makes clicking "×" actually hide the banner
   // immediately, on top of persisting for next time.
   const [dismissedNow, setDismissedNow] = useState(false);
+  const isDesktop = useIsDesktopPointer();
+  const standalone = useIsStandalone();
 
-  if (dismissedAtLoad || dismissedNow) return null;
+  if (dismissedAtLoad || dismissedNow || isDesktop || standalone) return null;
 
   const dismiss = () => {
     setDismissedNow(true);
