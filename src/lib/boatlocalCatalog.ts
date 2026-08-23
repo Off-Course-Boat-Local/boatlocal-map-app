@@ -19,7 +19,40 @@
 // (syncCruiseFromBoatLocal / deactivateBoatLocalCruise / hideMissingBoatLocalTours) —
 // this file only ever turns `unknown` JSON into a typed value or `null`.
 
-import type { BoatLocalCruise } from "./data/types";
+import type { BoatLocalCruise, BoatLocalCruiseDeparture } from "./data/types";
+
+/**
+ * Parses one `departure` object (added to BoatLocal's catalogue feed after
+ * the rest of this integration — see docs/attribution.md; absent entirely
+ * from every response as of this parser shipping, since BoatLocal hasn't put
+ * it in production yet). Returns null both when the field is simply absent
+ * (today's reality) and when it's the explicit `null` BoatLocal sends for
+ * the ~4 seasonal/candlelight cruises with neither a Maps link nor an
+ * address — syncCruiseFromBoatLocal treats those two cases identically
+ * anyway (no location data to use), so this function never needs to
+ * distinguish them for its caller.
+ *
+ * Lenient on `source`: any string is accepted (not just the two values
+ * BoatLocal has confirmed today), same "don't reject a good row over one
+ * open-ended field" reasoning as `deactivationReason`/`reason` elsewhere in
+ * this file. A malformed departure (missing/wrong-typed lat, lng, or
+ * address) is treated as "no departure data" rather than rejecting the whole
+ * cruise entry over it.
+ */
+function parseDeparture(json: unknown): BoatLocalCruiseDeparture | null {
+  if (typeof json !== "object" || json === null) return null;
+  const d = json as Record<string, unknown>;
+
+  const lat = d.lat;
+  const lng = d.lng;
+  const address = d.address;
+  if (typeof lat !== "number" || typeof lng !== "number" || typeof address !== "string" || !address) {
+    return null;
+  }
+
+  const source = typeof d.source === "string" ? d.source : null;
+  return { lat, lng, address, source };
+}
 
 /**
  * Parses one catalogue-feed entry (or a `cruise.activated` webhook's
@@ -61,6 +94,7 @@ export function parseBoatLocalCruise(json: unknown): BoatLocalCruise | null {
   const currency = typeof j.currency === "string" ? j.currency : null;
   const images = Array.isArray(j.images) ? j.images.filter((i): i is string => typeof i === "string") : [];
   const updatedAt = typeof j.updated_at === "string" ? j.updated_at : null;
+  const departure = parseDeparture(j.departure);
 
   return {
     id,
@@ -75,6 +109,7 @@ export function parseBoatLocalCruise(json: unknown): BoatLocalCruise | null {
     bookingUrl,
     active,
     updatedAt,
+    departure,
   };
 }
 

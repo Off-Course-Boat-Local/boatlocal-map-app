@@ -115,7 +115,9 @@ export default function BoatTourForm({
         </div>
         <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
           No address lookup — drop a pin in your map app of choice, then copy its
-          coordinates here.
+          coordinates here. For a tour synced from BoatLocal, this is often
+          already filled in from their own departure-point data — check
+          before overwriting it.
         </p>
       </div>
 
@@ -146,6 +148,11 @@ export default function BoatTourForm({
           placeholder="What makes this tour worth booking."
           className={inputClass}
         />
+        <span className="mt-1 block text-xs text-[var(--admin-ink-soft)]">
+          A tour synced from BoatLocal stays hidden until this is written,
+          even once its location is already filled in — this is usually the
+          one thing left to add.
+        </span>
         <span className="mt-1 block text-right text-xs text-[var(--admin-ink-soft)]">
           {noteLength}/{NOTE_MAX_LENGTH}
         </span>

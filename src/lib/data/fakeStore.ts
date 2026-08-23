@@ -133,6 +133,7 @@ function seedBoatTours(): BoatTourRecord[] {
     boatlocalActive: null,
     deactivationReason: null,
     boatlocalUpdatedAt: null,
+    locationSource: null,
   }));
 }
 

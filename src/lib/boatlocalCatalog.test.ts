@@ -35,6 +35,9 @@ describe("parseBoatLocalCruise", () => {
       bookingUrl: "https://boatlocal.nl/cruise/shared-old-city-center-boat-tour",
       active: true,
       updatedAt: "2026-08-23T09:00:00Z",
+      // Not live on BoatLocal's production feed yet as of this fixture — see
+      // types.ts's BoatLocalCruise.departure doc comment.
+      departure: null,
     });
   });
 
@@ -63,6 +66,66 @@ describe("parseBoatLocalCruise", () => {
     delete rest.images;
     const parsed = parseBoatLocalCruise(rest);
     expect(parsed?.images).toEqual([]);
+  });
+
+  describe("departure (BoatLocal's not-yet-live per-cruise coordinates)", () => {
+    it("parses a google_maps_link departure into the camelCase shape", () => {
+      const parsed = parseBoatLocalCruise({
+        ...VALID_CRUISE,
+        departure: {
+          lat: 52.3651118,
+          lng: 4.9034867,
+          address: "Nieuwe Keizersgracht 1, 1018 DS Amsterdam",
+          source: "google_maps_link",
+        },
+      });
+      expect(parsed?.departure).toEqual({
+        lat: 52.3651118,
+        lng: 4.9034867,
+        address: "Nieuwe Keizersgracht 1, 1018 DS Amsterdam",
+        source: "google_maps_link",
+      });
+    });
+
+    it("parses a geocoded_address departure the same way — still real, still per-cruise", () => {
+      const parsed = parseBoatLocalCruise({
+        ...VALID_CRUISE,
+        departure: {
+          lat: 52.37,
+          lng: 4.89,
+          address: "Some free-text address",
+          source: "geocoded_address",
+        },
+      });
+      expect(parsed?.departure?.source).toBe("geocoded_address");
+    });
+
+    it("treats an explicit null departure as no location data, not a parse failure", () => {
+      const parsed = parseBoatLocalCruise({ ...VALID_CRUISE, departure: null });
+      expect(parsed).not.toBeNull();
+      expect(parsed?.departure).toBeNull();
+    });
+
+    it("defaults departure to null when the field is absent entirely (today's reality — not yet shipped)", () => {
+      const rest: Partial<typeof VALID_CRUISE> & { departure?: unknown } = { ...VALID_CRUISE };
+      delete rest.departure;
+      const parsed = parseBoatLocalCruise(rest);
+      expect(parsed?.departure).toBeNull();
+    });
+
+    it("treats a malformed departure (missing lat/lng/address) as no location data rather than rejecting the whole cruise", () => {
+      const parsed = parseBoatLocalCruise({ ...VALID_CRUISE, departure: { source: "google_maps_link" } });
+      expect(parsed).not.toBeNull();
+      expect(parsed?.departure).toBeNull();
+    });
+
+    it("tolerates a missing/non-string source rather than rejecting the whole departure", () => {
+      const parsed = parseBoatLocalCruise({
+        ...VALID_CRUISE,
+        departure: { lat: 1, lng: 2, address: "Somewhere" },
+      });
+      expect(parsed?.departure).toEqual({ lat: 1, lng: 2, address: "Somewhere", source: null });
+    });
   });
 });
 

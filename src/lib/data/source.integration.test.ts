@@ -16,7 +16,7 @@
 // a uniquely-marked row and deletes it again in the same test, so repeated
 // runs never accumulate junk.
 import { createClient } from "@supabase/supabase-js";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   getActiveCompanyRecord,
@@ -226,6 +226,75 @@ describe("source.ts round-tripping against the real Supabase project", () => {
         sourceDistributor: "jan", // supabase/seed.sql's seeded guide's real slug
       });
       expect(result).toEqual({ inserted: true, attributed: true });
+    });
+  });
+
+  describe("is_test tagging excludes rows from the real company_analytics_summary RPC", () => {
+    // This is specifically here (not just in the fakeStore suite) to prove
+    // the REAL `is_test = false` filter added to
+    // 20260823240000_events_is_test_tag.sql's company_analytics_summary
+    // actually excludes a tagged row — the fakeStore mirror can never catch
+    // a wrong column name or a filter that silently no-ops in real SQL.
+    //
+    // Calls the RPC directly via the service-role client rather than through
+    // getCompanyAnalyticsSummary: that wrapper's real branch goes through
+    // authedClient() (src/lib/supabase/server.ts), which calls next/headers'
+    // cookies() — this suite runs in a plain Node/Vitest environment with no
+    // real Next.js request scope, so that call would throw before ever
+    // reaching the RPC. company_analytics_summary is `security invoker` and
+    // has no RLS-guarded read of its own beyond the plain `events` select
+    // this migration's own WHERE clause performs, so calling it directly
+    // here still genuinely exercises the real function body.
+    const marker = `is-test-tag-integration-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    afterAll(async () => {
+      await adminClient().from("events").delete().eq("metadata->>marker", marker);
+    });
+
+    it("a booking recorded on a stubbed non-production deployment is tagged is_test and excluded from the RPC's sum", async () => {
+      vi.stubEnv("VERCEL_ENV", "preview");
+      await recordEvent({
+        eventType: "boat_book_click",
+        companyId,
+        metadata: { clickId: `bkl_${marker}`, marker },
+      });
+      const result = await recordBookingOutcome({
+        clickId: `bkl_${marker}`,
+        bookingId: `BOOKING-${marker}`,
+        event: "booking.confirmed",
+        tourId: "sunset-canal",
+        guests: 2,
+        amountCents: 5600,
+        currency: "EUR",
+        bookedAt: new Date().toISOString(),
+      });
+      expect(result.inserted).toBe(true);
+
+      // Confirm the row really was written with is_test = true — proves the
+      // insert-side tagging, independent of the RPC's own filter below.
+      const { data: rawRow, error: rawError } = await adminClient()
+        .from("events")
+        .select("is_test")
+        .eq("metadata->>bookingId", `BOOKING-${marker}`)
+        .single();
+      expect(rawError).toBeNull();
+      expect(rawRow?.is_test).toBe(true);
+
+      const { data: summary, error: rpcError } = await adminClient().rpc(
+        "company_analytics_summary",
+        {
+          p_company_id: companyId,
+          p_from: new Date(Date.now() - 60_000).toISOString(),
+          p_to: new Date(Date.now() + 60_000).toISOString(),
+        },
+      );
+      expect(rpcError).toBeNull();
+      const rows = (summary ?? []) as Array<{ event_type: string; event_count: number }>;
+      expect(rows.find((r) => r.event_type === "booking_outcome")).toBeUndefined();
     });
   });
 });

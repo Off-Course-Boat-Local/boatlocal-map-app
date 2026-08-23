@@ -115,6 +115,39 @@ import { StudioPermissionError } from "./types";
 // to the in-memory fake store.
 const isTestEnv = process.env.VITEST === "true";
 
+/**
+ * Server-side signal for "this event was recorded from a non-production
+ * deployment" — the replacement for manually spotting TEST-/E2E-/STG-
+ * `booking_id` or `bkl_TEST_`/`bkl_E2E_`/`bkl_STG_` `click_id` prefixes,
+ * BoatLocal's own testing convention that had already left behind rows
+ * requiring manual cleanup twice (docs/attribution.md). Both teams agreed a
+ * proper flag replaces that going forward.
+ *
+ * Vercel sets `VERCEL_ENV` automatically on every real deployment —
+ * `"production"`, `"preview"`, or `"development"` — so a genuine staging/
+ * preview deployment (which shares this app's ONE database with production;
+ * there is no separate staging Supabase project) always has this positively
+ * set to something other than `"production"`.
+ *
+ * Deliberately treats a genuinely UNSET var as "not test" rather than "test"
+ * — the opposite of the seemingly-more-cautious reading. This is not a
+ * loophole: a real Vercel deployment never leaves it unset (Vercel sets it
+ * unconditionally), so the only place it's ever actually unset is a bare
+ * `next dev`, `npx vitest run` (this file's own fakeStore-backed test suite,
+ * which never touches this var), or `npm run test:integration`'s plain
+ * `node` process. Treating "unset" as test-like would tag literally every
+ * event either suite has ever recorded, breaking the whole existing
+ * assertion surface of both — every analytics-count test in
+ * src/lib/data/source.test.ts and every real-Postgres booking test in
+ * source.integration.test.ts. A test that specifically wants to exercise the
+ * is_test=true path stubs this value explicitly (`vi.stubEnv("VERCEL_ENV",
+ * "preview")`) rather than relying on an ambient default either way.
+ */
+function isNonProductionDeployment(): boolean {
+  const vercelEnv = process.env.VERCEL_ENV;
+  return vercelEnv != null && vercelEnv !== "production";
+}
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -333,6 +366,7 @@ interface BoatTourRow {
   active: boolean | null;
   deactivation_reason: string | null;
   boatlocal_updated_at: string | null;
+  location_source: string | null;
 }
 
 function fromBoatTourRow(row: BoatTourRow): BoatTourRecord {
@@ -357,6 +391,7 @@ function fromBoatTourRow(row: BoatTourRow): BoatTourRecord {
     boatlocalActive: row.active,
     deactivationReason: row.deactivation_reason,
     boatlocalUpdatedAt: row.boatlocal_updated_at,
+    locationSource: row.location_source,
   };
 }
 
@@ -758,6 +793,16 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
  * succeeds in that case since it carries no session either way.
  */
 export async function recordEvent(input: NewEventInput): Promise<void> {
+  // Tagged for every event type, not just booking_outcome (see
+  // isNonProductionDeployment's own doc comment): a staging/preview
+  // deployment shares this app's one real database with production, so
+  // whatever a guest or Studio session does there — app opens, saved tips,
+  // review clicks — is exactly as much "not real activity" as a test
+  // booking is. Scoping this narrower to only booking-outcome events would
+  // leave every other count exposed to the same kind of pollution the
+  // is_test column exists to prevent.
+  const isTest = isNonProductionDeployment();
+
   if (isTestEnv) {
     fakeStore.events.push({
       id: fakeId("event"),
@@ -770,6 +815,7 @@ export async function recordEvent(input: NewEventInput): Promise<void> {
       platform: (input.platform ?? "unknown") as EventPlatform,
       metadata: input.metadata ?? {},
       occurredAt: new Date().toISOString(),
+      isTest,
     });
     return;
   }
@@ -785,6 +831,7 @@ export async function recordEvent(input: NewEventInput): Promise<void> {
       guest_session_id: input.guestSessionId ?? null,
       platform: input.platform ?? "unknown",
       metadata: input.metadata ?? {},
+      is_test: isTest,
     });
   if (error) throw error;
 }
@@ -983,6 +1030,12 @@ async function resolveFallbackAttribution(
  * plus a `booking.confirmed` (new booking id), which this function already
  * handles correctly as two independent bookingIds each going through the
  * dedup/netting logic above. No cross-linking between the two is attempted.
+ *
+ * `isTest` (see isNonProductionDeployment) is set here regardless of dedup:
+ * this is the concrete, agreed case that's already left behind real cleanup
+ * work (BoatLocal testing against our production webhook with no reachable
+ * staging endpoint yet — docs/attribution.md) — every "tours booked"/
+ * conversion-rate aggregate must exclude a row tagged this way by default.
  */
 export async function recordBookingOutcome(
   input: RecordBookingOutcomeInput,
@@ -1001,6 +1054,7 @@ export async function recordBookingOutcome(
     currency: input.currency,
     bookedAt: input.bookedAt,
   };
+  const isTest = isNonProductionDeployment();
 
   if (isTestEnv) {
     const alreadyRecorded = fakeStore.events.some(
@@ -1022,6 +1076,7 @@ export async function recordBookingOutcome(
       platform: "unknown",
       metadata,
       occurredAt: new Date().toISOString(),
+      isTest,
     });
     return { inserted: true, attributed: !!click };
   }
@@ -1045,6 +1100,7 @@ export async function recordBookingOutcome(
     boat_tour_id: click?.boatTourId ?? null,
     platform: "unknown",
     metadata,
+    is_test: isTest,
   });
   if (error) throw error;
 
@@ -1078,38 +1134,59 @@ function formatCruiseMeta(cruise: BoatLocalCruise): string {
  * cheap insurance against a single malformed feed entry, not a bet that it
  * will actually happen).
  *
- * JUDGMENT CALL, clearly flagged: BoatLocal's feed has no lat/lng, no
- * departure-point "area", and no guide-written "note" — this table's other
- * NOT NULL columns. On a genuinely NEW cruise (no existing row for this
- * fareharbor_pk yet), this inserts it with empty/placeholder geo fields
- * (area: "", lng/lat: 0,0, note: "") and `status` forced to 'hidden'
- * REGARDLESS of BoatLocal's own `active` flag — until an admin opens it in
- * BoatTourForm and fills in the real location/description, it must not go
- * live on the guest map at (0,0), which would place a real "Book this tour"
- * pin in the ocean. `active`/`fareharbor_pk`/`slug`/`boatlocal_id`/
- * `cruise_type`/`boatlocal_updated_at`/name/meta/photos/booking_url are all
- * still recorded immediately either way, so nothing about the cruise's
- * identity is lost while it waits on that admin step.
+ * JUDGMENT CALL, clearly flagged: BoatLocal's feed carries no guide-written
+ * "note" — this table's one remaining NOT NULL column with no BoatLocal
+ * counterpart at all. It now DOES sometimes carry real departure coordinates
+ * (`cruise.departure` — lat/lng/address/source, confirmed shipping to
+ * BoatLocal's staging first, not yet in their production feed as of this
+ * comment) for most cruises, `null` for a small seasonal/candlelight subset
+ * with neither a Google Maps link nor an address (~4 of 61 as of this
+ * writing). On a genuinely NEW cruise (no existing row for this
+ * fareharbor_pk yet), this inserts it with `note: ""` and `status` forced to
+ * 'hidden' REGARDLESS of BoatLocal's own `active` flag or whether real
+ * departure data is present — **the founder's explicit instruction: "don't
+ * auto-publish on departure != null alone — a guide's personal note is still
+ * yours to write."** area/lng/lat are populated from `cruise.departure` when
+ * present (address/lng/lat verbatim, `location_source` recording which of
+ * `departure.source`'s confidence levels it came from) and left at the old
+ * `""`/`0`/`0` placeholder — never geocoded or defaulted on Map App's own
+ * side — when `departure` is `null`, exactly as before this field existed.
+ * `active`/`fareharbor_pk`/`slug`/`boatlocal_id`/`cruise_type`/
+ * `boatlocal_updated_at`/name/meta/photos/booking_url are all still recorded
+ * immediately either way, so nothing about the cruise's identity is lost
+ * while it waits on that admin step.
  *
- * On every subsequent sync of an ALREADY-KNOWN fareharbor_pk, only the
- * BoatLocal-owned fields above are re-written (BoatLocal is the source of
- * truth for name/price/duration/photos/booking_url/active — a price change
- * on their side should propagate on the next sync); area/lng/lat/note/
- * position are Map App's own curation layer and are never touched here once
- * a row exists, exactly like an admin-curated tour's fields never are.
+ * On every subsequent sync of an ALREADY-KNOWN fareharbor_pk, the
+ * BoatLocal-owned fields above are re-written the same way (BoatLocal is the
+ * source of truth for name/price/duration/photos/booking_url/active — a
+ * price change on their side should propagate on the next sync).
+ * area/lng/lat/note/position are Map App's own curation layer and are never
+ * touched here once an admin (or an earlier sync's departure-backfill below)
+ * has given the row a real, non-placeholder area — exactly like an
+ * admin-curated tour's fields never are. The ONE exception: while `area` is
+ * still the exact `""` placeholder this function itself writes, a
+ * newly-available `cruise.departure` is backfilled into area/lng/lat/
+ * location_source on the spot, so a cruise that synced before BoatLocal had
+ * departure data to offer doesn't have to wait for an admin to hand-enter
+ * coordinates BoatLocal can now supply automatically. This still never
+ * publishes anything by itself — see the note-gate below.
  *
- * The "hidden pending completion" gate is STICKY, not one-time: `status` is
- * only driven by BoatLocal's `active` flag once the row's `area` is no
- * longer empty — i.e. once an admin has actually opened it in BoatTourForm
- * and saved real values. Without this check, the very next scheduled
- * reconciliation after a brand-new insert (which could run hours later, the
- * same day) would immediately flip an untouched row back to 'active' purely
- * because BoatLocal still reports it active, undoing the INSERT branch's
- * whole reason for existing and putting a real booking pin at (0,0)
- * unattended. `area === ""` is a safe signal for "not yet completed" only
- * because this function is the one and only place that ever writes that
- * empty-string placeholder — a real admin-entered area is validated
- * non-empty by parseBoatTourForm.
+ * The "hidden pending completion" gate is STICKY, not one-time, and is keyed
+ * off `note`, NOT `area`: `status` is only driven by BoatLocal's `active`
+ * flag once the row's `note` is no longer empty — i.e. once an admin has
+ * actually opened it in BoatTourForm and written a real description. This
+ * used to key off `area` instead, back when BoatLocal's feed could never
+ * supply real location data at all — now that `departure` often arrives
+ * automatically and correctly, an `area`-based gate would incorrectly treat
+ * a freshly-synced cruise as "complete" the moment it syncs, even though no
+ * admin has ever written a word about it. Without this check at all, the
+ * very next scheduled reconciliation after a brand-new insert (which could
+ * run hours later, the same day) would immediately flip an untouched row
+ * back to 'active' purely because BoatLocal still reports it active, undoing
+ * the INSERT branch's whole reason for existing. `note === ""` is a safe
+ * signal for "not yet completed" only because this function is the one and
+ * only place that ever writes that empty-string placeholder — a real
+ * admin-entered note is validated non-empty by parseBoatTourForm.
  */
 export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<void> {
   const meta = formatCruiseMeta(cruise);
@@ -1121,17 +1198,16 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
         : fakeStore.boatTours.find((t) => t.boatlocalId === String(cruise.id));
 
     if (existing) {
-      // STICKY SAFETY NET: an empty `area` is exactly the placeholder this
-      // same function's INSERT branch writes below, and the ONLY way it
-      // stops being empty is an admin explicitly completing the tour via
-      // BoatTourForm (sync never writes to area/lng/lat/note — see this
-      // function's own doc comment). Without this check, the very next
-      // scheduled reconciliation after a brand-new insert would immediately
-      // flip a still-incomplete row back to 'active' off of BoatLocal's own
-      // `active: true`, undoing the one-time "pending completion" gate the
-      // INSERT branch exists to enforce and putting a real "Book this tour"
-      // pin at (0,0) unattended.
-      const pendingCompletion = existing.area === "";
+      // STICKY SAFETY NET, keyed off `note` (not `area` — see this
+      // function's own doc comment for why that changed): an empty `note` is
+      // exactly the placeholder this same function's INSERT branch writes
+      // below, and the ONLY way it stops being empty is an admin explicitly
+      // completing the tour via BoatTourForm. Without this check, the very
+      // next scheduled reconciliation after a brand-new insert would
+      // immediately flip a still-incomplete row back to 'active' off of
+      // BoatLocal's own `active: true`, undoing the one-time "pending
+      // completion" gate the INSERT branch exists to enforce.
+      const pendingCompletion = existing.note === "";
       const status: BoatTourStatus = pendingCompletion ? "hidden" : cruise.active ? "active" : "hidden";
 
       Object.assign(existing, {
@@ -1149,6 +1225,23 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
         boatlocalUpdatedAt: cruise.updatedAt,
         updatedAt: new Date().toISOString(),
       });
+
+      // Departure backfill: only while `area` is still the exact ""
+      // placeholder this function writes on INSERT — the instant it's real
+      // (admin-set or backfilled by an earlier sync), it's Map App's own
+      // curation layer forever, same as every other manually-curated field
+      // on this row. This intentionally does NOT require `pendingCompletion`
+      // — the row may still be hidden pending a note, but there's no reason
+      // to wait on that to also backfill accurate coordinates BoatLocal now
+      // provides for free, and doing so here (rather than only at INSERT
+      // time) is what lets a cruise that synced before `departure` existed
+      // pick up real coordinates on its very next reconciliation.
+      if (existing.area === "" && cruise.departure) {
+        existing.area = cruise.departure.address;
+        existing.lng = cruise.departure.lng;
+        existing.lat = cruise.departure.lat;
+        existing.locationSource = cruise.departure.source;
+      }
       return;
     }
 
@@ -1157,9 +1250,9 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
     fakeStore.boatTours.push({
       id: fakeId("boat-tour"),
       name: cruise.name,
-      area: "",
-      lng: 0,
-      lat: 0,
+      area: cruise.departure?.address ?? "",
+      lng: cruise.departure?.lng ?? 0,
+      lat: cruise.departure?.lat ?? 0,
       meta,
       note: "",
       bookingUrl: cruise.bookingUrl,
@@ -1173,6 +1266,7 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
       boatlocalActive: cruise.active,
       deactivationReason: null,
       boatlocalUpdatedAt: cruise.updatedAt,
+      locationSource: cruise.departure?.source ?? null,
       createdAt: created,
       updatedAt: created,
     });
@@ -1186,15 +1280,18 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
 
   const { data: existingData, error: fetchError } = await supabase
     .from("boat_tours")
-    .select("id, area, deactivation_reason")
+    .select("id, area, note, deactivation_reason")
     .eq(lookupColumn, lookupValue)
     .maybeSingle();
   if (fetchError) throw fetchError;
-  const existing = existingData as { id: string; area: string; deactivation_reason: string | null } | null;
+  const existing = existingData as
+    | { id: string; area: string; note: string; deactivation_reason: string | null }
+    | null;
 
   if (existing) {
-    // See the isTestEnv branch above for why this check exists at all.
-    const pendingCompletion = existing.area === "";
+    // See the isTestEnv branch above for why this check exists at all, and
+    // why it's keyed off `note` rather than `area`.
+    const pendingCompletion = existing.note === "";
     const status: BoatTourStatus = pendingCompletion ? "hidden" : cruise.active ? "active" : "hidden";
 
     const updates: Partial<BoatTourRow> = {
@@ -1217,6 +1314,16 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
     // feed" path do — see deactivateBoatLocalCruise/hideMissingBoatLocalTours).
     if (!pendingCompletion && cruise.active) updates.deactivation_reason = null;
 
+    // Departure backfill — see this function's own doc comment for why this
+    // is independent of `pendingCompletion` and only ever fires once (area
+    // stops being the "" placeholder the moment this runs).
+    if (existing.area === "" && cruise.departure) {
+      updates.area = cruise.departure.address;
+      updates.lng = cruise.departure.lng;
+      updates.lat = cruise.departure.lat;
+      updates.location_source = cruise.departure.source;
+    }
+
     const { error } = await supabase.from("boat_tours").update(updates).eq("id", existing.id);
     if (error) throw error;
     return;
@@ -1233,9 +1340,9 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
 
   const { error } = await supabase.from("boat_tours").insert({
     name: cruise.name,
-    area: "",
-    lng: 0,
-    lat: 0,
+    area: cruise.departure?.address ?? "",
+    lng: cruise.departure?.lng ?? 0,
+    lat: cruise.departure?.lat ?? 0,
     meta,
     note: "",
     booking_url: cruise.bookingUrl,
@@ -1249,6 +1356,7 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
     active: cruise.active,
     deactivation_reason: null,
     boatlocal_updated_at: cruise.updatedAt,
+    location_source: cruise.departure?.source ?? null,
   });
   if (error) throw error;
 }
@@ -2277,6 +2385,9 @@ export async function getCompanyAnalyticsSummary(
       // fakeStore branch has no RLS of its own, so this mirrors that
       // exclusion by hand for a non-admin actor.
       if (e.eventType === "booking_outcome" && actor.role !== "admin") continue;
+      // Test/staging-originated rows never count toward real numbers — see
+      // 20260823240000_events_is_test_tag.sql's matching RPC exclusion.
+      if (e.isTest) continue;
       const key = `${e.eventType}::${e.guideId ?? ""}`;
       const row = counts.get(key) ?? { eventType: e.eventType, guideId: e.guideId, count: 0 };
       row.count += bookingOutcomeIncrement(e);
@@ -2326,6 +2437,9 @@ export async function getGuideAnalyticsSummary(
       // Booking financial/outcome data is admin-only — see
       // getCompanyAnalyticsSummary's identical comment just above.
       if (e.eventType === "booking_outcome" && actor.role !== "admin") continue;
+      // Test/staging-originated rows never count toward real numbers — see
+      // getCompanyAnalyticsSummary's identical comment just above.
+      if (e.isTest) continue;
       const row = counts.get(e.eventType) ?? { eventType: e.eventType, guideId, count: 0 };
       row.count += bookingOutcomeIncrement(e);
       counts.set(e.eventType, row);
@@ -2384,6 +2498,9 @@ export async function getPlatformAnalyticsSummary(
     >();
     for (const e of fakeStore.events) {
       if (!e.companyId || !inRange(e.occurredAt, range)) continue;
+      // Test/staging-originated rows never count toward real numbers — see
+      // getCompanyAnalyticsSummary's identical comment above.
+      if (e.isTest) continue;
       const company = fakeStore.companies.find((c) => c.id === e.companyId);
       if (!company) continue;
       const key = `${company.id}::${e.eventType}`;
@@ -2592,6 +2709,7 @@ export async function saveBoatTour(
       boatlocalActive: null,
       deactivationReason: null,
       boatlocalUpdatedAt: null,
+      locationSource: null,
     };
     fakeStore.boatTours.push(record);
     return record;

@@ -175,6 +175,38 @@ export interface BoatTourRecord {
   deactivationReason: string | null;
   /** The catalogue/webhook payload's own `updated_at` for this cruise. */
   boatlocalUpdatedAt: string | null;
+  /**
+   * Which BoatLocal `departure.source` value (if any) the current area/lng/
+   * lat came from, e.g. so Admin could eventually show a confidence hint
+   * ("geocoded" vs. "pinned on Maps") — no UI built for that yet, but kept
+   * queryable from day one so that's a read of existing data later, not a
+   * backfill (same rationale as boatlocalUpdatedAt above). Null for an
+   * admin-curated tour, and for a BoatLocal-sourced one where neither
+   * BoatLocal's `departure` nor an admin has ever supplied a location yet.
+   * See syncCruiseFromBoatLocal in src/lib/data/source.ts for exactly when
+   * this gets set (once, same moment area/lng/lat are first backfilled from
+   * `departure` — never touched again after that, same as those fields).
+   */
+  locationSource: string | null;
+}
+
+/**
+ * BoatLocal's per-cruise departure-point data (added to their catalogue feed
+ * after the rest of this integration — see docs/attribution.md). `source` is
+ * `"google_maps_link"` (an operator-pinned Maps link — high confidence) or
+ * `"geocoded_address"` (geocoded from free text — slightly lower confidence,
+ * still real, still per-cruise). Kept as a plain nullable string rather than
+ * a union, matching this file's existing `deactivationReason`/`reason`
+ * convention for an open-ended, partner-supplied value Map App doesn't
+ * branch behavior on today (see parseBoatLocalCruise's own doc comment for
+ * why "unknown value" must never be treated the same as "no departure data
+ * at all" — the two mean very different things here).
+ */
+export interface BoatLocalCruiseDeparture {
+  lat: number;
+  lng: number;
+  address: string;
+  source: string | null;
 }
 
 /**
@@ -199,6 +231,17 @@ export interface BoatLocalCruise {
   bookingUrl: string;
   active: boolean;
   updatedAt: string | null;
+  /**
+   * Real per-cruise departure coordinates — `null` for the small subset of
+   * cruises (seasonal/candlelight, ~4 of 61 as of this field shipping) with
+   * neither a Google Maps link nor an address on BoatLocal's side, and
+   * always `null` today since BoatLocal hasn't shipped this field to
+   * production yet (confirmed shipping to their staging first — see
+   * docs/attribution.md). Never geocoded or defaulted on Map App's own side
+   * either way — see syncCruiseFromBoatLocal's doc comment in
+   * src/lib/data/source.ts.
+   */
+  departure: BoatLocalCruiseDeparture | null;
 }
 
 export interface CompanyBoatFeatureRecord {
@@ -220,6 +263,18 @@ export interface EventRecord {
   platform: EventPlatform;
   metadata: Record<string, unknown>;
   occurredAt: string;
+  /**
+   * True when this event was recorded from a non-production Vercel
+   * deployment (see isNonProductionDeployment in src/lib/data/source.ts) —
+   * the replacement for manually spotting TEST-/E2E-/STG- booking_id or
+   * bkl_TEST_/bkl_E2E_/bkl_STG_ click_id prefixes left behind by BoatLocal's
+   * own testing (docs/attribution.md). Always server-derived, never settable
+   * by NewEventInput's caller. Every analytics rollup in this file excludes
+   * isTest=true rows by default, mirroring
+   * supabase/migrations/20260823240000_events_is_test_tag.sql's matching
+   * `is_test` column and RPC exclusion.
+   */
+  isTest: boolean;
 }
 
 /**

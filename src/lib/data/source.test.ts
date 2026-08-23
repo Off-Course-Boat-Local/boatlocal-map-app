@@ -377,6 +377,10 @@ describe("BoatLocal cruise-catalogue sync", () => {
     bookingUrl: "https://boatlocal.nl/cruise/shared-old-city-center-boat-tour",
     active: true,
     updatedAt: "2026-08-23T09:00:00Z",
+    // Not live on BoatLocal's production feed as of this fixture — see
+    // types.ts's BoatLocalCruise.departure doc comment. Individual tests
+    // override this to exercise the departure-backfill behavior.
+    departure: null,
   };
 
   afterEach(() => {
@@ -477,6 +481,99 @@ describe("BoatLocal cruise-catalogue sync", () => {
       expect(after.lng).toBe(4.9);
       expect(after.lat).toBe(52.38);
       expect(after.note).toBe("A guide's real description.");
+    });
+
+    describe("departure coordinates (BoatLocal's not-yet-live departure field)", () => {
+      const CRUISE_WITH_DEPARTURE: BoatLocalCruise = {
+        ...CRUISE,
+        departure: {
+          lat: 52.3651118,
+          lng: 4.9034867,
+          address: "Nieuwe Keizersgracht 1, 1018 DS Amsterdam",
+          source: "google_maps_link",
+        },
+      };
+
+      it("populates area/lng/lat/locationSource from departure on insert, but still stays hidden pending a note", async () => {
+        await syncCruiseFromBoatLocal(CRUISE_WITH_DEPARTURE);
+        const created = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+
+        expect(created?.area).toBe("Nieuwe Keizersgracht 1, 1018 DS Amsterdam");
+        expect(created?.lng).toBe(4.9034867);
+        expect(created?.lat).toBe(52.3651118);
+        expect(created?.locationSource).toBe("google_maps_link");
+        // The founder's explicit instruction: real departure data alone must
+        // never auto-publish a cruise — a guide's own note is still required.
+        expect(created?.note).toBe("");
+        expect(created?.status).toBe("hidden");
+      });
+
+      it("leaves the old 0/0/\"\" placeholder when departure is null, exactly as before this field existed", async () => {
+        await syncCruiseFromBoatLocal(CRUISE);
+        const created = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+
+        expect(created?.area).toBe("");
+        expect(created?.lng).toBe(0);
+        expect(created?.lat).toBe(0);
+        expect(created?.locationSource).toBeNull();
+      });
+
+      it("keeps a cruise with real departure data hidden across repeated syncs until an admin writes the note (gate is now keyed off note, not area)", async () => {
+        await syncCruiseFromBoatLocal(CRUISE_WITH_DEPARTURE);
+        // Simulates the next several scheduled reconciliations — area is
+        // already real, so an area-based gate would have incorrectly treated
+        // this as "complete" the moment it synced.
+        await syncCruiseFromBoatLocal({ ...CRUISE_WITH_DEPARTURE, active: true });
+        await syncCruiseFromBoatLocal({ ...CRUISE_WITH_DEPARTURE, active: true });
+
+        const after = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+        expect(after?.status).toBe("hidden");
+        expect(after?.area).toBe("Nieuwe Keizersgracht 1, 1018 DS Amsterdam");
+      });
+
+      it("backfills real coordinates on a later sync once departure becomes available for a cruise that synced before it existed", async () => {
+        // First sync: BoatLocal's feed doesn't have departure data yet.
+        await syncCruiseFromBoatLocal(CRUISE);
+        const afterFirstSync = (await listBoatTourCatalog(adminActor)).find(
+          (t) => t.fareharborPk === 85146,
+        );
+        expect(afterFirstSync?.area).toBe("");
+
+        // BoatLocal ships departure data; the next reconciliation now
+        // includes it for the same cruise.
+        await syncCruiseFromBoatLocal(CRUISE_WITH_DEPARTURE);
+
+        const after = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+        expect(after?.area).toBe("Nieuwe Keizersgracht 1, 1018 DS Amsterdam");
+        expect(after?.lng).toBe(4.9034867);
+        expect(after?.lat).toBe(52.3651118);
+        expect(after?.locationSource).toBe("google_maps_link");
+        // Still not published — no note yet.
+        expect(after?.status).toBe("hidden");
+      });
+
+      it("never overwrites a real area once set — not an admin's manual entry, and not an earlier departure backfill", async () => {
+        await syncCruiseFromBoatLocal(CRUISE_WITH_DEPARTURE);
+
+        // BoatLocal later reports a different address for the same cruise
+        // (e.g. a corrected Maps pin) — this must NOT silently move a real
+        // "Book this tour" pin without an admin's own action.
+        await syncCruiseFromBoatLocal({
+          ...CRUISE_WITH_DEPARTURE,
+          departure: {
+            lat: 1,
+            lng: 1,
+            address: "A completely different address",
+            source: "geocoded_address",
+          },
+        });
+
+        const after = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+        expect(after?.area).toBe("Nieuwe Keizersgracht 1, 1018 DS Amsterdam");
+        expect(after?.lng).toBe(4.9034867);
+        expect(after?.lat).toBe(52.3651118);
+        expect(after?.locationSource).toBe("google_maps_link");
+      });
     });
   });
 
@@ -814,6 +911,81 @@ describe("analytics rollups", () => {
     );
     const companies = await listCompanies({ role: "admin" });
     expect(companies).toHaveLength(1);
+  });
+});
+
+describe("is_test tagging — non-production Vercel deployments never pollute real counts", () => {
+  // VERCEL_ENV is never set for this suite (npx vitest run) — see
+  // isNonProductionDeployment's own doc comment in src/lib/data/source.ts for
+  // why that ambient absence must default to "not test" rather than "test":
+  // every event this whole file records relies on that default to keep
+  // counting normally. These tests are the ones that explicitly override it.
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("recordEvent tags an event is_test when VERCEL_ENV is a non-production value", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    await recordEvent({ eventType: "tip_saved", companyId: COMPANY_ID, guideId: GUIDE_ID });
+
+    const rows = await getCompanyAnalyticsSummary(
+      { role: "company", companyId: COMPANY_ID },
+      COMPANY_ID,
+    );
+    expect(rows.find((r) => r.eventType === "tip_saved")).toBeUndefined();
+  });
+
+  it("recordBookingOutcome tags a booking is_test on a preview/staging deployment, excluded from admin-facing sums", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    await recordEvent({
+      eventType: "boat_book_click",
+      companyId: COMPANY_ID,
+      guideId: GUIDE_ID,
+      metadata: { clickId: "bkl_preview_test" },
+    });
+    await recordBookingOutcome({
+      clickId: "bkl_preview_test",
+      bookingId: "PREVIEW-BOOKING-1",
+      event: "booking.confirmed",
+      tourId: "sunset-canal",
+      guests: 2,
+      amountCents: 5600,
+      currency: "EUR",
+      bookedAt: new Date().toISOString(),
+    });
+
+    const guideView = await getGuideAnalyticsSummary({ role: "admin" }, GUIDE_ID);
+    expect(guideView.find((r) => r.eventType === "booking_outcome")).toBeUndefined();
+
+    const platformView = await getPlatformAnalyticsSummary({ role: "admin" });
+    expect(
+      platformView.find((r) => r.companyId === COMPANY_ID && r.eventType === "booking_outcome"),
+    ).toBeUndefined();
+  });
+
+  it("a real (production) deployment's booking still counts normally — the default this whole suite already relies on", async () => {
+    // No stub at all — matches how every other test in this file records
+    // events, proving the ambient VERCEL_ENV-unset default doesn't
+    // accidentally tag real activity as test.
+    await recordEvent({
+      eventType: "boat_book_click",
+      companyId: COMPANY_ID,
+      guideId: GUIDE_ID,
+      metadata: { clickId: "bkl_prod_test" },
+    });
+    await recordBookingOutcome({
+      clickId: "bkl_prod_test",
+      bookingId: "PROD-BOOKING-1",
+      event: "booking.confirmed",
+      tourId: "sunset-canal",
+      guests: 2,
+      amountCents: 5600,
+      currency: "EUR",
+      bookedAt: new Date().toISOString(),
+    });
+
+    const guideView = await getGuideAnalyticsSummary({ role: "admin" }, GUIDE_ID);
+    expect(guideView.find((r) => r.eventType === "booking_outcome")?.count).toBe(1);
   });
 });
 
