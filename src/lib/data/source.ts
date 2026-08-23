@@ -2215,6 +2215,45 @@ export async function setCompanyStatus(
   return fromCompanyRow(data as CompanyRow);
 }
 
+/**
+ * Permanently removes a company and everything scoped to it (guides,
+ * featured-boat-tour picks, recommendations, guest sessions, events) —
+ * every FK into `companies` is `on delete cascade`
+ * (supabase/migrations/20260805063610_init_schema.sql), so one DELETE here
+ * is enough; nothing needs a manual multi-table cleanup pass. Admin-only,
+ * same guard as setCompanyStatus above, and irreversible in a way status
+ * changes aren't — the confirmation UX lives in
+ * src/components/admin/CompanyRowActions.tsx, not here.
+ */
+export async function deleteCompany(actor: StudioActor, companyId: string): Promise<void> {
+  if (actor.role !== "admin") {
+    throw new StudioPermissionError("Only admin may delete a company.");
+  }
+
+  if (isTestEnv) {
+    const idx = fakeStore.companies.findIndex((c) => c.id === companyId);
+    if (idx === -1) throw new StudioPermissionError(`Company ${companyId} not found.`);
+    fakeStore.companies.splice(idx, 1);
+    fakeStore.guides = fakeStore.guides.filter((g) => g.companyId !== companyId);
+    fakeStore.companyBoatFeatures = fakeStore.companyBoatFeatures.filter(
+      (f) => f.companyId !== companyId,
+    );
+    fakeStore.recommendations = fakeStore.recommendations.filter(
+      (r) => r.companyId !== companyId,
+    );
+    fakeStore.events = fakeStore.events.filter((e) => e.companyId !== companyId);
+    return;
+  }
+
+  const supabase = await authedClient();
+  const { error, count } = await supabase
+    .from("companies")
+    .delete({ count: "exact" })
+    .eq("id", companyId);
+  if (error) throw error;
+  if (!count) throw new StudioPermissionError(`Company ${companyId} not found.`);
+}
+
 // Re-exported so callers only need one import for the category lookups they
 // often need next to a Place/MapPin (e.g. pin colour). Not a data-access
 // concern per se, but keeping it here avoids a second import line at every

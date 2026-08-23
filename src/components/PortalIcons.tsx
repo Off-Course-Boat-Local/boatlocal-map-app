@@ -190,3 +190,57 @@ export function GearIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** Row/kebab action-menu trigger — three vertical dots. */
+export function MoreIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="5.5" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="18.5" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** "View details" row action. */
+export function EyeIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.75" />
+    </svg>
+  );
+}
+
+/** Archive / suspend row action — a lidded box. */
+export function ArchiveIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3.5" y="4" width="17" height="4.5" rx="1" />
+      <path d="M4.75 8.5v9a1.5 1.5 0 0 0 1.5 1.5h11.5a1.5 1.5 0 0 0 1.5-1.5v-9" />
+      <path d="M10 12.5h4" />
+    </svg>
+  );
+}
+
+/** Go-live / reactivate row action. */
+export function CheckCircleIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m8.5 12.25 2.4 2.4 4.6-5.3" />
+    </svg>
+  );
+}
+
+/** Permanent delete row action. */
+export function TrashIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4.5 6.5h15" />
+      <path d="M9.5 6.5V4.75a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V6.5" />
+      <path d="M6.75 6.5 7.5 19a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l.75-12.5" />
+      <path d="M10.25 10.5v6M13.75 10.5v6" />
+    </svg>
+  );
+}

@@ -6,6 +6,14 @@ export interface AdminTableProps {
   rows: ReactNode[][];
   emptyMessage?: string;
   className?: string;
+  /**
+   * Tailwind width classes, one per column, applied to both the header and
+   * body cells (e.g. `["min-w-[220px]", "w-32", undefined]`). Omit an
+   * index (or the whole prop) to leave that column's width up to the
+   * browser's own table auto-layout, same as before this existed — every
+   * other AdminTable caller keeps its current sizing untouched.
+   */
+  columnWidths?: Array<string | undefined>;
 }
 
 export default function AdminTable({
@@ -13,6 +21,7 @@ export default function AdminTable({
   rows,
   emptyMessage = "Nothing here yet.",
   className,
+  columnWidths,
 }: AdminTableProps) {
   return (
     <div
@@ -24,11 +33,14 @@ export default function AdminTable({
       <table className="w-full min-w-[480px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-[var(--admin-border)] text-left">
-            {columns.map((column) => (
+            {columns.map((column, columnIndex) => (
               <th
                 key={column}
                 scope="col"
-                className="px-4 py-3 text-xs font-semibold tracking-wide text-[var(--admin-ink-soft)] uppercase"
+                className={[
+                  "px-4 py-3 text-xs font-semibold tracking-wide text-[var(--admin-ink-soft)] uppercase",
+                  columnWidths?.[columnIndex] ?? "",
+                ].join(" ")}
               >
                 {column}
               </th>
@@ -46,7 +58,13 @@ export default function AdminTable({
             rows.map((row, rowIndex) => (
               <tr key={rowIndex} className="border-b border-[var(--admin-border)] last:border-0">
                 {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} className="px-4 py-3 align-top text-[var(--admin-ink)]">
+                  <td
+                    key={cellIndex}
+                    className={[
+                      "px-4 py-3 align-top text-[var(--admin-ink)]",
+                      columnWidths?.[cellIndex] ?? "",
+                    ].join(" ")}
+                  >
                     {cell}
                   </td>
                 ))}

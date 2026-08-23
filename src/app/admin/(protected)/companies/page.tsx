@@ -8,15 +8,32 @@
 import type { Metadata } from "next";
 
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
-import { setCompanyStatusAction } from "@/lib/admin/companyActions";
 import { companyPerformance } from "@/lib/admin/analytics";
 import { getOwnerInvite } from "@/lib/admin/ownerInvite";
 import { getGuidesForCompany, listCompanies } from "@/lib/data/source";
 import type { CompanyStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
+import CompanyRowActions from "@/components/admin/CompanyRowActions";
 import CreateCompanyButton from "@/components/admin/CreateCompanyButton";
 import OwnerInviteCell from "@/components/admin/OwnerInviteCell";
 import StatusBadge from "@/components/admin/StatusBadge";
+
+// One width per column (see AdminTable's own doc comment) — without these
+// the browser's table auto-layout was squeezing "Company" down to wherever
+// left space happened to land, wrapping a name as short as "Boat & Bike
+// Co." onto two lines while Owner/Status sat mostly empty.
+const COLUMN_WIDTHS = [
+  "min-w-[180px]",
+  "min-w-[110px]",
+  "min-w-[110px]",
+  "min-w-[200px]",
+  "w-20",
+  "w-24",
+  "w-24",
+  "w-24",
+  "w-24",
+  "w-16",
+];
 
 export const metadata: Metadata = { title: "Companies" };
 
@@ -48,22 +65,6 @@ const OWNER_STATUS_LABEL: Record<"invited" | "active", string> = {
   active: "Active",
 };
 
-function statusActionButtonClass(): string {
-  return "rounded-md border border-[var(--admin-border)] px-2 py-1 text-xs font-medium text-[var(--admin-ink)] hover:bg-[var(--admin-bg)]";
-}
-
-/** The one or two next-status actions available from a company's current status. */
-function nextStatusActions(status: CompanyStatus): { label: string; next: CompanyStatus }[] {
-  switch (status) {
-    case "setup":
-      return [{ label: "Go live", next: "active" }];
-    case "active":
-      return [{ label: "Suspend", next: "suspended" }];
-    case "suspended":
-      return [{ label: "Reactivate", next: "active" }];
-  }
-}
-
 export default async function AdminCompaniesPage() {
   const companies = await listCompanies(ADMIN_ACTOR);
 
@@ -78,7 +79,9 @@ export default async function AdminCompaniesPage() {
       const invite = await getOwnerInvite(company.id);
 
       return [
-        company.name,
+        <span key="name" className="font-medium whitespace-nowrap">
+          {company.name}
+        </span>,
         <span key="subdomain" className="font-mono text-xs">
           {company.subdomain}
         </span>,
@@ -110,15 +113,12 @@ export default async function AdminCompaniesPage() {
           status={STATUS_LABEL[company.status]}
           tone={STATUS_TONE[company.status]}
         />,
-        <div key="actions" className="flex flex-wrap gap-2">
-          {nextStatusActions(company.status).map((action) => (
-            <form key={action.next} action={setCompanyStatusAction.bind(null, company.id, action.next)}>
-              <button type="submit" className={statusActionButtonClass()}>
-                {action.label}
-              </button>
-            </form>
-          ))}
-        </div>,
+        <CompanyRowActions
+          key="actions"
+          companyId={company.id}
+          companyName={company.name}
+          status={company.status}
+        />,
       ];
     }),
   );
@@ -154,6 +154,7 @@ export default async function AdminCompaniesPage() {
           "Actions",
         ]}
         rows={rows}
+        columnWidths={COLUMN_WIDTHS}
         emptyMessage="No companies yet — onboard the first one above."
       />
     </div>

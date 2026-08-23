@@ -16,7 +16,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdminSession } from "@/lib/admin/devAuth";
-import { createCompany, setCompanyStatus } from "@/lib/data/source";
+import { createCompany, deleteCompany, setCompanyStatus } from "@/lib/data/source";
 import type { CompanyStatus, CompanyType } from "@/lib/data/types";
 
 import { ADMIN_ACTOR } from "./actor";
@@ -162,4 +162,27 @@ export async function setCompanyStatusAction(
   await requireAdminSession();
   await setCompanyStatus(ADMIN_ACTOR, companyId, nextStatus);
   revalidatePath("/admin/companies");
+  revalidatePath(`/admin/companies/${companyId}`);
+}
+
+export interface DeleteCompanyActionState {
+  error?: string;
+}
+
+/**
+ * Called directly from CompanyRowActions.tsx's confirmation dialog (not
+ * bound to a <form>) — a plain async Server Action reference is callable
+ * from client code the same way, and this needs to report success/failure
+ * back into that dialog's own state rather than a page navigation.
+ */
+export async function deleteCompanyAction(companyId: string): Promise<DeleteCompanyActionState> {
+  await requireAdminSession();
+  try {
+    await deleteCompany(ADMIN_ACTOR, companyId);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Could not delete this company." };
+  }
+  revalidatePath("/admin/companies");
+  revalidatePath("/admin");
+  return {};
 }

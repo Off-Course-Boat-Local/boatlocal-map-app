@@ -75,11 +75,20 @@ export default function AdminSidebar({ email, onLogoutAction }: AdminSidebarProp
         </nav>
       </div>
 
-      <div className="px-2">
-        <p className="truncate text-xs text-[var(--admin-sidebar-ink-dim)]" title={email}>
-          {email}
-        </p>
-        <form action={onLogoutAction} className="mt-2">
+      <div className="border-t border-[var(--admin-sidebar-border)] px-2 pt-4">
+        <div className="flex items-center gap-2.5 px-1 py-1">
+          <span
+            aria-hidden="true"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+            style={{ background: "var(--admin-accent-strong)" }}
+          >
+            {email.charAt(0).toUpperCase()}
+          </span>
+          <p className="truncate text-xs text-[var(--admin-sidebar-ink-dim)]" title={email}>
+            {email}
+          </p>
+        </div>
+        <form action={onLogoutAction} className="mt-1">
           <button
             type="submit"
             className="flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-sm font-semibold text-[var(--admin-sidebar-ink-dim)] transition-colors hover:bg-[var(--admin-bg)] hover:text-[var(--admin-sidebar-ink)]"

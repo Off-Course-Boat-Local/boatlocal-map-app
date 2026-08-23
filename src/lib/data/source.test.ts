@@ -7,6 +7,7 @@ import {
   createCompany,
   deactivateGuide,
   deleteBoatTour,
+  deleteCompany,
   deleteRecommendation,
   getActiveCompanyRecord,
   getBoatCatalogForStudio,
@@ -788,5 +789,49 @@ describe("setCompanyStatus", () => {
     await expect(
       setCompanyStatus(adminActor, "not-a-real-company", "active"),
     ).rejects.toThrow(StudioPermissionError);
+  });
+});
+
+describe("deleteCompany", () => {
+  it("admin can delete a company, and it disappears from listCompanies", async () => {
+    const created = await createCompany(adminActor, {
+      name: "Disposable Co",
+      companyType: "host",
+      ownerEmail: "owner@disposable.example",
+    });
+
+    await deleteCompany(adminActor, created.id);
+
+    const listed = await listCompanies(adminActor);
+    expect(listed.some((c) => c.id === created.id)).toBe(false);
+  });
+
+  it("cascades to that company's guides and recommendations", async () => {
+    const created = await createCompany(adminActor, {
+      name: "Disposable Co 2",
+      companyType: "host",
+      ownerEmail: "owner@disposable2.example",
+    });
+    const guide = await inviteGuide(adminActor, created.id, {
+      name: "Temp Guide",
+      email: "temp-guide@disposable2.example",
+    });
+
+    await deleteCompany(adminActor, created.id);
+
+    const guides = await getGuidesForCompany(adminActor, created.id);
+    expect(guides.some((g) => g.id === guide.id)).toBe(false);
+  });
+
+  it("only admin may delete a company", async () => {
+    await expect(
+      deleteCompany({ role: "company", companyId: COMPANY_ID }, COMPANY_ID),
+    ).rejects.toThrow(StudioPermissionError);
+  });
+
+  it("rejects an id that does not exist", async () => {
+    await expect(deleteCompany(adminActor, "not-a-real-company")).rejects.toThrow(
+      StudioPermissionError,
+    );
   });
 });
