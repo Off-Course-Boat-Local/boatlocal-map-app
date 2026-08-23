@@ -252,13 +252,13 @@ describe("recordBookingOutcome — the BoatLocal webhook's write side", () => {
       expect(summary.find((r) => r.eventType === "booking_outcome")?.count).toBe(1);
     });
 
-    it("also attributes the guide when source_distributor resolves under that company", async () => {
+    it("also attributes the guide when source_distributor (a slug, not an id) resolves under that company", async () => {
       const result = await recordBookingOutcome({
         ...CONFIRMED,
         clickId: "bkl_never_recorded",
         bookingId: "BL-fallback-2",
         sourceCompany: COMPANY_ID,
-        sourceDistributor: GUIDE_ID,
+        sourceDistributor: GUIDE.slug,
       });
       expect(result).toEqual({ inserted: true, attributed: true });
 

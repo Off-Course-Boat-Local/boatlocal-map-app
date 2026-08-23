@@ -37,7 +37,22 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      // The `server-only` package (imported by src/lib/supabase/admin.ts,
+      // reached for real by adminClient()) has no runtime check at all —
+      // its default export is an unconditional `throw new Error(...)`,
+      // resolved away to a no-op (its own `empty.js`) only when a bundler
+      // picks its package.json's `"react-server"` conditional export
+      // instead. Next.js's webpack config does that automatically; plain
+      // Vitest does not. Setting that condition globally (tried first) is
+      // NOT the fix — it also flips React's own resolution to its
+      // react-server build, which is missing ordinary APIs like
+      // createContext and broke unrelated client-side imports transitively
+      // pulled in elsewhere. A direct alias to server-only's own empty.js
+      // is the narrow fix: it only ever affects this one marker package.
+      "server-only": path.resolve(__dirname, "./node_modules/server-only/empty.js"),
+    },
   },
   test: {
     environment: "node",

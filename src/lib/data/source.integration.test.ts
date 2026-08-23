@@ -25,6 +25,7 @@ import {
   getGuide,
   getMapPins,
   getPlaces,
+  recordBookingOutcome,
   recordEvent,
 } from "./source";
 
@@ -153,6 +154,78 @@ describe("source.ts round-tripping against the real Supabase project", () => {
       expect(data).toHaveLength(1);
       expect(data?.[0]?.company_id).toBe(companyId);
       expect(data?.[0]?.event_type).toBe("app_open");
+    });
+  });
+
+  describe("recordBookingOutcome fallback attribution — real-Postgres regression", () => {
+    // REGRESSION, found by BoatLocal's team live-testing the deployed
+    // webhook, not by this (or any prior) test: resolveFallbackAttribution
+    // used to pass an unvalidated `sourceCompany` straight into
+    // `.eq("id", sourceCompany)` against `companies.id`, a real `uuid`
+    // column. Postgres raises a hard error for a non-UUID string compared
+    // against a `uuid` column — it does NOT just return zero rows the way
+    // the fake store's plain `===` string comparison does — so this exact
+    // case passed against the fake store (src/lib/data/source.test.ts's
+    // "never trusts an echoed company id that doesn't resolve to a real
+    // company") while 500ing for real. Only an integration test against the
+    // real database can actually catch this class of bug.
+    const marker = (suffix: string) => `bkl_integration_regression_${suffix}`;
+
+    afterAll(async () => {
+      await adminClient()
+        .from("events")
+        .delete()
+        .like("metadata->>bookingId", "INTEGRATION-TEST-FALLBACK-%");
+    });
+
+    it("a non-UUID source_company never throws — records as unattributed, same as the fake store", async () => {
+      const result = await recordBookingOutcome({
+        clickId: marker("company"),
+        bookingId: "INTEGRATION-TEST-FALLBACK-company",
+        event: "booking.confirmed",
+        tourId: "sunset-canal",
+        guests: 2,
+        amountCents: 5600,
+        currency: "EUR",
+        bookedAt: new Date().toISOString(),
+        sourceCompany: "TEST-CO",
+      });
+      expect(result).toEqual({ inserted: true, attributed: false });
+    });
+
+    it("a non-UUID source_distributor never throws — resolved by slug, not id, so garbage input just fails to match", async () => {
+      const result = await recordBookingOutcome({
+        clickId: marker("distributor"),
+        bookingId: "INTEGRATION-TEST-FALLBACK-distributor",
+        event: "booking.confirmed",
+        tourId: "sunset-canal",
+        guests: 2,
+        amountCents: 5600,
+        currency: "EUR",
+        bookedAt: new Date().toISOString(),
+        sourceCompany: companyId,
+        sourceDistributor: "TEST-GUIDE-SLUG",
+      });
+      // Still attributed at the company level — an unresolvable guide slug
+      // only drops the guide half, per resolveFallbackAttribution's own
+      // doc comment.
+      expect(result).toEqual({ inserted: true, attributed: true });
+    });
+
+    it("a real guide slug (not a UUID id) resolves correctly under the echoed company", async () => {
+      const result = await recordBookingOutcome({
+        clickId: marker("real-slug"),
+        bookingId: "INTEGRATION-TEST-FALLBACK-real-slug",
+        event: "booking.confirmed",
+        tourId: "sunset-canal",
+        guests: 2,
+        amountCents: 5600,
+        currency: "EUR",
+        bookedAt: new Date().toISOString(),
+        sourceCompany: companyId,
+        sourceDistributor: "jan", // supabase/seed.sql's seeded guide's real slug
+      });
+      expect(result).toEqual({ inserted: true, attributed: true });
     });
   });
 });

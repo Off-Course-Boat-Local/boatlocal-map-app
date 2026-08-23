@@ -887,27 +887,51 @@ export interface RecordBookingOutcomeResult {
  *
  * JUDGMENT CALL: an unresolvable companyId means no fallback at all (the
  * booking stays unattributed — a company id we can't verify is not a safer
- * bet than no attribution). An unresolvable guideId under an otherwise-valid
- * company, though, only drops the guide half — the booking still attributes
- * to the company, the same "company-level, no specific guide" shape a real
- * company-wide share link's click already produces via findAttributedClick.
- * This distinction isn't spelled out in the go-live plan; it was chosen to
- * mirror how a null guideId already behaves everywhere else in this file
- * rather than invented from scratch.
+ * bet than no attribution). An unresolvable guide slug under an otherwise-
+ * valid company, though, only drops the guide half — the booking still
+ * attributes to the company, the same "company-level, no specific guide"
+ * shape a real company-wide share link's click already produces via
+ * findAttributedClick. This distinction isn't spelled out in the go-live
+ * plan; it was chosen to mirror how a null guideId already behaves
+ * everywhere else in this file rather than invented from scratch.
+ *
+ * BUG FIXED (found by BoatLocal's team live-testing against our real
+ * production webhook, not by any automated check here): this used to look
+ * the guide up by `.eq("id", guideDistributorSlug)` — treating the echoed
+ * `source_distributor` as the guide's UUID `id`. It is not: `distributor`
+ * (src/lib/attribution.ts's `buildBookingUrl`) has always sent the guide's
+ * *slug*, not its id, so this was resolving against the wrong column
+ * entirely — it only ever appeared to work in manual testing because a
+ * hand-picked UUID happened to match a real seeded guide's id by
+ * coincidence. Fixed to resolve by `slug` (a text column — no type-mismatch
+ * possible, so this alone also can't 500 the way the company lookup could).
+ *
+ * SECOND BUG FIXED, same report: `companyId` was passed straight into
+ * `.eq("id", companyId)` with no shape check. Postgres raises a hard error
+ * for a non-UUID string compared against a `uuid` column (`companies.id`)
+ * rather than returning zero rows, and that error was left to propagate
+ * as an unhandled exception — a malformed `source_company` (or a
+ * deliberate malicious one) 500'd the whole webhook instead of the
+ * "can't verify it, so no fallback" behaviour this function's own doc
+ * comment already promised. Guarded with the same isUuid() check
+ * getCompanyRecord/getActiveCompanyRecord above already use for exactly
+ * this reason.
  */
 async function resolveFallbackAttribution(
   companyId: string | undefined,
-  guideId: string | undefined,
+  guideSlug: string | undefined,
 ): Promise<AttributedClick | null> {
-  if (!companyId) return null;
+  if (!companyId || !isUuid(companyId)) return null;
 
   if (isTestEnv) {
     const company = fakeStore.companies.find((c) => c.id === companyId);
     if (!company) return null;
 
     let resolvedGuideId: string | null = null;
-    if (guideId) {
-      const guide = fakeStore.guides.find((g) => g.id === guideId && g.companyId === companyId);
+    if (guideSlug) {
+      const guide = fakeStore.guides.find(
+        (g) => g.slug === guideSlug && g.companyId === companyId,
+      );
       resolvedGuideId = guide?.id ?? null;
     }
     return { companyId: company.id, guideId: resolvedGuideId, boatTourId: null };
@@ -923,11 +947,11 @@ async function resolveFallbackAttribution(
   if (!companyRow) return null;
 
   let resolvedGuideId: string | null = null;
-  if (guideId) {
+  if (guideSlug) {
     const { data: guideRow, error: guideError } = await supabase
       .from("guides")
       .select("id")
-      .eq("id", guideId)
+      .eq("slug", guideSlug)
       .eq("company_id", companyId)
       .maybeSingle();
     if (guideError) throw guideError;

@@ -77,22 +77,45 @@ export async function POST(request: Request) {
   // BoatLocal's side to retry forever. recordBookingOutcome does the click
   // lookup itself and reports back whether it found one, rather than this
   // route looking it up twice.
-  const { inserted, attributed } = await recordBookingOutcome({
-    clickId: payload.clickId,
-    bookingId: payload.bookingId,
-    event: payload.event,
-    tourId: payload.tourId,
-    guests: payload.guests,
-    amountCents: payload.amountCents,
-    currency: payload.currency,
-    bookedAt: payload.bookedAt,
-    // Fallback attribution (docs/attribution.md point 6) — only ever
-    // consulted by recordBookingOutcome when the clickId lookup above comes
-    // up empty; BoatLocal may not send these yet, which is fine, since
-    // they're optional on the parsed payload too.
-    sourceCompany: payload.sourceCompany,
-    sourceDistributor: payload.sourceDistributor,
-  });
+  //
+  // Wrapped in try/catch on purpose (found missing by BoatLocal's team
+  // live-testing this route): an unexpected error here used to propagate
+  // uncaught to Next's default handler — a bare 500 with an empty body,
+  // giving BoatLocal's side no way to distinguish "our server is down" from
+  // "something in this specific request broke us," and no message to log.
+  // Every genuinely-invalid-shape case is already handled above as a clean
+  // 400 before this point; this catch is the last-resort net for anything
+  // truly unexpected (a DB outage, etc.), so it still reports 500 — just
+  // with a body, not silence.
+  let inserted: boolean;
+  let attributed: boolean;
+  try {
+    ({ inserted, attributed } = await recordBookingOutcome({
+      clickId: payload.clickId,
+      bookingId: payload.bookingId,
+      event: payload.event,
+      tourId: payload.tourId,
+      guests: payload.guests,
+      amountCents: payload.amountCents,
+      currency: payload.currency,
+      bookedAt: payload.bookedAt,
+      // Fallback attribution (docs/attribution.md point 6) — only ever
+      // consulted by recordBookingOutcome when the clickId lookup above
+      // comes up empty; BoatLocal may not send these yet, which is fine,
+      // since they're optional on the parsed payload too.
+      sourceCompany: payload.sourceCompany,
+      sourceDistributor: payload.sourceDistributor,
+    }));
+  } catch (err) {
+    console.error(
+      `[boatlocal-webhook] recordBookingOutcome threw for booking ${payload.bookingId}:`,
+      err,
+    );
+    return NextResponse.json(
+      { ok: false, error: "internal-error" },
+      { status: 500 },
+    );
+  }
 
   if (!attributed) {
     console.warn(

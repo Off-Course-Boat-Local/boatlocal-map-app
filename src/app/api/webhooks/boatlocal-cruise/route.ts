@@ -78,12 +78,23 @@ export async function POST(request: Request) {
   }
   const event = (json as Record<string, unknown>).event;
 
+  // Both branches below are wrapped in try/catch on purpose (same fix as
+  // the booking webhook, after BoatLocal's team found that route returning
+  // a bare, bodyless 500 on an unexpected error) — every genuinely-invalid
+  // shape is already a clean 400 before this point; this is the last-resort
+  // net for anything truly unexpected, so BoatLocal's side gets a real
+  // status/body to log instead of silence, and still correctly retries.
   if (event === "cruise.activated") {
     const cruise = parseBoatLocalCruise((json as Record<string, unknown>).cruise);
     if (!cruise) {
       return NextResponse.json({ ok: false, error: "invalid-payload-shape" }, { status: 400 });
     }
-    await syncCruiseFromBoatLocal(cruise);
+    try {
+      await syncCruiseFromBoatLocal(cruise);
+    } catch (err) {
+      console.error(`[boatlocal-cruise-webhook] syncCruiseFromBoatLocal threw:`, err);
+      return NextResponse.json({ ok: false, error: "internal-error" }, { status: 500 });
+    }
     return NextResponse.json({ ok: true, event });
   }
 
@@ -92,7 +103,12 @@ export async function POST(request: Request) {
     if (!parsed) {
       return NextResponse.json({ ok: false, error: "invalid-payload-shape" }, { status: 400 });
     }
-    await deactivateBoatLocalCruise(parsed.cruise, parsed.reason);
+    try {
+      await deactivateBoatLocalCruise(parsed.cruise, parsed.reason);
+    } catch (err) {
+      console.error(`[boatlocal-cruise-webhook] deactivateBoatLocalCruise threw:`, err);
+      return NextResponse.json({ ok: false, error: "internal-error" }, { status: 500 });
+    }
     return NextResponse.json({ ok: true, event });
   }
 
