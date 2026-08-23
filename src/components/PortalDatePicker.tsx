@@ -65,6 +65,12 @@ export function PortalDatePicker({
   const [selected, setSelected] = useState<Date | null>(initial);
   const [viewDate, setViewDate] = useState<Date>(initial ?? new Date());
   const [open, setOpen] = useState(false);
+  // "days" is the normal day-grid calendar; "months" is the intermediate
+  // month-picker reached by clicking the day-grid's "June 2026" header (see
+  // this file's header comment / the founder's feature request). There is
+  // deliberately no third "years" view — clicking the month-view's
+  // year-only header is a no-op, not a decade picker.
+  const [view, setView] = useState<"days" | "months">("days");
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   // See PortalSelect.tsx's identical effect for why: a native `form.reset()`
@@ -77,18 +83,26 @@ export function PortalDatePicker({
       const resetTo = defaultValue ? fromIso(defaultValue) : null;
       setSelected(resetTo);
       setViewDate(resetTo ?? new Date());
+      setView("days");
     };
     form.addEventListener("reset", onReset);
     return () => form.removeEventListener("reset", onReset);
   }, [defaultValue]);
 
+  // Closes the popover and resets it to the day-grid view, so it always
+  // reopens on "days" regardless of which view it was left on.
+  function closePopover() {
+    setOpen(false);
+    setView("days");
+  }
+
   useEffect(() => {
     if (!open) return;
     function onDocPointerDown(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) closePopover();
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closePopover();
     }
     document.addEventListener("mousedown", onDocPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -96,6 +110,7 @@ export function PortalDatePicker({
       document.removeEventListener("mousedown", onDocPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const cells = useMemo(() => {
@@ -124,7 +139,7 @@ export function PortalDatePicker({
       <button
         id={id}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? closePopover() : setOpen(true))}
         aria-haspopup="dialog"
         aria-expanded={open}
         className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm outline-none"
@@ -155,21 +170,47 @@ export function PortalDatePicker({
           <div className="flex items-center justify-between">
             <button
               type="button"
-              aria-label="Previous month"
-              onClick={() => setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+              aria-label={view === "days" ? "Previous month" : "Previous year"}
+              onClick={() =>
+                setViewDate((d) =>
+                  view === "days"
+                    ? new Date(d.getFullYear(), d.getMonth() - 1, 1)
+                    : new Date(d.getFullYear() - 1, d.getMonth(), 1)
+                )
+              }
               className="flex h-7 w-7 items-center justify-center rounded-md hover:opacity-70"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M15 5 8 12l7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            <span className="text-sm font-semibold">
-              {MONTH_LABELS[viewDate.getMonth()]} {viewDate.getFullYear()}
-            </span>
+            {view === "days" ? (
+              // Clicking the "June 2026" header switches to the month-grid
+              // view for the year currently shown.
+              <button
+                type="button"
+                onClick={() => setView("months")}
+                aria-label="Choose a month"
+                className="rounded-md px-1.5 py-0.5 text-sm font-semibold hover:opacity-70"
+              >
+                {MONTH_LABELS[viewDate.getMonth()]} {viewDate.getFullYear()}
+              </button>
+            ) : (
+              // The month-grid header shows the year only. Per the feature
+              // request there is no decade/year-range view, so this is
+              // deliberately inert rather than a button to a third view.
+              <span className="select-none px-1.5 py-0.5 text-sm font-semibold">{viewDate.getFullYear()}</span>
+            )}
             <button
               type="button"
-              aria-label="Next month"
-              onClick={() => setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+              aria-label={view === "days" ? "Next month" : "Next year"}
+              onClick={() =>
+                setViewDate((d) =>
+                  view === "days"
+                    ? new Date(d.getFullYear(), d.getMonth() + 1, 1)
+                    : new Date(d.getFullYear() + 1, d.getMonth(), 1)
+                )
+              }
               className="flex h-7 w-7 items-center justify-center rounded-md hover:opacity-70"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -178,46 +219,79 @@ export function PortalDatePicker({
             </button>
           </div>
 
-          <div className="mt-2 grid grid-cols-7 gap-y-1 text-center text-[11px]" style={{ color: `var(--admin-ink-soft, ${FALLBACK_INK_SOFT})` }}>
-            {WEEKDAY_LABELS.map((w, i) => (
-              <span key={`${w}-${i}`}>{w}</span>
-            ))}
-          </div>
+          {view === "days" ? (
+            <>
+              <div className="mt-2 grid grid-cols-7 gap-y-1 text-center text-[11px]" style={{ color: `var(--admin-ink-soft, ${FALLBACK_INK_SOFT})` }}>
+                {WEEKDAY_LABELS.map((w, i) => (
+                  <span key={`${w}-${i}`}>{w}</span>
+                ))}
+              </div>
 
-          <div className="mt-1 grid grid-cols-7 gap-y-1">
-            {cells.map(({ date, inMonth }) => {
-              const iso = toIso(date);
-              const isSelected = iso === selectedIso;
-              const isToday = iso === todayIso;
-              return (
-                <button
-                  key={iso}
-                  type="button"
-                  onClick={() => {
-                    setSelected(date);
-                    setOpen(false);
-                  }}
-                  className="mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs"
-                  style={{
-                    opacity: inMonth ? 1 : 0.35,
-                    background: isSelected ? `var(--admin-accent, ${FALLBACK_ACCENT})` : "transparent",
-                    color: isSelected ? "#FFFFFF" : `var(--admin-ink, ${FALLBACK_INK})`,
-                    border: isToday && !isSelected ? `1px solid var(--admin-accent, ${FALLBACK_ACCENT})` : "1px solid transparent",
-                    fontWeight: isSelected || isToday ? 600 : 400,
-                  }}
-                >
-                  {date.getDate()}
-                </button>
-              );
-            })}
-          </div>
+              <div className="mt-1 grid grid-cols-7 gap-y-1">
+                {cells.map(({ date, inMonth }) => {
+                  const iso = toIso(date);
+                  const isSelected = iso === selectedIso;
+                  const isToday = iso === todayIso;
+                  return (
+                    <button
+                      key={iso}
+                      type="button"
+                      onClick={() => {
+                        setSelected(date);
+                        closePopover();
+                      }}
+                      className="mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs"
+                      style={{
+                        opacity: inMonth ? 1 : 0.35,
+                        background: isSelected ? `var(--admin-accent, ${FALLBACK_ACCENT})` : "transparent",
+                        color: isSelected ? "#FFFFFF" : `var(--admin-ink, ${FALLBACK_INK})`,
+                        border: isToday && !isSelected ? `1px solid var(--admin-accent, ${FALLBACK_ACCENT})` : "1px solid transparent",
+                        fontWeight: isSelected || isToday ? 600 : 400,
+                      }}
+                    >
+                      {date.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            // Month-grid view: pick a month within viewDate's year, then
+            // fall back to the normal day-grid for that month/year.
+            <div className="mt-2 grid grid-cols-3 gap-1.5">
+              {MONTH_LABELS.map((label, monthIndex) => {
+                const isViewedMonth = monthIndex === viewDate.getMonth();
+                const isSelectedMonth =
+                  !!selected && selected.getFullYear() === viewDate.getFullYear() && selected.getMonth() === monthIndex;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => {
+                      setViewDate(new Date(viewDate.getFullYear(), monthIndex, 1));
+                      setView("days");
+                    }}
+                    className="flex h-9 items-center justify-center rounded-md text-xs"
+                    style={{
+                      background: isSelectedMonth ? `var(--admin-accent, ${FALLBACK_ACCENT})` : "transparent",
+                      color: isSelectedMonth ? "#FFFFFF" : `var(--admin-ink, ${FALLBACK_INK})`,
+                      border: isViewedMonth && !isSelectedMonth ? `1px solid var(--admin-accent, ${FALLBACK_ACCENT})` : "1px solid transparent",
+                      fontWeight: isSelectedMonth || isViewedMonth ? 600 : 400,
+                    }}
+                  >
+                    {label.slice(0, 3)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-          {selected && (
+          {view === "days" && selected && (
             <button
               type="button"
               onClick={() => {
                 setSelected(null);
-                setOpen(false);
+                closePopover();
               }}
               className="mt-2 text-xs underline underline-offset-2 opacity-70 hover:opacity-100"
             >
