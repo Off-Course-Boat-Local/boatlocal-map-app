@@ -1,7 +1,9 @@
 // A single KPI tile with an optional period-over-period delta badge.
 // Presentational only — see ./types.ts for the prop shape and
-// src/lib/studio/mockAnalytics.ts for where today's (mock) numbers come
-// from.
+// src/lib/studio/dashboardAnalytics.ts for where today's real numbers come
+// from. Nothing populates `delta` today (no period-over-period data source
+// exists), so DeltaBadge currently never renders — it's kept because the
+// prop shape still supports it for whenever that data exists.
 
 import type { KpiItem } from "./types";
 

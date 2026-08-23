@@ -4,9 +4,9 @@
 //
 // WHY THIS EXISTS: `app_open` has been a defined EventType (src/lib/data/
 // types.ts) and Postgres enum value since the schema was written, but
-// nothing anywhere ever fired it — the Studio dashboard's "App opens" KPI
-// has been pure mock (src/lib/studio/mockAnalytics.ts) with zero real
-// tracking behind it. This is that missing call site.
+// nothing anywhere ever fired it before this — the Studio dashboard's
+// "App opens" KPI (now a real sum, see src/lib/studio/dashboardAnalytics.ts)
+// had no tracking behind it until this call site existed.
 //
 // WHY sessionStorage, NOT a plain useEffect(() => {...}, []): this mounts
 // inside src/app/(guest)/layout.tsx, which — being a shared layout — does

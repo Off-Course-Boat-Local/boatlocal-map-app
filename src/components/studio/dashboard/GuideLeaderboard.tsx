@@ -1,9 +1,8 @@
 // Guide leaderboard (PRD §7.1), company view only. Ranked by tips saved —
 // deliberately not a rating of any kind (see project rule: no star
 // ratings/review counts anywhere). `rows` is a plain prop (see ./types.ts);
-// today it comes from src/lib/studio/mockAnalytics.ts's
-// mockGuideLeaderboard, built off the real guide list with mock counts (no
-// live analytics pipeline exists yet).
+// today it comes from src/lib/studio/dashboardAnalytics.ts's
+// guideTipsLeaderboard, a real sum over the company's events.
 
 import type { LeaderboardRow } from "./types";
 

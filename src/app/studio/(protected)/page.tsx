@@ -2,40 +2,42 @@
 // (PRD §7.1 company view / §6.4 guide view — same route, different content
 // by role).
 //
-// KPI values, the guest-activity chart, and both leaderboard-style lists
-// are MOCK numbers — see src/lib/studio/mockAnalytics.ts's header comment
-// for why (no live analytics pipeline exists yet; the fake store seeds
-// zero rows into `events`). Anything the data layer can already answer for
-// real — active guide count, guide names/ids, recommendation names/ids/
-// categories, a guide's own place count — comes straight from
-// src/lib/data/source.ts, and the mock generators are keyed off those real
-// records so names line up even though the counts next to them are
-// placeholders.
+// Every number on this page is real, read through src/lib/data/source.ts's
+// getCompanyAnalyticsSummary / getGuideAnalyticsSummary (RLS-mirroring
+// reads over `events`) and summed in src/lib/studio/dashboardAnalytics.ts.
+// A brand-new company/guide with zero events shows real 0s and honest
+// empty states, never a plausible-looking placeholder — this page used to
+// lean on src/lib/studio/mockAnalytics.ts for exactly that shortcut, which
+// is why it existed and why it's gone now.
+//
+// Two things PRD §7.1 asks for — a day-by-day guest-activity chart and a
+// most-saved-tips ranking — are NOT shown here: AnalyticsSummaryRow only
+// groups by eventType + guideId today, and neither a by-day nor a
+// by-recommendation grouping exists in the data layer yet. Rather than
+// fabricate one or silently render an empty chart, this page says so
+// plainly (see the note below the leaderboard) until that aggregation
+// exists for real.
 //
 // Every display component (src/components/studio/dashboard/*.tsx) takes
-// its numbers through plain props, so wiring in a real analytics pipeline
-// later means changing what this page passes in, not those components.
+// its numbers through plain props, so wiring in the missing groupings later
+// means changing what this page passes in, not those components.
 
 import CompanyPublishToggle from "@/components/studio/CompanyPublishToggle";
-import GuestActivityChart from "@/components/studio/dashboard/GuestActivityChart";
 import GuideLeaderboard from "@/components/studio/dashboard/GuideLeaderboard";
 import KpiRow from "@/components/studio/dashboard/KpiRow";
-import MostSavedTips from "@/components/studio/dashboard/MostSavedTips";
-import StudioBrandScope from "@/components/studio/StudioBrandScope";
 import {
+  getCompanyAnalyticsSummary,
   getCompanyForStudio,
   getGuideAnalyticsSummary,
   getGuidesForCompany,
   getRecommendationsForStudio,
 } from "@/lib/data/source";
-import { actorFromSession, requireDevSession } from "@/lib/studio/devAuth";
 import {
-  mockCompanyKpis,
-  mockGuestActivity,
-  mockGuideKpis,
-  mockGuideLeaderboard,
-  mockMostSavedTips,
-} from "@/lib/studio/mockAnalytics";
+  companyDashboardKpis,
+  guideDashboardKpis,
+  guideTipsLeaderboard,
+} from "@/lib/studio/dashboardAnalytics";
+import { actorFromSession, requireDevSession } from "@/lib/studio/devAuth";
 
 export default async function StudioDashboardPage() {
   const session = await requireDevSession();
@@ -44,16 +46,15 @@ export default async function StudioDashboardPage() {
   const recommendations = await getRecommendationsForStudio(actor);
 
   if (session.role === "company") {
-    const [guides, company] = await Promise.all([
+    const [guides, company, analytics] = await Promise.all([
       getGuidesForCompany(actor, session.companyId),
       getCompanyForStudio(actor, session.companyId),
+      getCompanyAnalyticsSummary(actor, session.companyId),
     ]);
     const activeGuides = guides.filter((g) => g.status === "active").length;
 
-    const kpis = mockCompanyKpis(session.companyId, activeGuides);
-    const activity = mockGuestActivity(session.companyId);
-    const leaderboard = mockGuideLeaderboard(guides);
-    const mostSaved = mockMostSavedTips(recommendations);
+    const kpis = companyDashboardKpis(analytics, activeGuides);
+    const leaderboard = guideTipsLeaderboard(analytics, guides);
 
     return (
       <div className="space-y-6">
@@ -66,21 +67,16 @@ export default async function StudioDashboardPage() {
           <CompanyPublishToggle companyId={company.id} status={company.status} />
         ) : null}
 
-        <StudioBrandScope>
-          <div className="space-y-6">
-            <KpiRow items={kpis} />
-            <GuestActivityChart data={activity} />
-            <div className="grid gap-6 lg:grid-cols-2">
-              <GuideLeaderboard rows={leaderboard} />
-              <MostSavedTips rows={mostSaved} />
-            </div>
-          </div>
-        </StudioBrandScope>
+        <div className="space-y-6">
+          <KpiRow items={kpis} />
+          <GuideLeaderboard rows={leaderboard} />
+        </div>
 
-        <p className="text-sm text-neutral-500">
-          The numbers above are placeholders until real guest traffic flows in
-          — see the Report tab for real event counts, and Recommendations to
-          review the base list and every guide&rsquo;s own picks.
+        <p className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-sm text-neutral-500">
+          Day-by-day guest activity and a most-saved-tips ranking
+          aren&rsquo;t available yet — the totals above are real, but there
+          isn&rsquo;t a day-level or per-tip breakdown in the data layer
+          today. Nothing to show here yet.
         </p>
       </div>
     );
@@ -90,10 +86,8 @@ export default async function StudioDashboardPage() {
   const ownRecommendations = recommendations.filter(
     (r) => r.ownerType === "guide" && r.guideId === session.guideId,
   );
-  const kpis = mockGuideKpis(session.guideId, recommendations.length);
-  // Real, unlike the KPI cards above — see "Your stats" below for why the
-  // two sit side by side rather than being blended into one row.
   const analytics = await getGuideAnalyticsSummary(actor, session.guideId);
+  const kpis = guideDashboardKpis(analytics, recommendations.length);
   const totalEvents = analytics.reduce((sum, row) => sum + row.count, 0);
 
   return (
@@ -109,20 +103,18 @@ export default async function StudioDashboardPage() {
 
       <p className="text-sm text-neutral-500">
         {ownRecommendations.length} of your own picks, plus the base list
-        (read-only to you). App opens and book-clicks above are placeholders
-        until real traffic flows in. See Recommendations for the full list,
-        and Profile for your own share link.
+        (read-only to you). See Recommendations for the full list, and
+        Profile for your own share link.
       </p>
 
       {/* Moved here from the old combined "Link & QR / Stats" tab when
-          Profile and Settings were split apart — this is the ONE section on
-          this page that is not a placeholder, so it's labelled as such
-          rather than left to look like it belongs with the mock KPIs above. */}
+          Profile and Settings were split apart. This breaks the same two
+          numbers as the KPI cards above down by every event type your link
+          records, not just app opens and book-clicks. */}
       <div>
         <h2 className="text-sm font-semibold text-neutral-900">Your stats</h2>
         <p className="mt-0.5 text-xs text-neutral-500">
-          Real event counts from your own link — unlike the cards above, these
-          are live today.
+          Real event counts from your own link, broken down by type.
         </p>
         <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white">
           <table className="w-full text-left text-sm">
