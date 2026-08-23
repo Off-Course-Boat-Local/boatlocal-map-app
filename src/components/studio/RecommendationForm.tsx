@@ -43,14 +43,24 @@ export interface RecommendationFormProps {
   /** Called once the save action succeeds. */
   onDone: () => void;
   onCancel: () => void;
+  /**
+   * Defaults to saveRecommendationAction (Studio's own save path, gated on a
+   * signed-in dev session). Admin's /admin/default-company page passes its
+   * own admin-gated equivalent, bound to the flagged company's id
+   * (src/lib/admin/defaultCompanyActions.ts) — same underlying
+   * saveRecommendation() call, different session check and actor — so this
+   * one form serves both surfaces without a second copy of the UI.
+   */
+  saveAction?: typeof saveRecommendationAction;
 }
 
 export default function RecommendationForm({
   recommendation,
   onDone,
   onCancel,
+  saveAction = saveRecommendationAction,
 }: RecommendationFormProps) {
-  const [state, formAction, pending] = useActionState(saveRecommendationAction, initialState);
+  const [state, formAction, pending] = useActionState(saveAction, initialState);
   const [noteLength, setNoteLength] = useState(recommendation?.note.length ?? 0);
   const [visible, setVisible] = useState(recommendation?.visible ?? true);
   // Controlled so a picked address suggestion can fill it in — the guide can

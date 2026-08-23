@@ -24,6 +24,8 @@
 import { useCallback, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 
 import { BRANDS } from "@/lib/brand";
+import type { UpdateCompanyBrandingInput } from "@/lib/data/source";
+import type { CompanyRecord } from "@/lib/data/types";
 import { saveCompanyBrandingAction } from "@/lib/studio/brandingActions";
 import { darkenHex, isValidHexColor } from "@/lib/studio/color";
 import { fileToDataUrl, InvalidLogoFileError } from "@/lib/studio/fileToDataUrl";
@@ -37,6 +39,18 @@ export interface BrandingFormProps {
   /** The company's brand as currently saved — also this form's "discard changes" target. */
   initialBrand: Brand;
   initialLogoUrl: string | null;
+  /**
+   * Defaults to saveCompanyBrandingAction (Studio's own save path, gated on
+   * a signed-in "company" dev session). Admin's /admin/default-company page
+   * passes its own admin-gated equivalent (src/lib/admin/defaultCompanyActions.ts)
+   * instead — same underlying updateCompanyBranding() call, different
+   * session check — so this one form serves both surfaces without a second
+   * copy of the UI.
+   */
+  saveAction?: (
+    companyId: string,
+    input: UpdateCompanyBrandingInput,
+  ) => Promise<CompanyRecord>;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -125,7 +139,12 @@ function ColorField({
   );
 }
 
-export default function BrandingForm({ companyId, initialBrand, initialLogoUrl }: BrandingFormProps) {
+export default function BrandingForm({
+  companyId,
+  initialBrand,
+  initialLogoUrl,
+  saveAction = saveCompanyBrandingAction,
+}: BrandingFormProps) {
   const preview = useStudioPreview();
 
   const [appName, setAppName] = useState(initialBrand.appName);
@@ -252,7 +271,7 @@ export default function BrandingForm({ companyId, initialBrand, initialLogoUrl }
     setSaveState("saving");
     setSaveError(null);
     try {
-      await saveCompanyBrandingAction(companyId, {
+      await saveAction(companyId, {
         appName: appName.trim(),
         brandPrimary: primary,
         brandPrimaryDark: primaryDark,

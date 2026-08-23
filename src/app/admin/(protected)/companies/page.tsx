@@ -12,7 +12,7 @@ import type { Metadata } from "next";
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
 import { companyPerformance } from "@/lib/admin/analytics";
 import { getOwnerInvite } from "@/lib/admin/ownerInvite";
-import { getGuidesForCompany, listCompanies } from "@/lib/data/source";
+import { getGuidesForCompany, getPlatformDefaultCompany, listCompanies } from "@/lib/data/source";
 import type { CompanyStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
 import CompanyRowActions from "@/components/admin/CompanyRowActions";
@@ -65,6 +65,11 @@ const OWNER_STATUS_LABEL: Record<"invited" | "active", string> = {
 
 export default async function AdminCompaniesPage() {
   const companies = await listCompanies(ADMIN_ACTOR);
+  // Fetched once for the whole table rather than per row — at most one
+  // company can ever hold the flag (see the partial unique index in
+  // supabase/migrations/20260823190000_platform_default_company.sql), so a
+  // single lookup plus an id comparison per row is enough.
+  const platformDefault = await getPlatformDefaultCompany();
 
   const rows = await Promise.all(
     companies.map(async (company) => {
@@ -117,6 +122,7 @@ export default async function AdminCompaniesPage() {
           companyName={company.name}
           status={company.status}
           ownerInvite={invite}
+          isPlatformDefault={company.id === platformDefault?.id}
         />,
       ];
     }),

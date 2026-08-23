@@ -38,13 +38,23 @@ import {
   deleteRecommendationAction,
   setRecommendationVisibilityAction,
 } from "@/lib/studio/recommendationActions";
-import RecommendationForm from "./RecommendationForm";
+import RecommendationForm, { type RecommendationFormProps } from "./RecommendationForm";
 
 export interface RecommendationsManagerProps {
   recommendations: RecommendationRecord[];
   role: StudioRole;
   /** Only set when role === "guide". */
   currentGuideId?: string;
+  /**
+   * The three actions below default to Studio's own (dev-session-gated)
+   * Server Actions. Admin's /admin/default-company page passes its own
+   * admin-gated equivalents instead (src/lib/admin/defaultCompanyActions.ts)
+   * — same underlying source.ts calls, different session check — so this
+   * one table + form serves both surfaces without a second copy of the UI.
+   */
+  deleteAction?: (id: string) => Promise<{ error?: string }>;
+  setVisibilityAction?: (id: string, visible: boolean) => Promise<{ error?: string; visible?: boolean }>;
+  saveAction?: RecommendationFormProps["saveAction"];
 }
 
 type EditingState = { mode: "new" } | { mode: "edit"; recommendation: RecommendationRecord } | null;
@@ -55,6 +65,9 @@ export default function RecommendationsManager({
   recommendations,
   role,
   currentGuideId,
+  deleteAction = deleteRecommendationAction,
+  setVisibilityAction = setRecommendationVisibilityAction,
+  saveAction,
 }: RecommendationsManagerProps) {
   const [editing, setEditing] = useState<EditingState>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -115,7 +128,7 @@ export default function RecommendationsManager({
     }
     setDeleteError(null);
     setDeletingId(rec.id);
-    const result = await deleteRecommendationAction(rec.id);
+    const result = await deleteAction(rec.id);
     setDeletingId(null);
     if (result.error) setDeleteError(result.error);
   }
@@ -124,7 +137,7 @@ export default function RecommendationsManager({
     setVisibilityError(null);
     setPendingVisible((prev) => ({ ...prev, [rec.id]: next }));
 
-    const result = await setRecommendationVisibilityAction(rec.id, next);
+    const result = await setVisibilityAction(rec.id, next);
 
     if (result.error) {
       // Roll back to whatever the server last told us.
@@ -298,6 +311,7 @@ export default function RecommendationsManager({
             recommendation={editing.mode === "edit" ? editing.recommendation : null}
             onDone={() => setEditing(null)}
             onCancel={() => setEditing(null)}
+            saveAction={saveAction}
           />
         ) : null}
       </PortalModal>

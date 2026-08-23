@@ -12,7 +12,7 @@ import { notFound } from "next/navigation";
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
 import { companyPerformance } from "@/lib/admin/analytics";
 import { getOwnerInvite } from "@/lib/admin/ownerInvite";
-import { getGuidesForCompany, listCompanies } from "@/lib/data/source";
+import { getGuidesForCompany, getPlatformDefaultCompany, listCompanies } from "@/lib/data/source";
 import type { GuideStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
 import CompanyRowActions from "@/components/admin/CompanyRowActions";
@@ -49,10 +49,11 @@ export default async function AdminCompanyDetailPage({
   const company = companies.find((c) => c.id === id);
   if (!company) notFound();
 
-  const [guides, performance, invite] = await Promise.all([
+  const [guides, performance, invite, platformDefault] = await Promise.all([
     getGuidesForCompany(ADMIN_ACTOR, company.id),
     companyPerformance(company.id),
     getOwnerInvite(company.id),
+    getPlatformDefaultCompany(),
   ]);
 
   return (
@@ -81,6 +82,7 @@ export default async function AdminCompanyDetailPage({
             companyName={company.name}
             status={company.status}
             ownerInvite={invite}
+            isPlatformDefault={company.id === platformDefault?.id}
           />
         </div>
       </div>

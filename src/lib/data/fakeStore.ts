@@ -149,6 +149,16 @@ export interface FakeStore {
   boatTours: BoatTourRecord[];
   companyBoatFeatures: CompanyBoatFeatureRecord[];
   events: EventRecord[];
+  /**
+   * Stands in for `companies.is_platform_default` (see
+   * supabase/migrations/20260823190000_platform_default_company.sql) — kept
+   * out of CompanyRecord on purpose (source.ts's getPlatformDefaultCompany/
+   * setPlatformDefaultCompany are the only things that touch it), so it
+   * lives here instead of on any one seeded company row. Null in a fresh
+   * store, matching a real fresh install where no admin has configured one
+   * yet.
+   */
+  platformDefaultCompanyId: string | null;
 }
 
 function seedStore(): FakeStore {
@@ -159,6 +169,7 @@ function seedStore(): FakeStore {
     boatTours: seedBoatTours(),
     companyBoatFeatures: seedCompanyBoatFeatures(),
     events: [],
+    platformDefaultCompanyId: null,
   };
 }
 
@@ -173,6 +184,7 @@ export function resetFakeStore(): void {
   fakeStore.boatTours = fresh.boatTours;
   fakeStore.companyBoatFeatures = fresh.companyBoatFeatures;
   fakeStore.events = fresh.events;
+  fakeStore.platformDefaultCompanyId = fresh.platformDefaultCompanyId;
 }
 
 let idCounter = 0;

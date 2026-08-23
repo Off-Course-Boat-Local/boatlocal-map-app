@@ -354,7 +354,13 @@ interface CompanyBoatFeatureRow {
 // Guest-facing reads (unauthenticated — matches the `anon` RLS policies).
 // =============================================================================
 
-function toBrand(company: CompanyRecord): Brand {
+/**
+ * Exported for src/lib/guestServerContext.ts's platform-default-company
+ * fallback (see getPlatformDefaultCompany above): that caller needs the same
+ * CompanyRecord -> Brand mapping getCompanyBrand already applies, but starts
+ * from a CompanyRecord it already has in hand rather than an id to look up.
+ */
+export function toBrand(company: CompanyRecord): Brand {
   return {
     id: company.id,
     companyName: company.name,
@@ -503,6 +509,51 @@ export async function getActiveCompanyRecord(id: string): Promise<CompanyRecord 
     .select("*")
     .eq("id", id)
     .eq("status", "active")
+    .maybeSingle();
+  if (error) throw error;
+  return data ? fromCompanyRow(data as CompanyRow) : null;
+}
+
+/**
+ * The company shown to a guest who names none at all (bare root URL, no
+ * `?company=` at all — see src/lib/guestServerContext.ts's own comment for
+ * why that used to fall back to src/lib/brand.ts's hardcoded prototype
+ * BRANDS.coastal instead of anything real). Returns null when no company has
+ * been flagged yet (fresh install — src/lib/guestServerContext.ts falls back
+ * to a neutral, honest "Map App" identity in that case, not a fabricated
+ * business).
+ *
+ * No actor: this is an internal server-side lookup key, not a Studio/Admin
+ * read gated by who's asking. Deliberately NOT status-filtered the way
+ * getActiveCompanyRecord is: src/lib/guestServerContext.ts checks the
+ * returned record's own `status` itself (an inactive platform default should
+ * fall through to the neutral identity, not 404 outright — same "unknown vs
+ * inactive" nuance getActiveCompanyRecord's own doc comment describes), and
+ * Admin's /admin/default-company page needs to see a still-"setup" flagged
+ * company too, not just an already-live one.
+ *
+ * Real backend: authed client, NOT anon, despite having no actor of its own
+ * — the two callers need different visibility of the SAME row depending on
+ * who's actually signed in for this request, which only authedClient()
+ * (server.ts: "RLS as whoever is actually signed in for this request, or as
+ * `anon` if nobody is") can give both at once:
+ *   - a guest (no session) resolves through this exact client as anon
+ *     anyway, so guest_public_read's `status = 'active'` still applies —
+ *     identical behaviour to the anon client for that caller;
+ *   - Admin's own authenticated session sees the row regardless of status
+ *     (admin_full_access), which a plain anon client never could.
+ */
+export async function getPlatformDefaultCompany(): Promise<CompanyRecord | null> {
+  if (isTestEnv) {
+    if (!fakeStore.platformDefaultCompanyId) return null;
+    return fakeStore.companies.find((c) => c.id === fakeStore.platformDefaultCompanyId) ?? null;
+  }
+
+  const supabase = await authedClient();
+  const { data, error } = await supabase
+    .from("companies")
+    .select("*")
+    .eq("is_platform_default", true)
     .maybeSingle();
   if (error) throw error;
   return data ? fromCompanyRow(data as CompanyRow) : null;
@@ -1872,6 +1923,67 @@ function assertAdmin(actor: StudioActor, action: string): void {
   if (actor.role !== "admin") {
     throw new StudioPermissionError(`Only admin may ${action}.`);
   }
+}
+
+/**
+ * Flags `companyId` as the platform default (see getPlatformDefaultCompany's
+ * doc comment) and clears the flag on every other row — the partial unique
+ * index (supabase/migrations/20260823190000_platform_default_company.sql)
+ * would refuse a second `true` row anyway, but clearing the old holder first
+ * means a caller never has to know which row that was. Admin-only: this is
+ * the one write path for the flag, reached from Admin's
+ * /admin/default-company page and CompanyRowActions' "Set as default" menu
+ * item.
+ *
+ * Two plain updates rather than one atomic statement — fine here (unlike
+ * most writes in this file) because admin is the only actor who can ever
+ * call this and there is no concurrent-writer race worth guarding against
+ * for a single staff-operated toggle.
+ */
+export async function setPlatformDefaultCompany(actor: StudioActor, companyId: string): Promise<void> {
+  assertAdmin(actor, "set the platform default company");
+
+  if (isTestEnv) {
+    if (!fakeStore.companies.some((c) => c.id === companyId)) {
+      throw new StudioPermissionError(`Company ${companyId} not found.`);
+    }
+    fakeStore.platformDefaultCompanyId = companyId;
+    return;
+  }
+
+  const supabase = await authedClient();
+  const { error: clearError } = await supabase
+    .from("companies")
+    .update({ is_platform_default: false })
+    .eq("is_platform_default", true)
+    .neq("id", companyId);
+  if (clearError) throw clearError;
+
+  const { data, error } = await supabase
+    .from("companies")
+    .update({ is_platform_default: true })
+    .eq("id", companyId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new StudioPermissionError(`Company ${companyId} not found.`);
+}
+
+/** Un-flags whichever company currently holds the platform-default flag, if any. Admin-only, same guard as setPlatformDefaultCompany above. */
+export async function unsetPlatformDefaultCompany(actor: StudioActor): Promise<void> {
+  assertAdmin(actor, "unset the platform default company");
+
+  if (isTestEnv) {
+    fakeStore.platformDefaultCompanyId = null;
+    return;
+  }
+
+  const supabase = await authedClient();
+  const { error } = await supabase
+    .from("companies")
+    .update({ is_platform_default: false })
+    .eq("is_platform_default", true);
+  if (error) throw error;
 }
 
 /**

@@ -20,6 +20,7 @@ import {
   ChartIcon,
   GridIcon,
   LogoutIcon,
+  StarIcon,
   UsersIcon,
 } from "@/components/PortalIcons";
 
@@ -29,6 +30,12 @@ const NAV_ITEMS = [
   { href: "/admin/companies", label: "Companies", icon: BuildingIcon },
   { href: "/admin/guides", label: "Guides", icon: UsersIcon },
   { href: "/admin/analytics", label: "Platform analytics", icon: ChartIcon },
+  // The platform-default company (src/lib/data/source.ts's
+  // getPlatformDefaultCompany) — what a guest sees with no `?company=` at
+  // all. A separate page from Companies because managing its content
+  // (branding + recommendations) reuses Studio's own editors, not the
+  // Companies table's row actions.
+  { href: "/admin/default-company", label: "Default company", icon: StarIcon },
 ] as const;
 
 export interface AdminSidebarProps {

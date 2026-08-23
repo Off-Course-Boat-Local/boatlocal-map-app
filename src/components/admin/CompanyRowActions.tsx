@@ -38,6 +38,7 @@ import {
   EyeIcon,
   RefreshIcon,
   SendIcon,
+  StarIcon,
   TrashIcon,
 } from "@/components/PortalIcons";
 import PortalRowMenu, { type PortalRowMenuItem } from "@/components/PortalRowMenu";
@@ -47,6 +48,10 @@ import {
   resendOwnerInviteAction,
   setCompanyStatusAction,
 } from "@/lib/admin/companyActions";
+import {
+  setPlatformDefaultCompanyAction,
+  unsetPlatformDefaultCompanyAction,
+} from "@/lib/admin/defaultCompanyActions";
 import type { CompanyStatus } from "@/lib/data/types";
 
 export interface CompanyRowActionsProps {
@@ -55,6 +60,8 @@ export interface CompanyRowActionsProps {
   status: CompanyStatus;
   /** Only set while this company has a pending, unredeemed owner invite — see getOwnerInvite(). Omit/null to hide the invite-recovery menu items entirely. */
   ownerInvite?: { inviteUrl: string } | null;
+  /** Whether this is the company currently shown to a guest with no `?company=` at all — see src/lib/data/source.ts's getPlatformDefaultCompany. */
+  isPlatformDefault: boolean;
 }
 
 /** The one next-status action available from a company's current status — same three transitions Admin has always offered, just relocated into the menu. */
@@ -78,6 +85,7 @@ export default function CompanyRowActions({
   companyName,
   status,
   ownerInvite,
+  isPlatformDefault,
 }: CompanyRowActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -87,6 +95,7 @@ export default function CompanyRowActions({
   const [inviteStatus, setInviteStatus] = useState<{ tone: "success" | "error"; text: string } | null>(
     null,
   );
+  const [defaultCompanyError, setDefaultCompanyError] = useState<string | null>(null);
 
   const statusAction = nextStatusAction(status);
 
@@ -102,6 +111,27 @@ export default function CompanyRowActions({
       onSelect: () => {
         startTransition(async () => {
           await setCompanyStatusAction(companyId, statusAction.next, new FormData());
+          router.refresh();
+        });
+      },
+    },
+    {
+      // What a guest sees with no `?company=` at all — see
+      // src/lib/data/source.ts's getPlatformDefaultCompany. Toggling this
+      // never needs a confirmation dialog: setting a new default just moves
+      // the flag (setPlatformDefaultCompany clears whichever company held it
+      // before), and unsetting it only returns guests to the neutral "Map
+      // App" fallback, not any data loss.
+      label: isPlatformDefault ? "Unset as default" : "Set as default",
+      icon: StarIcon,
+      disabled: isPending,
+      onSelect: () => {
+        setDefaultCompanyError(null);
+        startTransition(async () => {
+          const result = isPlatformDefault
+            ? await unsetPlatformDefaultCompanyAction()
+            : await setPlatformDefaultCompanyAction(companyId);
+          if (result.error) setDefaultCompanyError(result.error);
           router.refresh();
         });
       },
@@ -191,6 +221,11 @@ export default function CompanyRowActions({
             }`}
           >
             {inviteStatus.text}
+          </p>
+        ) : null}
+        {defaultCompanyError ? (
+          <p role="alert" className="max-w-[200px] text-right text-[11px] text-red-600">
+            {defaultCompanyError}
           </p>
         ) : null}
       </div>

@@ -276,3 +276,12 @@ export function RefreshIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** "Set/unset as default" row action, and the Admin sidebar's "Default company" nav item — a five-point star, same stroke weight as every other icon here. */
+export function StarIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 3.5 14.5 9.6 21 10.1 16 14.2 17.6 20.5 12 17 6.4 20.5 8 14.2 3 10.1 9.5 9.6Z" strokeLinejoin="round" />
+    </svg>
+  );
+}

@@ -9,26 +9,62 @@
 //
 // Every screen reads tenant data through src/lib/data/source.ts, per the
 // project's DataSource rule — never Supabase, never the fake store,
-// directly. `getCompanyBrand`/`getCompanyRecord` only resolve for tenants
-// actually seeded in src/lib/data/fakeStore.ts (today: "coastal"). For the
-// other four BRANDS keys — kept around so every skin stays previewable via
-// `?company=` while more tenants aren't seeded yet — this falls back to the
-// static swatch in src/lib/brand.ts so the app still renders, just without
-// live company/guide data.
+// directly.
+//
+// FALLBACK, WHEN brandId NAMES NO REAL, ACTIVE COMPANY: this used to fall
+// through to src/lib/brand.ts's BRANDS[brandId] swatches (or DEFAULT_BRAND
+// if brandId matched none of those either) — the exact bug this file was
+// fixed for: a real visitor with no `?company=` at all landed on a
+// hardcoded, prototype-era fake business ("Jan's Amsterdam"), not anything
+// real or intentional. The real fallback now is whichever company Admin has
+// flagged as the platform default (src/lib/data/source.ts's
+// getPlatformDefaultCompany/setPlatformDefaultCompany — a normal company row,
+// managed through the same Studio-style Branding/Recommendations tools as
+// any tenant, just surfaced from Admin instead of Studio; see
+// src/app/admin/(protected)/default-company/page.tsx). If nothing has been
+// flagged yet (fresh install), NEUTRAL_FALLBACK_BRAND below is a plain,
+// honest "Map App" identity — never a fabricated business name — with no
+// companyId, so every guest screen's recommendations/boat tours/guide
+// naturally resolve to an empty state rather than fabricated content.
 
 import { headers } from "next/headers";
 
-import { BRANDS, DEFAULT_BRAND } from "./brand";
-import { getActiveCompanyRecord, getCompanyBrand, getGuide } from "./data/source";
+import { PORTAL_ACCENT } from "../components/MapAppMark";
+import { DEFAULT_BRAND } from "./brand";
+import {
+  getActiveCompanyRecord,
+  getCompanyBrand,
+  getGuide,
+  getPlatformDefaultCompany,
+  toBrand,
+} from "./data/source";
 import { DEFAULT_GUIDE_SLUG } from "./guestBrand";
 import { GUEST_BRAND_HEADER, GUEST_GUIDE_HEADER } from "./guestHeaders";
 import type { Brand, Guide } from "./types";
+
+/**
+ * The one honest identity for a guest visit with no real company behind it
+ * at all (no `?company=`, and no platform default configured yet). Colours
+ * lifted straight from src/components/MapAppMark.tsx's own badge — the
+ * product's own wordmark on every staff-facing surface — rather than any of
+ * src/lib/brand.ts's five prototype-era tenant swatches, none of which have
+ * any business standing in for "no tenant".
+ */
+const NEUTRAL_FALLBACK_BRAND: Brand = {
+  id: "map-app",
+  companyName: "Map App",
+  appName: "Map App",
+  primary: PORTAL_ACCENT,
+  primaryDark: "#14449E",
+  accent: "#FF7A45",
+  surround: "#F4F4F5",
+};
 
 export interface GuestContext {
   brandId: string;
   guideSlug: string;
   brand: Brand;
-  /** Null when brandId has no seeded row in the fake store (preview-only brand). */
+  /** Null when brandId names no real, active company AND no platform default is configured — see NEUTRAL_FALLBACK_BRAND above. */
   companyId: string | null;
   /** Null when there is no companyId, or no active guide at that slug. */
   guide: Guide | null;
@@ -53,11 +89,27 @@ export async function getGuestContext(): Promise<GuestContext> {
     getActiveCompanyRecord(brandId),
   ]);
 
-  const brand: Brand = brandFromSource ?? BRANDS[brandId] ?? DEFAULT_BRAND;
-  const companyId = companyRecord?.id ?? null;
-  const guide: Guide | null = companyId
-    ? await getGuide(companyId, guideSlug)
-    : null;
+  if (companyRecord) {
+    const companyId = companyRecord.id;
+    const guide = await getGuide(companyId, guideSlug);
+    return { brandId, guideSlug, brand: brandFromSource ?? toBrand(companyRecord), companyId, guide };
+  }
 
-  return { brandId, guideSlug, brand, companyId, guide };
+  // brandId named no real, active company (the "no ?company= at all" case
+  // this file was fixed for, but also any genuinely unknown or inactive
+  // id) — see this file's header comment for why the fallback is the
+  // platform default company, not src/lib/brand.ts's preview swatches.
+  const platformDefault = await getPlatformDefaultCompany();
+  if (platformDefault && platformDefault.status === "active") {
+    const companyId = platformDefault.id;
+    const guide = await getGuide(companyId, guideSlug);
+    return { brandId, guideSlug, brand: toBrand(platformDefault), companyId, guide };
+  }
+
+  // Fresh install: no platform default has been configured yet. A plain,
+  // honest "Map App" identity beats fabricating a business that doesn't
+  // exist — and no companyId means every guest screen's recommendations/
+  // boat tours/guide naturally resolve to an empty state, not fabricated
+  // content.
+  return { brandId, guideSlug, brand: NEUTRAL_FALLBACK_BRAND, companyId: null, guide: null };
 }
