@@ -16,7 +16,6 @@ import { getGuidesForCompany, listCompanies } from "@/lib/data/source";
 import type { GuideStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
 import CompanyRowActions from "@/components/admin/CompanyRowActions";
-import OwnerInviteCell from "@/components/admin/OwnerInviteCell";
 import StatCard from "@/components/admin/StatCard";
 import StatusBadge from "@/components/admin/StatusBadge";
 
@@ -73,11 +72,16 @@ export default async function AdminCompanyDetailPage({
               <StatusBadge status={STATUS_LABEL[company.status]} tone={STATUS_TONE[company.status]} />
             </div>
             <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-              <span className="font-mono">{company.subdomain}</span>
+              <span className="font-mono">{company.id}</span>
               {company.companyType ? ` · ${company.companyType}` : ""}
             </p>
           </div>
-          <CompanyRowActions companyId={company.id} companyName={company.name} status={company.status} />
+          <CompanyRowActions
+            companyId={company.id}
+            companyName={company.name}
+            status={company.status}
+            ownerInvite={invite}
+          />
         </div>
       </div>
 
@@ -92,7 +96,6 @@ export default async function AdminCompanyDetailPage({
                 tone={OWNER_STATUS_TONE[company.ownerStatus]}
               />
             ) : null}
-            {invite ? <OwnerInviteCell companyId={company.id} inviteUrl={invite.inviteUrl} /> : null}
           </div>
         ) : (
           <p className="mt-2 text-sm text-[var(--admin-ink-soft)]">No owner on record.</p>

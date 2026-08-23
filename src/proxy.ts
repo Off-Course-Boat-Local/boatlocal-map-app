@@ -94,30 +94,25 @@ async function adminAuthGate(request: NextRequest): Promise<NextResponse> {
 }
 
 // =============================================================================
-// 3. GUEST BRAND RESOLUTION — hostname/searchParams -> { brandId, guideSlug }.
+// 3. GUEST BRAND RESOLUTION — searchParams -> { brandId, guideSlug }.
 //
-// WHY THIS EXISTS TODAY EVEN THOUGH IT DOES NOTHING NEW YET: the founder's
-// decision is real wildcard-subdomain routing (`{company}.map.boatlocal.nl`)
-// once DNS/hosting for it exists, with `?company=`/`?guide=` query params as
-// today's stand-in (see src/lib/guestBrand.ts for the shared resolution
-// logic both branches use). Wiring the real Proxy now — instead of only the
-// query-param path — means turning on real subdomains later is a DNS/hosting
-// change, not a code change: this branch already parses `request.nextUrl
-// .hostname` on every request, it just never matches anything today because
-// no request ever arrives on a real `*.map.boatlocal.nl` host in dev/preview.
+// `?company=<id>&guide=<slug>` on the plain site root is the real, permanent
+// routing mechanism — not a stand-in for a subdomain future that isn't
+// coming (the founder was explicit that these companies will never be
+// assigned subdomains; see src/lib/guestBrand.ts's header comment for the
+// full reasoning and src/lib/data/types.ts's CompanyRecord for why `<id>` is
+// just the company's own primary key now).
 //
 // What it does: resolves { brandId, guideSlug } once, at the edge, and
 // attaches them as request headers so every Server Component under
 // src/app/(guest)/ reads the same already-resolved values via
 // `getGuestContext()` (src/lib/guestServerContext.ts) instead of each
-// re-implementing hostname/query parsing. Also a routing convenience only —
-// nothing here is a permission check.
+// re-implementing query parsing. Also a routing convenience only — nothing
+// here is a permission check.
 // =============================================================================
 
 function guestBrandResolution(request: NextRequest): NextResponse {
   const { brandId, guideSlug } = resolveGuestBrand({
-    hostname: request.nextUrl.hostname,
-    pathname: request.nextUrl.pathname,
     searchParams: request.nextUrl.searchParams,
   });
 

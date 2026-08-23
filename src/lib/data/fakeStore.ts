@@ -8,8 +8,8 @@
 //
 // Seeded from src/lib/data.ts and src/lib/brand.ts so this module and
 // supabase/seed.sql describe the same tenant: one company ("Boat & Bike
-// Co.", subdomain "coastal", matching BRANDS.coastal / DEFAULT_BRAND), one
-// guide ("Jan"), 14 recommendations, 6 boat tours, all featured.
+// Co.", matching BRANDS.coastal / DEFAULT_BRAND), one guide ("Jan"), 14
+// recommendations, 6 boat tours, all featured.
 
 import { BRANDS } from "../brand";
 import { BOAT_TOURS, GUIDE, PLACES } from "../data";
@@ -42,7 +42,6 @@ function seedCompany(): CompanyRecord {
   return {
     id: COMPANY_ID,
     name: brand.companyName,
-    subdomain: brand.id,
     companyType: "host",
     appName: brand.appName,
     brandPrimary: brand.primary,

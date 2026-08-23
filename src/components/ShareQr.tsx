@@ -13,8 +13,8 @@
 // Guides list, company QR, and a guide's own Profile page pass it.
 //
 // It encodes the page's own URL, so it is always correct — including the
-// company subdomain and the guide path — rather than a value someone has to
-// remember to update.
+// `?company=<id>` and `?guide=<slug>` params — rather than a value someone
+// has to remember to update.
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";

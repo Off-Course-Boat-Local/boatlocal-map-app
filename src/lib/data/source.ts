@@ -62,13 +62,7 @@ import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
 
 import { CATEGORY_MAP } from "../categories";
 import type { MapPin } from "../data";
-import {
-  RESERVED_SUBDOMAINS,
-  initialFromName,
-  isUrlSafeSubdomain,
-  slugify,
-  uniqueSlug,
-} from "../slug";
+import { initialFromName, uniqueSlug } from "../slug";
 import type { Brand, CategoryId, Guide, Place } from "../types";
 import type { BoatTour as BoatTourView } from "../types";
 import { fakeId, fakeStore } from "./fakeStore";
@@ -193,7 +187,6 @@ async function adminClient() {
 interface CompanyRow {
   id: string;
   name: string;
-  subdomain: string;
   company_type: CompanyType | null;
   app_name: string;
   brand_primary: string;
@@ -223,7 +216,6 @@ function fromCompanyRow(row: CompanyRow): CompanyRecord {
   return {
     id: row.id,
     name: row.name,
-    subdomain: row.subdomain,
     companyType: row.company_type,
     appName: row.app_name,
     brandPrimary: row.brand_primary,
@@ -364,7 +356,7 @@ interface CompanyBoatFeatureRow {
 
 function toBrand(company: CompanyRecord): Brand {
   return {
-    id: company.subdomain,
+    id: company.id,
     companyName: company.name,
     appName: company.appName,
     primary: company.brandPrimary,
@@ -414,38 +406,53 @@ function toBoatTourView(tour: BoatTourRecord): BoatTourView {
   };
 }
 
-/**
- * Subdomain -> brand resolution (PRD §11 / §13.1). Called from middleware in
- * the real app to resolve `{company}.map.boatlocal.nl` before rendering.
- *
- * Real backend: anon client, RPC `company_by_subdomain(p_subdomain)`.
- * guest_public_read (status='active') does the filtering inside the
- * invoker-security function, so no extra .eq is needed here.
- */
-export async function getCompanyBrand(subdomain: string): Promise<Brand | null> {
-  if (isTestEnv) {
-    const company = fakeStore.companies.find(
-      (c) => c.subdomain === subdomain && c.status === "active",
-    );
-    return company ? toBrand(company) : null;
-  }
-
-  const { data, error } = await anonClient().rpc("company_by_subdomain", {
-    p_subdomain: subdomain,
-  });
-  if (error) throw error;
-  // company_by_subdomain is `returns setof public.companies` with an
-  // internal `limit 1`, so `data` is an array of 0 or 1 rows — never a bare
-  // object. (An earlier version of this RPC returned a single composite row,
-  // which meant a zero-match lookup came back as one all-NULL row instead
-  // of no rows; that was fixed at the SQL level, and this must unwrap the
-  // array accordingly rather than treat `data` as the row itself.)
-  const row = (data as CompanyRow[] | null)?.[0];
-  return row ? toBrand(fromCompanyRow(row)) : null;
+// `companies.id` is a real `uuid` column, but every id-keyed lookup below is
+// also called with `?company=`'s raw value, which — unlike a subdomain —
+// is not guaranteed to even look like an id: DEFAULT_BRAND.id / src/lib/
+// brand.ts's four other preview-swatch keys ("coastal"/"coral"/"forest"/
+// "tulip"/"ink") flow through here too whenever a guest URL carries none or
+// an unrecognised `?company=`. Postgres raises a hard error (invalid input
+// syntax for type uuid) for a non-UUID equality filter on a uuid column,
+// rather than quietly matching zero rows the way a text column would have —
+// so every real-backend branch below must short-circuit to "not found" for
+// a non-UUID-shaped id BEFORE querying, to keep this function's "unknown id
+// behaves exactly like no id" contract that every caller (not least
+// src/lib/guestServerContext.ts's swatch-fallback) already relies on.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
 }
 
 /**
- * Full company row for a subdomain, for callers that need more than brand
+ * Id -> brand resolution (PRD §11, superseding §13.1's subdomain-routing
+ * plan — see src/lib/guestBrand.ts's header comment for why `?company=<id>`
+ * is now the real, permanent mechanism). Called from Proxy in the real app
+ * to resolve the guest's `?company=` query param before rendering.
+ *
+ * Real backend: anon client, plain select filtered to status='active' —
+ * previously an RPC (`company_by_subdomain`), but a direct-by-id lookup
+ * needs no server-side helper function of its own; guest_public_read
+ * (status='active') still does the RLS-level filtering redundantly.
+ */
+export async function getCompanyBrand(id: string): Promise<Brand | null> {
+  if (isTestEnv) {
+    const company = fakeStore.companies.find((c) => c.id === id && c.status === "active");
+    return company ? toBrand(company) : null;
+  }
+  if (!isUuid(id)) return null;
+
+  const { data, error } = await anonClient()
+    .from("companies")
+    .select("*")
+    .eq("id", id)
+    .eq("status", "active")
+    .maybeSingle();
+  if (error) throw error;
+  return data ? toBrand(fromCompanyRow(data as CompanyRow)) : null;
+}
+
+/**
+ * Full company row for an id, for callers that need more than brand
  * colours (e.g. review URLs, campaign params). Deliberately NOT status-
  * filtered — Studio's own tenant lookup needs to find a company regardless
  * of status (e.g. to see or reactivate a deactivated one). Guest-facing
@@ -456,16 +463,17 @@ export async function getCompanyBrand(subdomain: string): Promise<Brand | null> 
  * RLS: admin_full_access (any status) or company_and_guide_select_own (own
  * company_id, any status, regardless of role).
  */
-export async function getCompanyRecord(subdomain: string): Promise<CompanyRecord | null> {
+export async function getCompanyRecord(id: string): Promise<CompanyRecord | null> {
   if (isTestEnv) {
-    return fakeStore.companies.find((c) => c.subdomain === subdomain) ?? null;
+    return fakeStore.companies.find((c) => c.id === id) ?? null;
   }
+  if (!isUuid(id)) return null;
 
   const supabase = await authedClient();
   const { data, error } = await supabase
     .from("companies")
     .select("*")
-    .eq("subdomain", subdomain)
+    .eq("id", id)
     .maybeSingle();
   if (error) throw error;
   return data ? fromCompanyRow(data as CompanyRow) : null;
@@ -483,18 +491,17 @@ export async function getCompanyRecord(subdomain: string): Promise<CompanyRecord
  * getCompanyRecord, which is deliberately authed-only) — guest_public_read
  * enforces status='active' redundantly server-side too.
  */
-export async function getActiveCompanyRecord(
-  subdomain: string,
-): Promise<CompanyRecord | null> {
+export async function getActiveCompanyRecord(id: string): Promise<CompanyRecord | null> {
   if (isTestEnv) {
-    const company = fakeStore.companies.find((c) => c.subdomain === subdomain);
+    const company = fakeStore.companies.find((c) => c.id === id);
     return company && company.status === "active" ? company : null;
   }
+  if (!isUuid(id)) return null;
 
   const { data, error } = await anonClient()
     .from("companies")
     .select("*")
-    .eq("subdomain", subdomain)
+    .eq("id", id)
     .eq("status", "active")
     .maybeSingle();
   if (error) throw error;
@@ -523,8 +530,10 @@ export async function getGuide(companyId: string, slug: string): Promise<Guide |
   });
   if (error) throw error;
   // guide_by_slug is `returns setof public.guides` with an internal
-  // `limit 1` — same shape as company_by_subdomain above, so `data` is an
-  // array of 0 or 1 rows, never a bare object. Unwrap before checking.
+  // `limit 1`, so `data` is an array of 0 or 1 rows, never a bare object —
+  // same shape as company_by_subdomain used to be before getCompanyBrand
+  // switched to a plain select (see that function's own comment). Unwrap
+  // before checking.
   const row = (data as GuideRow[] | null)?.[0];
   return row ? toGuideView(fromGuideRow(row)) : null;
 }
@@ -2056,17 +2065,13 @@ const ONBOARDING_DEFAULT_BRAND = {
 };
 
 /**
- * Admin's "create/onboard a company" flow (PRD §8.3: "create/onboard a
- * company (assign subdomain — §13.1)"). Rejects a subdomain already taken
- * by another tenant. Thrown as a plain Error, not StudioPermissionError,
- * since this is a data conflict, not a permission problem.
- *
- * Real backend: authed client. Keeps the friendly pre-check (a SELECT for
- * the subdomain) but the real authoritative guard is the DB's
- * `unique(subdomain)` constraint — a Postgres unique-violation (code 23505)
- * on the insert is caught and translated to the same friendly message, so a
- * race between two concurrent onboarding attempts is still closed correctly
- * even though the pre-check alone couldn't close it.
+ * Admin's "create/onboard a company" flow (PRD §8.3). There is nothing for
+ * an admin to type as the company's identifier any more — its `id`
+ * (`gen_random_uuid()`, the primary key) is the only identifier guest links
+ * ever need, assigned by the database default on insert like any other row.
+ * Thrown as a plain Error, not StudioPermissionError, when name/owner-email
+ * validation fails, since that's a data-validation problem, not a
+ * permission problem.
  *
  * Also mints the company's owner invite (owner_status: 'invited' +
  * owner_invite_token, mirroring inviteGuide's invite_token) — this used to
@@ -2075,6 +2080,8 @@ const ONBOARDING_DEFAULT_BRAND = {
  * 20260807000000_company_owner_invite.sql closed it. Redemption itself
  * (creating the auth user + profiles row) happens at src/app/join/[token],
  * the same place a guide's invite is redeemed.
+ *
+ * Real backend: authed client.
  */
 export async function createCompany(
   actor: StudioActor,
@@ -2090,36 +2097,11 @@ export async function createCompany(
   const ownerEmail = input.ownerEmail.trim();
   if (!ownerEmail) throw new Error("Owner email is required.");
 
-  const subdomain = slugify(input.subdomain?.trim() || name);
-  // slugify() only filters characters — it does not enforce the 63-char DNS
-  // label limit (see its own doc comment), so a long enough name/subdomain
-  // input can still produce an invalid label. isUrlSafeSubdomain exists
-  // specifically for this and must run before the label is accepted, not
-  // just be available for someone else to remember to call.
-  if (!isUrlSafeSubdomain(subdomain)) {
-    throw new Error(
-      `"${subdomain}" is not a valid subdomain (1-63 lowercase letters/digits/hyphens, can't start or end with a hyphen).`,
-    );
-  }
-  // Reject a label that would collide with Boat Local's own fixed hosts
-  // (admin.boatlocal.nl, studio.boatlocal.nl — PRD §13.1) or a common,
-  // confusing label (www, api, the wildcard's own "app") before ever
-  // touching the uniqueness check below — see src/lib/slug.ts.
-  if (RESERVED_SUBDOMAINS.has(subdomain)) {
-    throw new Error(`"${subdomain}" is a reserved subdomain and can't be assigned to a company.`);
-  }
-
   if (isTestEnv) {
-    const taken = fakeStore.companies.some((c) => c.subdomain === subdomain);
-    if (taken) {
-      throw new Error(`Subdomain "${subdomain}" is already in use by another company.`);
-    }
-
     const created = new Date().toISOString();
     const record: CompanyRecord = {
       id: fakeId("company"),
       name,
-      subdomain,
       companyType: input.companyType?.trim() || null,
       appName: name,
       brandPrimary: ONBOARDING_DEFAULT_BRAND.primary,
@@ -2142,21 +2124,10 @@ export async function createCompany(
 
   const supabase = await authedClient();
 
-  const { data: existing, error: existingError } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
-  if (existingError) throw existingError;
-  if (existing) {
-    throw new Error(`Subdomain "${subdomain}" is already in use by another company.`);
-  }
-
   const { data, error } = await supabase
     .from("companies")
     .insert({
       name,
-      subdomain,
       company_type: input.companyType?.trim() || null,
       app_name: name,
       brand_primary: ONBOARDING_DEFAULT_BRAND.primary,
@@ -2170,12 +2141,7 @@ export async function createCompany(
     })
     .select("*")
     .single();
-  if (error) {
-    if ((error as { code?: string }).code === "23505") {
-      throw new Error(`Subdomain "${subdomain}" is already in use by another company.`);
-    }
-    throw error;
-  }
+  if (error) throw error;
   return fromCompanyRow(data as CompanyRow);
 }
 

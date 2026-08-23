@@ -20,13 +20,12 @@ begin;
 -- used by the guest spike today) and src/lib/data.ts GUIDE ("Jan").
 -- ---------------------------------------------------------------------------
 insert into public.companies (
-  id, name, subdomain, company_type, app_name,
+  id, name, company_type, app_name,
   brand_primary, brand_primary_dark, brand_accent, brand_surround,
   campaign_params, google_review_url, tripadvisor_review_url, status
 ) values (
   '11111111-1111-1111-1111-111111111111',
   'Boat & Bike Co.',
-  'coastal',
   'host',
   'Jan''s Amsterdam',
   '#2B4FE0', '#1D37A8', '#6E8CFF', '#E8E6DF',

@@ -53,7 +53,7 @@ export default async function StudioPreviewPage() {
           label: `Your link — ${guide.name}`,
           url: buildGuestPreviewUrl({
             origin,
-            subdomain: company.subdomain,
+            companyId: company.id,
             guideSlug: guide.slug,
           }),
         });
@@ -62,7 +62,7 @@ export default async function StudioPreviewPage() {
       targets.push({
         value: "company",
         label: "Company link (no guide)",
-        url: buildGuestPreviewUrl({ origin, subdomain: company.subdomain }),
+        url: buildGuestPreviewUrl({ origin, companyId: company.id }),
       });
       for (const guide of guides) {
         if (guide.status !== "active") continue;
@@ -71,7 +71,7 @@ export default async function StudioPreviewPage() {
           label: `${guide.name}'s link`,
           url: buildGuestPreviewUrl({
             origin,
-            subdomain: company.subdomain,
+            companyId: company.id,
             guideSlug: guide.slug,
           }),
         });

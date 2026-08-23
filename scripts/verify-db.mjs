@@ -30,7 +30,7 @@ for (const t of tables) {
 }
 
 const anon = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-const { data: anonCompanies, error: anonCompaniesErr } = await anon.from("companies").select("subdomain, status");
+const { data: anonCompanies, error: anonCompaniesErr } = await anon.from("companies").select("id, status");
 console.log("\nanon read of companies:", anonCompaniesErr?.message ?? JSON.stringify(anonCompanies));
 
 const { data: anonProfiles, error: anonProfilesErr } = await anon.from("profiles").select("*");

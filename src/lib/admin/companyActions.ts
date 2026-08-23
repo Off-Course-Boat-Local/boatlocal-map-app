@@ -27,10 +27,10 @@ export interface CreateCompanyActionState {
   success?: boolean;
   /**
    * Set when the company WAS created but its invite email did not go out.
-   * Deliberately distinct from `error`: the company exists and retrying the
-   * form would fail on subdomain uniqueness, so this must never read as
-   * "creation failed". The operator's recovery is the copy-able invite link
-   * on the row, or Resend once email is configured.
+   * Deliberately distinct from `error`: the company already exists, so this
+   * must never read as "creation failed" — retrying the form would only
+   * create a second, duplicate company. The operator's recovery is the
+   * copy-able invite link on the row, or Resend once email is configured.
    */
   inviteWarning?: string;
 }
@@ -43,7 +43,6 @@ export async function createCompanyAction(
 
   const name = String(formData.get("name") ?? "").trim();
   const ownerEmail = String(formData.get("ownerEmail") ?? "").trim();
-  const subdomain = String(formData.get("subdomain") ?? "").trim();
   const companyType = String(formData.get("companyType") ?? "").trim();
 
   if (!name) return { error: "Company name is required." };
@@ -54,7 +53,6 @@ export async function createCompanyAction(
     const created = await createCompany(ADMIN_ACTOR, {
       name,
       ownerEmail,
-      subdomain: subdomain || undefined,
       companyType: companyType || undefined,
     });
     companyId = created.id;
@@ -65,9 +63,8 @@ export async function createCompanyAction(
   // The company row and its invite token are now committed. Sending is a
   // separate, best-effort step: a provider outage or unverified sending
   // domain must not present as "creating the company failed", because the
-  // company DOES exist and re-submitting would only collide on subdomain
-  // uniqueness. A failure here downgrades to a warning plus the copy-able
-  // link on the row.
+  // company DOES exist and re-submitting would only create a duplicate. A
+  // failure here downgrades to a warning plus the copy-able link on the row.
   const send = await sendOwnerInvite(companyId);
   const inviteWarning =
     send.status === "failed"

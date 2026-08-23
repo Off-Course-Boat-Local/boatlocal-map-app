@@ -1,15 +1,14 @@
 "use client";
 
-// Admin Companies — onboarding form (PRD §8.3: "create/onboard a company
-// (assign subdomain — §13.1)"). Submits to createCompanyAction
-// (src/lib/admin/companyActions.ts), which creates the row via
-// createCompany (src/lib/data/source.ts) and revalidates the page — same
-// useActionState + form-reset-on-success pattern as Studio's
-// InviteGuideForm (src/components/studio/InviteGuideForm.tsx).
+// Admin Companies — onboarding form (PRD §8.3: "create/onboard a company").
+// Submits to createCompanyAction (src/lib/admin/companyActions.ts), which
+// creates the row via createCompany (src/lib/data/source.ts) and
+// revalidates the page — same useActionState + form-reset-on-success
+// pattern as Studio's InviteGuideForm (src/components/studio/InviteGuideForm.tsx).
 //
-// Subdomain is optional: leaving it blank falls back to a slug of the
-// company name (see createCompany's slugify() call) — the field exists so
-// an admin can override that default, not because it's required input.
+// No identifier field here: a company's `id` (the primary key) is assigned
+// by the database default on insert — there is nothing for an admin to type
+// or override.
 
 import { useActionState, useEffect, useRef } from "react";
 
@@ -22,9 +21,9 @@ export interface CreateCompanyFormProps {
    * Called once the company is created AND its invite sent cleanly. Not
    * called when `inviteWarning` is set — the operator still needs to read
    * that warning and copy the invite link, and re-submitting the form at
-   * that point would only fail on subdomain uniqueness (the company already
-   * exists). Used by CreateCompanyButton.tsx to close the dialog it's
-   * rendered inside; the standalone (non-dialog) render passes nothing.
+   * that point would only create a second, duplicate company (the first
+   * already exists). Used by CreateCompanyButton.tsx to close the dialog
+   * it's rendered inside; the standalone (non-dialog) render passes nothing.
    */
   onDone?: () => void;
 }
@@ -79,16 +78,6 @@ export default function CreateCompanyForm({ onDone }: CreateCompanyFormProps) {
         </label>
 
         <label className={labelClass}>
-          Subdomain
-          <input
-            name="subdomain"
-            placeholder="auto from name"
-            spellCheck={false}
-            className={`${inputClass} font-mono`}
-          />
-        </label>
-
-        <label className={labelClass}>
           Type <span className="font-normal text-[var(--admin-ink-soft)]">(optional)</span>
           <input
             name="companyType"
@@ -114,7 +103,7 @@ export default function CreateCompanyForm({ onDone }: CreateCompanyFormProps) {
         ) : null}
         {/* The company was created either way — an invite that didn't send
             is a warning, never an error, since re-submitting this form
-            would now collide on subdomain uniqueness. See
+            would now create a duplicate company. See
             CreateCompanyActionState.inviteWarning. */}
         {state.success && !state.inviteWarning ? (
           <p role="status" className="text-sm text-emerald-700">

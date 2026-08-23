@@ -9,15 +9,17 @@
 // src/lib/guestServerContext.ts), via next/headers's `headers()` — a
 // request-time API, which is what keeps this manifest per-request instead of
 // built once and cached forever (see the "Good to know" note in the docs
-// above). That makes the installed app's name/colour correct for the real
-// `{brand}.map.boatlocal.nl` subdomain routing this proxy already implements.
+// above).
 //
-// The gap: under TODAY's `?company=`/`?guide=` query-param stand-in (no real
-// subdomains yet — see src/lib/guestBrand.ts), the browser's manifest fetch
-// does not carry the page's query string, so this always resolves to
-// DEFAULT_BRAND in that preview mode. That's an inherent limitation of the
-// stand-in, not a bug here, and it disappears the moment real subdomains are
-// live — the hostname-based branch below already handles that correctly.
+// The gap: the browser's manifest fetch does not carry the guest page's own
+// `?company=`/`?guide=` query string (src/lib/guestBrand.ts's real,
+// permanent routing mechanism — see its header comment), so this always
+// resolves to DEFAULT_BRAND rather than whichever company's link the guest
+// actually opened. That's an inherent limitation of manifest fetches, not a
+// bug here, and — since there is no real subdomain routing coming to grow
+// into instead (the founder's decision: companies never get one) — there is
+// no future fix that makes this per-tenant short of Next.js someday passing
+// query params to a manifest fetch.
 //
 // ICONS: no real per-company icon exists yet — CompanyRecord.logoUrl
 // (src/lib/data/types.ts) is the eventual, guide-uploaded source (same idea

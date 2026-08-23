@@ -62,8 +62,9 @@ export const DEFAULT_BRAND = BRANDS.coastal;
 
 /**
  * Writes a brand to CSS custom properties on the given element (default
- * :root). In the real app this is resolved from the subdomain in middleware
- * and injected server-side so there is no flash of unbranded content.
+ * :root). In the real app this is resolved from the `?company=` query param
+ * in Proxy (src/proxy.ts) and injected server-side so there is no flash of
+ * unbranded content.
  */
 export function brandCssVars(brand: Brand): Record<string, string> {
   return {

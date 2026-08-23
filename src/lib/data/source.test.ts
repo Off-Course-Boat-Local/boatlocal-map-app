@@ -44,21 +44,20 @@ const COMPANY_ID = "11111111-1111-1111-1111-111111111111";
 const OTHER_COMPANY_ID = "not-a-real-company";
 const GUIDE_ID = "22222222-2222-2222-2222-222222222222";
 const OTHER_GUIDE_ID = "not-a-real-guide";
-const SUBDOMAIN = BRANDS.coastal.id;
 
 beforeEach(() => {
   resetFakeStore();
 });
 
 describe("guest reads (unauthenticated / anon-equivalent)", () => {
-  it("resolves brand from subdomain, matching src/lib/brand.ts", async () => {
-    const brand = await getCompanyBrand(SUBDOMAIN);
+  it("resolves brand from the company id, matching src/lib/brand.ts", async () => {
+    const brand = await getCompanyBrand(COMPANY_ID);
     expect(brand).not.toBeNull();
     expect(brand?.appName).toBe(BRANDS.coastal.appName);
     expect(brand?.primary).toBe(BRANDS.coastal.primary);
   });
 
-  it("returns null for an unknown subdomain", async () => {
+  it("returns null for an unknown company id", async () => {
     expect(await getCompanyBrand("does-not-exist")).toBeNull();
   });
 
@@ -517,14 +516,14 @@ describe("updateGuideProfile", () => {
 
 describe("getCompanyRecord", () => {
   it("exposes the full row, including review URLs and campaign params", async () => {
-    const company = await getCompanyRecord(SUBDOMAIN);
+    const company = await getCompanyRecord(COMPANY_ID);
     expect(company?.googleReviewUrl).toBeTruthy();
     expect(company?.campaignParams).toBeTruthy();
   });
 
   it("returns a deactivated company too — Studio needs to find it regardless of status", async () => {
     await setCompanyStatus({ role: "admin" }, COMPANY_ID, "suspended");
-    expect((await getCompanyRecord(SUBDOMAIN))?.status).toBe("suspended");
+    expect((await getCompanyRecord(COMPANY_ID))?.status).toBe("suspended");
   });
 });
 
@@ -538,21 +537,21 @@ describe("getActiveCompanyRecord (guest-facing gate on company status)", () => {
   // supabase/migrations/20260805063611_rls_policies.sql's
   // private.company_is_active().
   it("returns the company when active", async () => {
-    const company = await getActiveCompanyRecord(SUBDOMAIN);
+    const company = await getActiveCompanyRecord(COMPANY_ID);
     expect(company?.id).toBe(COMPANY_ID);
   });
 
   it("returns null the moment the company is deactivated — same as nonexistent", async () => {
-    expect((await getActiveCompanyRecord(SUBDOMAIN))?.status).toBe("active");
+    expect((await getActiveCompanyRecord(COMPANY_ID))?.status).toBe("active");
 
     await setCompanyStatus({ role: "admin" }, COMPANY_ID, "suspended");
 
-    expect(await getActiveCompanyRecord(SUBDOMAIN)).toBeNull();
+    expect(await getActiveCompanyRecord(COMPANY_ID)).toBeNull();
   });
 
   it("returns null for setup (pre-launch), not just suspended", async () => {
     await setCompanyStatus({ role: "admin" }, COMPANY_ID, "setup");
-    expect(await getActiveCompanyRecord(SUBDOMAIN)).toBeNull();
+    expect(await getActiveCompanyRecord(COMPANY_ID)).toBeNull();
   });
 });
 
@@ -698,37 +697,14 @@ describe("createCompany", () => {
     ownerEmail: "owner@amsterdamadventures.example",
   };
 
-  it("admin can onboard a new company, defaulting to 'setup' status and a slugified subdomain", async () => {
+  it("admin can onboard a new company, defaulting to 'setup' status with an id assigned by the database", async () => {
     const company = await createCompany(adminActor, newCompanyInput);
-    expect(company.subdomain).toBe("amsterdam-adventures");
+    expect(company.id).toBeTruthy();
     expect(company.status).toBe("setup");
     expect(company.companyType).toBe("tour");
 
     const listed = await listCompanies(adminActor);
     expect(listed.some((c) => c.id === company.id)).toBe(true);
-  });
-
-  it("slugifies a hand-typed subdomain the same way a guide slug is slugified", async () => {
-    const company = await createCompany(adminActor, {
-      ...newCompanyInput,
-      subdomain: "Hotel V!",
-    });
-    expect(company.subdomain).toBe("hotel-v");
-  });
-
-  it("rejects a subdomain already taken by another company", async () => {
-    await expect(
-      createCompany(adminActor, { ...newCompanyInput, subdomain: SUBDOMAIN }),
-    ).rejects.toThrow(/already in use/);
-  });
-
-  it("rejects a reserved subdomain (admin's own fixed hosts)", async () => {
-    await expect(
-      createCompany(adminActor, { ...newCompanyInput, subdomain: "admin" }),
-    ).rejects.toThrow(/reserved/);
-    await expect(
-      createCompany(adminActor, { ...newCompanyInput, subdomain: "studio" }),
-    ).rejects.toThrow(/reserved/);
   });
 
   it("rejects a blank name", async () => {
@@ -747,16 +723,6 @@ describe("createCompany", () => {
     const company = await createCompany(adminActor, newCompanyInput);
     expect(company.ownerEmail).toBe(newCompanyInput.ownerEmail);
     expect(company.ownerStatus).toBe("invited");
-  });
-
-  it("rejects a subdomain that exceeds the 63-char DNS label limit", async () => {
-    // Regression: slugify() only filters characters, it does not enforce
-    // length (see its own doc comment) — a long enough name used to sail
-    // through createCompany with no isUrlSafeSubdomain check at all.
-    const longName = "a".repeat(70);
-    await expect(
-      createCompany(adminActor, { ...newCompanyInput, name: longName }),
-    ).rejects.toThrow(/not a valid subdomain/);
   });
 
   it("only admin may onboard a company", async () => {

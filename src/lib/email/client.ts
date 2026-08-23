@@ -116,10 +116,10 @@ export type SendEmailResult =
  * sends mail as a *side effect* of a database write that has already
  * committed (a company row created, an invite token issued). Throwing here
  * would surface as "creating the company failed" when in fact it succeeded
- * and only the notification didn't — leaving the operator to retry and hit
- * a subdomain-uniqueness error on a company that already exists. Callers
- * are expected to report a failed send as its own recoverable condition and
- * fall back to the copy-able invite link.
+ * and only the notification didn't — leaving the operator to retry and
+ * create a second, duplicate company. Callers are expected to report a
+ * failed send as its own recoverable condition and fall back to the
+ * copy-able invite link.
  *
  * `text` is required rather than optional because a transactional email
  * with no plain-text part scores badly with spam filters, and an invite

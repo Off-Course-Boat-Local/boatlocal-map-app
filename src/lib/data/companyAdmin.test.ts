@@ -26,14 +26,14 @@ describe("createCompany", () => {
     ).rejects.toThrow(StudioPermissionError);
   });
 
-  it("creates a company defaulting to setup status and a slugified subdomain from the name", async () => {
+  it("creates a company defaulting to setup status, with an id assigned by the database", async () => {
     const company = await createCompany(
       { role: "admin" },
       { name: "Hotel V Nesplein", companyType: "hotel", ownerEmail: "owner@hotelv.example" },
     );
 
     expect(company.status).toBe("setup");
-    expect(company.subdomain).toBe("hotel-v-nesplein");
+    expect(company.id).toBeTruthy();
     expect(company.companyType).toBe("hotel");
     expect(company.appName).toBe("Hotel V Nesplein");
     expect(company.ownerEmail).toBe("owner@hotelv.example");
@@ -41,19 +41,6 @@ describe("createCompany", () => {
 
     const all = await listCompanies({ role: "admin" });
     expect(all.some((c) => c.id === company.id)).toBe(true);
-  });
-
-  it("slugifies an explicitly provided subdomain", async () => {
-    const company = await createCompany(
-      { role: "admin" },
-      {
-        name: "Canal Tours XL",
-        subdomain: "Canal Tours!!",
-        companyType: "tour",
-        ownerEmail: "owner@canaltours.example",
-      },
-    );
-    expect(company.subdomain).toBe("canal-tours");
   });
 
   it("always starts a new company in 'setup', regardless of who creates it — Admin no longer picks an initial status", async () => {
@@ -96,28 +83,6 @@ describe("createCompany", () => {
     ).rejects.toThrow(/owner email/i);
   });
 
-  it("rejects a subdomain already used by another company", async () => {
-    await expect(
-      createCompany(
-        { role: "admin" },
-        {
-          name: "Duplicate Co",
-          subdomain: "coastal",
-          companyType: "host",
-          ownerEmail: "owner@duplicateco.example",
-        },
-      ),
-    ).rejects.toThrow(/already in use/i);
-  });
-
-  it("rejects a reserved subdomain (see src/lib/slug.ts RESERVED_SUBDOMAINS)", async () => {
-    await expect(
-      createCompany(
-        { role: "admin" },
-        { name: "Sneaky Co", subdomain: "admin", companyType: "host", ownerEmail: "owner@sneakyco.example" },
-      ),
-    ).rejects.toThrow(/reserved/i);
-  });
 });
 
 describe("setCompanyStatus", () => {

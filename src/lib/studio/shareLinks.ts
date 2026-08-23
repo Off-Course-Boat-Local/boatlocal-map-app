@@ -1,56 +1,52 @@
-// Studio share-link builders — turn a company subdomain (+ guide slug, or an
+// Studio share-link builders — turn a company id (+ guide slug, or an
 // invite token) into the URL Studio actually hands out for a QR code or a
 // "copy link" button.
 //
-// Deliberately the query-param form, not the `{subdomain}.map.boatlocal.nl`
-// subdomain form the PRD describes as the eventual real routing (§13.1):
-// there is no wildcard DNS/hosting for that yet, so a subdomain-shaped link
-// would 404. `src/lib/guestBrand.ts`'s resolveGuestBrand() already accepts
-// `?company=<subdomain>&guide=<slug>` at the plain site root as its
-// documented fallback, and `src/proxy.ts` wires that up on every request —
-// so the links this module builds are genuinely live *today*, including in
-// this very deployment, not just illustrative placeholders.
-//
-// TODO: once real wildcard DNS exists, change buildGuideShareUrl/
-// buildCompanyShareUrl to return `https://{subdomain}.map.boatlocal.nl[/slug]`
-// instead — a one-line change here, not a rewrite of every caller (same
-// "narrow the seam" shape as buildBookingUrl in src/lib/attribution.ts).
+// The query-param form is the real, permanent guest routing mechanism, not
+// a stand-in for a subdomain future — companies no longer have a subdomain
+// at all (see src/lib/data/types.ts's CompanyRecord and
+// src/lib/guestBrand.ts's header comment for the founder's decision and the
+// full reasoning). `src/lib/guestBrand.ts`'s resolveGuestBrand() accepts
+// `?company=<id>&guide=<slug>` at the plain site root, and `src/proxy.ts`
+// wires that up on every request — so the links this module builds are
+// genuinely live *today*, including in this very deployment, not just
+// illustrative placeholders.
 
 import { guestQueryString } from "../guestLinks";
 import { GUEST_PREVIEW_PARAM } from "../guestHeaders";
 
 export interface GuideShareLinkInput {
-  /** Absolute origin of the current request, e.g. "https://coastal.example.com" — see requestOrigin.ts. */
+  /** Absolute origin of the current request, e.g. "https://studio.example.com" — see requestOrigin.ts. */
   origin: string;
-  subdomain: string;
+  companyId: string;
   guideSlug: string;
 }
 
 /** A specific guide's own shareable link (PRD §6.2) — company + guide, both carried as query params. */
-export function buildGuideShareUrl({ origin, subdomain, guideSlug }: GuideShareLinkInput): string {
-  const qs = guestQueryString({ company: subdomain, guide: guideSlug });
+export function buildGuideShareUrl({ origin, companyId, guideSlug }: GuideShareLinkInput): string {
+  const qs = guestQueryString({ company: companyId, guide: guideSlug });
   return `${origin}/?${qs}`;
 }
 
 export interface CompanyShareLinkInput {
   origin: string;
-  subdomain: string;
+  companyId: string;
 }
 
 /**
- * Company-level link/QR (PRD §7.3): the bare subdomain root, no guide path
- * or `?guide=` param — for shared/lobby placement where no single guide
+ * Company-level link/QR (PRD §7.3): just `?company=<id>`, no guide path or
+ * `?guide=` param — for shared/lobby placement where no single guide
  * applies. Lands on the default-guide welcome screen (see
  * src/lib/guestBrand.ts's DEFAULT_GUIDE_SLUG).
  */
-export function buildCompanyShareUrl({ origin, subdomain }: CompanyShareLinkInput): string {
-  const qs = guestQueryString({ company: subdomain });
+export function buildCompanyShareUrl({ origin, companyId }: CompanyShareLinkInput): string {
+  const qs = guestQueryString({ company: companyId });
   return `${origin}/?${qs}`;
 }
 
 export interface PreviewLinkInput {
   origin: string;
-  subdomain: string;
+  companyId: string;
   /** Omit for the company-level link (no single guide applies). */
   guideSlug?: string | null;
 }
@@ -67,11 +63,11 @@ export interface PreviewLinkInput {
  */
 export function buildGuestPreviewUrl({
   origin,
-  subdomain,
+  companyId,
   guideSlug,
 }: PreviewLinkInput): string {
   const qs = guestQueryString({
-    company: subdomain,
+    company: companyId,
     ...(guideSlug ? { guide: guideSlug } : {}),
     [GUEST_PREVIEW_PARAM]: "1",
   });

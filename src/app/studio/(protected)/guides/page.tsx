@@ -1,8 +1,8 @@
 // Guides — company only (PRD §7.3): invite a guide (generates a real,
 // unique-token-bearing link even though there is no backend to redeem it
 // against yet), list guides with status + performance, deactivate/
-// reactivate, and QR codes — one per guide plus a company-level one for the
-// bare subdomain root (no guide path/param), for shared/lobby placement.
+// reactivate, and QR codes — one per guide plus a company-level one (just
+// `?company=<id>`, no guide param), for shared/lobby placement.
 
 import GuidesTable, { type GuideRowData } from "@/components/studio/GuidesTable";
 import InviteGuideForm from "@/components/studio/InviteGuideForm";
@@ -44,7 +44,7 @@ export default async function StudioGuidesPage() {
     slug: guide.slug,
     status: guide.status,
     shareUrl: company
-      ? buildGuideShareUrl({ origin, subdomain: company.subdomain, guideSlug: guide.slug })
+      ? buildGuideShareUrl({ origin, companyId: company.id, guideSlug: guide.slug })
       : "",
     inviteUrl:
       guide.status === "invited" && guide.inviteToken
@@ -54,7 +54,7 @@ export default async function StudioGuidesPage() {
     bookClicks: statsByGuide.get(guide.id)?.bookClicks ?? 0,
   }));
 
-  const companyShareUrl = company ? buildCompanyShareUrl({ origin, subdomain: company.subdomain }) : null;
+  const companyShareUrl = company ? buildCompanyShareUrl({ origin, companyId: company.id }) : null;
 
   return (
     <div className="space-y-6">
@@ -71,7 +71,7 @@ export default async function StudioGuidesPage() {
 
       {companyShareUrl ? (
         <div className="flex flex-wrap items-start gap-4 rounded-xl border border-neutral-200 bg-white p-4">
-          <ShareQr value={companyShareUrl} size={112} downloadFileName={`${company?.subdomain}-company-qr`} />
+          <ShareQr value={companyShareUrl} size={112} downloadFileName={`${company?.id}-company-qr`} />
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
               Company QR (no guide)

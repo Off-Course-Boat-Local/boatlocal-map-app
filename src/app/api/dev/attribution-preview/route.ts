@@ -13,9 +13,10 @@
 // As of this change, "step 1" writes a REAL boat_book_click event (via
 // recordEvent, same as a genuine guest tap) instead of the old dummy
 // in-memory store — so this route now exercises the exact same code path a
-// real "Book this tour" tap does, start to finish, against whatever tenant
-// is seeded ("coastal"/"jan" below). Run `node scripts/verify-db.mjs`
-// afterwards to see the resulting rows in `events` directly.
+// real "Book this tour" tap does, start to finish, against the seeded demo
+// company/guide (DEMO_COMPANY_ID/DEMO_GUIDE_SLUG below). Run
+// `node scripts/verify-db.mjs` afterwards to see the resulting rows in
+// `events` directly.
 
 import { NextResponse } from "next/server";
 import { buildBookingUrl, createClickId } from "@/lib/attribution";
@@ -23,7 +24,11 @@ import { signWebhookBody, TIMESTAMP_HEADER, SIGNATURE_HEADER } from "@/lib/attri
 import { findAttributedClick, getActiveCompanyRecord, getGuide, recordEvent } from "@/lib/data/source";
 import { POST as webhookHandler } from "@/app/api/webhooks/boatlocal-booking/route";
 
-const DEMO_COMPANY_SLUG = "coastal";
+// The one company/guide supabase/seed.sql (and src/lib/data/fakeStore.ts)
+// always seed with these exact fixed ids — companies no longer have a
+// human-typed identifier (subdomain) to look one up by, so this hits the
+// known seed row directly instead.
+const DEMO_COMPANY_ID = "11111111-1111-1111-1111-111111111111";
 const DEMO_GUIDE_SLUG = "jan";
 const DEMO_TOUR_ID = "sunset-canal";
 
@@ -38,7 +43,7 @@ export async function GET() {
   // ids exactly as guestServerContext.ts does, then record the same
   // boat_book_click event GuestMapScreen's onAction fires for a real tap —
   // this is the one thing making the webhook able to attribute anything.
-  const company = await getActiveCompanyRecord(DEMO_COMPANY_SLUG);
+  const company = await getActiveCompanyRecord(DEMO_COMPANY_ID);
   const guide = company ? await getGuide(company.id, DEMO_GUIDE_SLUG) : null;
 
   const clickId = createClickId();
@@ -56,7 +61,7 @@ export async function GET() {
     clickId,
     date: "2026-08-20",
     guests: 2,
-    companySlug: DEMO_COMPANY_SLUG,
+    companySlug: DEMO_COMPANY_ID,
     guideSlug: DEMO_GUIDE_SLUG,
   });
 
@@ -104,7 +109,7 @@ export async function GET() {
       bookingUrl,
       attributedTo: company
         ? { companyId: company.id, companyName: company.name, guideId: guide?.id ?? null, guideName: guide?.name ?? null }
-        : { warning: `No company seeded at subdomain "${DEMO_COMPANY_SLUG}" — click was recorded unattributed.` },
+        : { warning: `No active company found at id "${DEMO_COMPANY_ID}" — click was recorded unattributed.` },
     },
     step2_boatlocalCallsWebhook: {
       body: JSON.parse(webhookBody),

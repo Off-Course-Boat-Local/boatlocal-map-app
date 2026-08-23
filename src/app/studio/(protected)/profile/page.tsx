@@ -34,11 +34,11 @@ export default async function StudioProfilePage() {
   const guide = guides.find((g) => g.id === session.guideId);
 
   // Real and live today — see src/lib/studio/shareLinks.ts's header comment
-  // for why this is the query-param form rather than the eventual
-  // `{company}.map.boatlocal.nl/{slug}` subdomain (PRD §13.1).
+  // for why the query-param form is the real, permanent mechanism now, not
+  // a stand-in for subdomain routing that isn't coming.
   const guideLink =
     company && guide
-      ? buildGuideShareUrl({ origin, subdomain: company.subdomain, guideSlug: guide.slug })
+      ? buildGuideShareUrl({ origin, companyId: company.id, guideSlug: guide.slug })
       : null;
 
   return (

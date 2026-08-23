@@ -143,10 +143,12 @@ export default async function AdminOverviewPage() {
 
         <AdminTable
           className="mt-4"
-          columns={["Company", "Subdomain", "Type", "Status"]}
+          columns={["Company", "ID", "Type", "Status"]}
           rows={companyPreview.map((company) => [
             company.name,
-            company.subdomain,
+            <span key="id" className="font-mono text-xs">
+              {company.id}
+            </span>,
             company.companyType ?? <span className="text-[var(--admin-ink-soft)]">—</span>,
             <StatusBadge
               key="status"
@@ -171,9 +173,9 @@ export default async function AdminOverviewPage() {
         <div>
           <h2 className="text-lg font-semibold text-[var(--admin-ink)]">Onboard a company</h2>
           <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-            Assigns a subdomain — validated for URL-safety and checked against every existing
-            tenant (PRD §8.1 / §13.1). New companies start in &ldquo;Setup&rdquo; status until an
-            admin takes them live.
+            Creates a new tenant, identified by its own id (PRD §8.1) — nothing to assign by
+            hand. New companies start in &ldquo;Setup&rdquo; status until an admin takes them
+            live.
           </p>
         </div>
         {/* The onboarding form itself lives on the Companies page

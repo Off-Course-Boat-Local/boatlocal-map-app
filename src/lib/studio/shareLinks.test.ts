@@ -6,7 +6,7 @@ const ORIGIN = "https://studio.example.com";
 
 describe("buildGuideShareUrl", () => {
   it("carries both company and guide as query params on the bare origin", () => {
-    expect(buildGuideShareUrl({ origin: ORIGIN, subdomain: "coastal", guideSlug: "jan" })).toBe(
+    expect(buildGuideShareUrl({ origin: ORIGIN, companyId: "coastal", guideSlug: "jan" })).toBe(
       `${ORIGIN}/?company=coastal&guide=jan`,
     );
   });
@@ -14,7 +14,7 @@ describe("buildGuideShareUrl", () => {
 
 describe("buildCompanyShareUrl", () => {
   it("carries only the company, never a guide param", () => {
-    const url = buildCompanyShareUrl({ origin: ORIGIN, subdomain: "coastal" });
+    const url = buildCompanyShareUrl({ origin: ORIGIN, companyId: "coastal" });
     expect(url).toBe(`${ORIGIN}/?company=coastal`);
     expect(url).not.toContain("guide=");
   });

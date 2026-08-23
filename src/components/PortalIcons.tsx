@@ -244,3 +244,35 @@ export function TrashIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** "Copy invite link" row action — two overlapping squares. */
+export function CopyIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="8.5" y="8.5" width="11" height="12.5" rx="1.5" />
+      <path d="M15.5 8.5V5.5A1.5 1.5 0 0 0 14 4H5.5A1.5 1.5 0 0 0 4 5.5V16a1.5 1.5 0 0 0 1.5 1.5h2.5" />
+    </svg>
+  );
+}
+
+/** "Re-send" invite row action — a paper plane. */
+export function SendIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M21 3 3 10.5l7 2.5 2.5 7Z" />
+      <path d="M21 3 12.5 13" />
+    </svg>
+  );
+}
+
+/** "New link" (regenerate invite) row action — a refresh loop. */
+export function RefreshIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3L19.5 8.5" />
+      <path d="M19.5 4.5v4h-4" />
+      <path d="M19.5 12a7.5 7.5 0 0 1-12.8 5.3L4.5 15.5" />
+      <path d="M4.5 19.5v-4h4" />
+    </svg>
+  );
+}

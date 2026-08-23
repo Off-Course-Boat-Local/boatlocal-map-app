@@ -40,50 +40,41 @@ describe("source.ts round-tripping against the real Supabase project", () => {
   let companyId: string;
 
   beforeAll(async () => {
+    // Companies have no human-typed identifier any more (see
+    // 20260823160000_drop_company_subdomain.sql) — supabase/seed.sql seeds
+    // this exact fixed id, matching src/lib/data/fakeStore.ts's own
+    // COMPANY_ID, so this looks the seed row up directly rather than by a
+    // no-longer-existent column.
+    const seededCompanyId = "11111111-1111-1111-1111-111111111111";
     const { data, error } = await adminClient()
       .from("companies")
       .select("id")
-      .eq("subdomain", "coastal")
+      .eq("id", seededCompanyId)
       .single();
     if (error || !data) {
       throw new Error(
-        `Seed company "coastal" not found in the real database (is it seeded? ` +
+        `Seed company ${seededCompanyId} not found in the real database (is it seeded? ` +
           `see supabase/seed.sql) — ${error?.message ?? "no row returned"}`,
       );
     }
     companyId = data.id as string;
   });
 
-  it("getCompanyBrand: RPC company_by_subdomain returns the seeded brand", async () => {
-    const brand = await getCompanyBrand("coastal");
+  it("getCompanyBrand: plain select returns the seeded brand", async () => {
+    const brand = await getCompanyBrand(companyId);
     expect(brand).not.toBeNull();
     expect(brand?.appName).toBeTruthy();
     expect(brand?.primary).toMatch(/^#/);
   });
 
-  // FIXED REAL BUG, originally caught by this integration test: per real
-  // Postgres `language sql` function semantics, a function declared to
-  // `returns` a single composite row still returns exactly one row — with
-  // every column NULL — when its inner `select ... limit 1` matches zero
-  // rows, rather than zero rows. public.company_by_subdomain() used to be
-  // declared that way, so supabase-js's `.rpc()` handed source.ts a
-  // non-null object of nulls for an unknown subdomain instead of `null`/no
-  // rows. Fixed in supabase/migrations/20260805063612_helper_functions.sql
-  // by dropping and recreating the function as `returns setof
-  // public.companies` (create-or-replace can't change a function's return
-  // type, hence the explicit drop) plus the corresponding array-unwrap in
-  // getCompanyBrand's real branch. This assertion documents the contract
-  // (`Brand | null`, matching the fakeStore branch and this function's own
-  // return type) and now passes for real.
-  it("getCompanyBrand: unknown subdomain returns null, not an error", async () => {
-    const brand = await getCompanyBrand("does-not-exist-integration-check");
+  it("getCompanyBrand: unknown company id returns null, not an error", async () => {
+    const brand = await getCompanyBrand("00000000-0000-0000-0000-000000000000");
     expect(brand).toBeNull();
   });
 
   it("getActiveCompanyRecord: plain select returns the seeded active company", async () => {
-    const record = await getActiveCompanyRecord("coastal");
+    const record = await getActiveCompanyRecord(companyId);
     expect(record).not.toBeNull();
-    expect(record?.subdomain).toBe("coastal");
     expect(record?.status).toBe("active");
     expect(record?.id).toBe(companyId);
   });
@@ -94,13 +85,22 @@ describe("source.ts round-tripping against the real Supabase project", () => {
     expect(guide?.slug).toBe("jan");
   });
 
-  // Same class of bug as getCompanyBrand above, fixed the same way:
-  // public.guide_by_slug() was also declared `returns public.guides`
-  // (single composite row) instead of `setof`, so a zero-match lookup used
-  // to come back as one all-NULL row instead of "no rows". Fixed alongside
-  // company_by_subdomain() in
-  // supabase/migrations/20260805063612_helper_functions.sql — see the
-  // comment on the getCompanyBrand test above for the full explanation.
+  // FIXED REAL BUG, originally caught by this integration test: per real
+  // Postgres `language sql` function semantics, a function declared to
+  // `returns` a single composite row still returns exactly one row — with
+  // every column NULL — when its inner `select ... limit 1` matches zero
+  // rows, rather than zero rows. public.guide_by_slug() used to be declared
+  // that way (as was public.company_by_subdomain(), before getCompanyBrand
+  // switched to a plain select — see that function's own comment in
+  // src/lib/data/source.ts), so supabase-js's `.rpc()` handed source.ts a
+  // non-null object of nulls for a zero-match lookup instead of `null`/no
+  // rows. Fixed in supabase/migrations/20260805063612_helper_functions.sql
+  // by dropping and recreating the function as `returns setof
+  // public.guides` (create-or-replace can't change a function's return
+  // type, hence the explicit drop) plus the corresponding array-unwrap in
+  // getGuide's real branch. This assertion documents the contract (`Guide |
+  // null`, matching the fakeStore branch and this function's own return
+  // type) and now passes for real.
   it("getGuide: wrong slug returns null, not an error", async () => {
     const guide = await getGuide(companyId, "not-a-real-guide-slug");
     expect(guide).toBeNull();

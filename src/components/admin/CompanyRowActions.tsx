@@ -11,6 +11,21 @@
 // cascade-scoped to it — guides, boat-tour feature picks, recommendations,
 // events — cannot), so it gets its own confirmation dialog requiring the
 // operator to type the company's name, rather than a plain "are you sure?".
+//
+// "Copy invite link" / "Re-send" / "New link" used to be a row of buttons
+// under the Owner column's status badge (OwnerInviteCell.tsx). The founder
+// found that cluttered, especially for a company whose owner hasn't
+// accepted yet, and asked for them to live in this same kebab instead. They
+// only appear when the caller passes `ownerInvite` — i.e. only while there
+// is a pending invite to act on (see getOwnerInvite's doc comment in
+// src/lib/admin/ownerInvite.ts) — so an owner who has already redeemed
+// their invite, or a company with no owner yet, sees none of these three.
+//
+// The menu always closes on select (PortalRowMenu's own behaviour), so
+// there's nowhere inside it to flash a "Copied!" label the way the old
+// inline button did. Instead these three report their result the same way
+// Delete's dialog reports its own errors: a small status line, styled like
+// OwnerInviteCell's old one, rendered right under the trigger.
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -19,17 +34,27 @@ import PortalModal from "@/components/PortalModal";
 import {
   ArchiveIcon,
   CheckCircleIcon,
+  CopyIcon,
   EyeIcon,
+  RefreshIcon,
+  SendIcon,
   TrashIcon,
 } from "@/components/PortalIcons";
 import PortalRowMenu, { type PortalRowMenuItem } from "@/components/PortalRowMenu";
-import { deleteCompanyAction, setCompanyStatusAction } from "@/lib/admin/companyActions";
+import {
+  deleteCompanyAction,
+  regenerateOwnerInviteAction,
+  resendOwnerInviteAction,
+  setCompanyStatusAction,
+} from "@/lib/admin/companyActions";
 import type { CompanyStatus } from "@/lib/data/types";
 
 export interface CompanyRowActionsProps {
   companyId: string;
   companyName: string;
   status: CompanyStatus;
+  /** Only set while this company has a pending, unredeemed owner invite — see getOwnerInvite(). Omit/null to hide the invite-recovery menu items entirely. */
+  ownerInvite?: { inviteUrl: string } | null;
 }
 
 /** The one next-status action available from a company's current status — same three transitions Admin has always offered, just relocated into the menu. */
@@ -48,12 +73,20 @@ function nextStatusAction(status: CompanyStatus): {
   }
 }
 
-export default function CompanyRowActions({ companyId, companyName, status }: CompanyRowActionsProps) {
+export default function CompanyRowActions({
+  companyId,
+  companyName,
+  status,
+  ownerInvite,
+}: CompanyRowActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [inviteStatus, setInviteStatus] = useState<{ tone: "success" | "error"; text: string } | null>(
+    null,
+  );
 
   const statusAction = nextStatusAction(status);
 
@@ -73,6 +106,65 @@ export default function CompanyRowActions({ companyId, companyName, status }: Co
         });
       },
     },
+    ...(ownerInvite
+      ? ([
+          {
+            label: "Copy invite link",
+            icon: CopyIcon,
+            onSelect: () => {
+              navigator.clipboard
+                .writeText(ownerInvite.inviteUrl)
+                .then(() => {
+                  setInviteStatus({ tone: "success", text: "Invite link copied." });
+                  setTimeout(() => setInviteStatus(null), 2000);
+                })
+                .catch(() => {
+                  // navigator.clipboard needs a secure context (https or
+                  // localhost) — absent over plain http on a LAN IP, which
+                  // is exactly how someone might reach a dev server from a
+                  // phone, so this has to be visible rather than a menu
+                  // item that silently does nothing.
+                  setInviteStatus({
+                    tone: "error",
+                    text: "Couldn't copy — this page isn't in a secure context.",
+                  });
+                });
+            },
+          },
+          {
+            label: "Re-send",
+            icon: SendIcon,
+            disabled: isPending,
+            onSelect: () => {
+              startTransition(async () => {
+                const result = await resendOwnerInviteAction(companyId, {}, new FormData());
+                setInviteStatus(
+                  result.error
+                    ? { tone: "error", text: result.error }
+                    : { tone: "success", text: result.message ?? "Invite re-sent." },
+                );
+                router.refresh();
+              });
+            },
+          },
+          {
+            label: "New link",
+            icon: RefreshIcon,
+            disabled: isPending,
+            onSelect: () => {
+              startTransition(async () => {
+                const result = await regenerateOwnerInviteAction(companyId, {}, new FormData());
+                setInviteStatus(
+                  result.error
+                    ? { tone: "error", text: result.error }
+                    : { tone: "success", text: result.message ?? "New invite sent." },
+                );
+                router.refresh();
+              });
+            },
+          },
+        ] satisfies PortalRowMenuItem[])
+      : []),
     {
       label: "Delete",
       icon: TrashIcon,
@@ -89,7 +181,19 @@ export default function CompanyRowActions({ companyId, companyName, status }: Co
 
   return (
     <>
-      <PortalRowMenu items={items} label={`Actions for ${companyName}`} />
+      <div className="flex flex-col items-end gap-1">
+        <PortalRowMenu items={items} label={`Actions for ${companyName}`} />
+        {inviteStatus ? (
+          <p
+            role={inviteStatus.tone === "error" ? "alert" : "status"}
+            className={`max-w-[200px] text-right text-[11px] ${
+              inviteStatus.tone === "error" ? "text-red-600" : "text-emerald-700"
+            }`}
+          >
+            {inviteStatus.text}
+          </p>
+        ) : null}
+      </div>
 
       <PortalModal
         open={confirmOpen}

@@ -44,7 +44,7 @@ export default async function StudioLayout({ children }: { children: ReactNode }
   // this is dev-only scaffolding, so fail soft rather than 500).
   const brand: Brand = company
     ? {
-        id: company.subdomain,
+        id: company.id,
         companyName: company.name,
         appName: company.appName,
         primary: company.brandPrimary,

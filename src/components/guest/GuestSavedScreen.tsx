@@ -29,7 +29,7 @@ export interface GuestSavedScreenProps {
   guideSlug?: string | null;
   /** Guide's real id (not the slug) — attributes "boat_book_click" to this specific guide, not just the company. Null when no guide resolved. */
   guideId?: string | null;
-  /** Company subdomain — folded into the booking hand-off's `company` param, and into "boat_book_click" analytics. */
+  /** The resolved tenant's real company id — folded into "boat_book_click" analytics. */
   companyId?: string | null;
   /** Every pin the guide has for this tenant — filtered down to the saved ids. */
   pins: MapPin[];

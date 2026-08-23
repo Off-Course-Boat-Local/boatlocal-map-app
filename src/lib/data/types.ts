@@ -60,7 +60,6 @@ export type EventType =
 export interface CompanyRecord {
   id: string;
   name: string;
-  subdomain: string;
   companyType: CompanyType | null;
   appName: string;
   brandPrimary: string;
@@ -228,10 +227,10 @@ export interface InviteGuideInput {
 }
 
 /**
- * Admin's "create/onboard a company" flow (PRD §8.3). `subdomain` is
- * slugified and uniqueness-checked against every existing tenant (global,
- * not per-company — mirrors the `unique` constraint on `companies.subdomain`
- * in supabase/migrations/20260805063610_init_schema.sql). Always starts
+ * Admin's "create/onboard a company" flow (PRD §8.3). There is no subdomain
+ * (or any other identifier) for an admin to type any more — a company's id,
+ * assigned by the database default, is the only identifier guest links ever
+ * need (see src/lib/guestBrand.ts's `?company=<id>` scheme). Always starts
  * "setup" (PRD §2.3) — Admin no longer picks an initial status; the company
  * itself flips it live from Studio once it's ready (setCompanyStatus now
  * allows that self-service toggle, see its own doc comment).
@@ -243,8 +242,6 @@ export interface InviteGuideInput {
  */
 export interface CreateCompanyInput {
   name: string;
-  /** Free text; will be slugified. Falls back to a slug of `name` if omitted/blank. */
-  subdomain?: string;
   /** Free text, optional — e.g. "Hotel", "Shop", "Bar". Purely descriptive. */
   companyType?: string;
   /**

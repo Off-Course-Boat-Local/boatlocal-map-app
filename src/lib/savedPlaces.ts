@@ -9,12 +9,15 @@
 // a screen that wants to *render* a saved place still looks it up in the
 // pins it already fetched.
 //
-// Real subdomains (one per tenant) will make this naturally per-tenant once
-// they exist, because localStorage is scoped per browser *origin*. Until
-// then every `?company=` preview shares one origin (localhost) and therefore
-// one saved list — a saved id that doesn't exist in the previewed tenant's
-// pins just quietly doesn't render anywhere, which is harmless for a dev
-// preview and never happens in production once each tenant is its own host.
+// NOT per-tenant, permanently: every tenant lives at the same origin
+// (`?company=<id>` on one shared host, not a subdomain per company — see
+// src/lib/guestBrand.ts's header comment for why there is no subdomain
+// future to grow into instead), and localStorage is scoped per browser
+// *origin* — so one browser's saved list is shared across every company a
+// guest ever opens on this device. A saved id that doesn't exist in the
+// currently-open tenant's pins just quietly doesn't render anywhere, which
+// is harmless (nothing crashes, nothing leaks between tenants) but is a
+// real, permanent product limitation, not a dev-only stand-in.
 //
 // SSR-safe: every read/write no-ops to an empty list on the server (no
 // `window`), so this can be imported from anywhere without a guard at each

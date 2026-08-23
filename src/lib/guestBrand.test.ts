@@ -31,12 +31,12 @@ describe("resolveGuestBrand", () => {
     ).toEqual({ brandId: "tulip", guideSlug: "amir" });
   });
 
-  it("passes through a company subdomain that isn't one of the five preview brands", () => {
+  it("passes through a company id that isn't one of the five preview brands", () => {
     // Regression test for a real bug (found by live-testing against the
     // real database, not by any automated check): this function used to
     // validate the value against BRANDS' five hardcoded preview swatches
     // and silently substitute the default for anything else. That meant a
-    // real, newly-onboarded company's own subdomain — anything other than
+    // real, newly-onboarded company's own id — anything other than
     // coastal/coral/forest/tulip/ink — would render as "coastal" instead,
     // serving a completely different company's real content under the
     // wrong link. This function has no database access and must not
@@ -54,63 +54,5 @@ describe("resolveGuestBrand", () => {
         resolveGuestBrand({ searchParams: new URLSearchParams(`company=${brandId}`) }),
       ).toEqual({ brandId, guideSlug: DEFAULT_GUIDE_SLUG });
     }
-  });
-
-  it("ignores a hostname that is not on the platform's domain", () => {
-    expect(
-      resolveGuestBrand({ hostname: "localhost", pathname: "/jan" }),
-    ).toEqual({ brandId: DEFAULT_BRAND.id, guideSlug: DEFAULT_GUIDE_SLUG });
-  });
-
-  it("resolves brand + guide from a real subdomain and its first path segment", () => {
-    expect(
-      resolveGuestBrand({
-        hostname: "coral.map.boatlocal.nl",
-        pathname: "/jan/map",
-      }),
-    ).toEqual({ brandId: "coral", guideSlug: "jan" });
-  });
-
-  it("is case-insensitive on the hostname", () => {
-    expect(
-      resolveGuestBrand({ hostname: "CORAL.MAP.BOATLOCAL.NL", pathname: "/jan" }),
-    ).toEqual({ brandId: "coral", guideSlug: "jan" });
-  });
-
-  it("strips a port from the hostname before matching", () => {
-    expect(
-      resolveGuestBrand({ hostname: "coral.map.boatlocal.nl:3000", pathname: "/jan" }),
-    ).toEqual({ brandId: "coral", guideSlug: "jan" });
-  });
-
-  it("falls back to the default guide slug when a real subdomain has no path segment", () => {
-    expect(
-      resolveGuestBrand({ hostname: "coral.map.boatlocal.nl", pathname: "/" }),
-    ).toEqual({ brandId: "coral", guideSlug: DEFAULT_GUIDE_SLUG });
-  });
-
-  it("passes through ANY subdomain on the platform host, not just the five previews", () => {
-    // Same bug as the query-param regression test above, for the subdomain
-    // path specifically: a real company's own subdomain used to be
-    // silently discarded here too if it wasn't one of BRANDS' five preview
-    // keys, ignoring query params entirely and falling to the default
-    // brand rather than passing the real subdomain through.
-    expect(
-      resolveGuestBrand({
-        hostname: "hotelv.map.boatlocal.nl",
-        pathname: "/jan",
-        searchParams: new URLSearchParams("company=ink"),
-      }),
-    ).toEqual({ brandId: "hotelv", guideSlug: "jan" });
-  });
-
-  it("prefers a matched subdomain over query params", () => {
-    expect(
-      resolveGuestBrand({
-        hostname: "coral.map.boatlocal.nl",
-        pathname: "/jan",
-        searchParams: new URLSearchParams("company=ink&guide=someone-else"),
-      }),
-    ).toEqual({ brandId: "coral", guideSlug: "jan" });
   });
 });

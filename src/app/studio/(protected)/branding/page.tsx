@@ -19,7 +19,7 @@ export default async function StudioBrandingPage() {
   }
 
   const initialBrand: Brand = {
-    id: company.subdomain,
+    id: company.id,
     companyName: company.name,
     appName: company.appName,
     primary: company.brandPrimary,

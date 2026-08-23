@@ -1,11 +1,11 @@
 // Admin Companies (PRD §8.3): view/manage every tenant, per-company
-// performance, and the full onboarding flow (create a company, assign a
-// subdomain slug, optionally note its type). Every company starts in
-// "setup" — Admin no longer picks an initial status; the company publishes
-// itself live from Studio once it's ready (setCompanyStatus's own doc
-// comment). Writes go through src/lib/admin/companyActions.ts ->
-// createCompany / setCompanyStatus in src/lib/data/source.ts, admin-only
-// and enforced there the same way RLS enforces it for real.
+// performance, and the full onboarding flow (create a company, optionally
+// note its type). Every company starts in "setup" — Admin no longer picks
+// an initial status; the company publishes itself live from Studio once
+// it's ready (setCompanyStatus's own doc comment). Writes go through
+// src/lib/admin/companyActions.ts -> createCompany / setCompanyStatus in
+// src/lib/data/source.ts, admin-only and enforced there the same way RLS
+// enforces it for real.
 
 import type { Metadata } from "next";
 
@@ -17,7 +17,6 @@ import type { CompanyStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
 import CompanyRowActions from "@/components/admin/CompanyRowActions";
 import CreateCompanyButton from "@/components/admin/CreateCompanyButton";
-import OwnerInviteCell from "@/components/admin/OwnerInviteCell";
 import StatusBadge from "@/components/admin/StatusBadge";
 
 // One width per column (see AdminTable's own doc comment) — without these
@@ -26,7 +25,10 @@ import StatusBadge from "@/components/admin/StatusBadge";
 // Co." onto two lines while Owner/Status sat mostly empty.
 const COLUMN_WIDTHS = [
   "min-w-[180px]",
-  "min-w-[110px]",
+  // Wide enough for a full 36-char UUID in font-mono without wrapping — an
+  // admin builds a guest link by hand from this value, so it stays
+  // unabbreviated (see the "ID" column's own comment below).
+  "min-w-[260px]",
   "min-w-[110px]",
   "min-w-[200px]",
   "w-20",
@@ -78,8 +80,11 @@ export default async function AdminCompaniesPage() {
         <span key="name" className="font-medium whitespace-nowrap">
           {company.name}
         </span>,
-        <span key="subdomain" className="font-mono text-xs">
-          {company.subdomain}
+        // Full id, not a truncated prefix — an admin builds a guest link by
+        // hand as `?company=<id>`, so the whole value needs to be readable
+        // and selectable here, not just enough to disambiguate rows.
+        <span key="id" className="font-mono text-xs">
+          {company.id}
         </span>,
         company.companyType ?? <span className="text-[var(--admin-ink-soft)]">—</span>,
         company.ownerEmail ? (
@@ -90,9 +95,6 @@ export default async function AdminCompaniesPage() {
                 status={OWNER_STATUS_LABEL[company.ownerStatus]}
                 tone={OWNER_STATUS_TONE[company.ownerStatus]}
               />
-            ) : null}
-            {invite ? (
-              <OwnerInviteCell companyId={company.id} inviteUrl={invite.inviteUrl} />
             ) : null}
           </div>
         ) : (
@@ -114,6 +116,7 @@ export default async function AdminCompaniesPage() {
           companyId={company.id}
           companyName={company.name}
           status={company.status}
+          ownerInvite={invite}
         />,
       ];
     }),
@@ -139,7 +142,7 @@ export default async function AdminCompaniesPage() {
         className="mt-6"
         columns={[
           "Company",
-          "Subdomain",
+          "ID",
           "Type",
           "Owner",
           "Guides",

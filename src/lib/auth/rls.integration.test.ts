@@ -11,11 +11,11 @@
 //      was scoped from).
 //
 // Fixture isolation: every row this file creates is tagged with one
-// run-scoped id (`RUN_ID`, embedded in emails/subdomains/names), asserts
-// only against its own rows, and deletes everything it created in
-// `afterAll` via try/finally — so a killed run leaves identifiable,
-// prunable junk (grep any table for `RUN_ID`) rather than silently
-// colliding with a concurrent run or accumulating unbounded garbage.
+// run-scoped id (`RUN_ID`, embedded in emails/names), asserts only against
+// its own rows, and deletes everything it created in `afterAll` via
+// try/finally — so a killed run leaves identifiable, prunable junk (grep
+// any table for `RUN_ID`) rather than silently colliding with a concurrent
+// run or accumulating unbounded garbage.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -38,16 +38,13 @@ function freshAnonClient(): SupabaseClient {
 
 interface CompanyFixture {
   id: string;
-  subdomain: string;
 }
 
 async function insertCompany(admin: SupabaseClient, label: string): Promise<CompanyFixture> {
-  const subdomain = `rls-test-${RUN_ID}-${label}`;
   const { data, error } = await admin
     .from("companies")
     .insert({
       name: `RLS Test Co ${RUN_ID} ${label}`,
-      subdomain,
       company_type: "hotel",
       app_name: "RLS Test",
       brand_primary: "#112233",
@@ -56,7 +53,7 @@ async function insertCompany(admin: SupabaseClient, label: string): Promise<Comp
       brand_surround: "#112233",
       status: "active",
     })
-    .select("id, subdomain")
+    .select("id")
     .single();
   if (error) throw error;
   return data as CompanyFixture;
@@ -263,7 +260,7 @@ describe("RLS enforcement + magic-link sign-in against the real Supabase project
       const { data, error } = await asGuideA.from("companies").select("*").eq("id", companyA.id);
       expect(error).toBeNull();
       expect(data).toHaveLength(1);
-      expect(data?.[0]?.subdomain).toBe(companyA.subdomain);
+      expect(data?.[0]?.id).toBe(companyA.id);
     });
 
     it("reads its own tenant's base-list recommendation (read-only inherited access)", async () => {

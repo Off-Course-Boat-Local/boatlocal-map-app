@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { RESERVED_SUBDOMAINS, initialFromName, isUrlSafeSubdomain, slugify, uniqueSlug } from "./slug";
+import { initialFromName, slugify, uniqueSlug } from "./slug";
 
 describe("slugify", () => {
   it("lowercases and hyphenates a plain name", () => {
@@ -57,39 +57,5 @@ describe("initialFromName", () => {
   it("falls back to '?' for input with no letters or digits", () => {
     expect(initialFromName("")).toBe("?");
     expect(initialFromName("😀")).toBe("?");
-  });
-});
-
-describe("isUrlSafeSubdomain", () => {
-  it("accepts lowercase letters, digits and interior hyphens", () => {
-    expect(isUrlSafeSubdomain("hotelv")).toBe(true);
-    expect(isUrlSafeSubdomain("hotel-v")).toBe(true);
-    expect(isUrlSafeSubdomain("hotel2")).toBe(true);
-    expect(isUrlSafeSubdomain("a")).toBe(true);
-  });
-
-  it("rejects uppercase, spaces, and other punctuation", () => {
-    expect(isUrlSafeSubdomain("Hotel V")).toBe(false);
-    expect(isUrlSafeSubdomain("hotel_v")).toBe(false);
-    expect(isUrlSafeSubdomain("hotel.v")).toBe(false);
-    expect(isUrlSafeSubdomain("")).toBe(false);
-  });
-
-  it("rejects a leading or trailing hyphen", () => {
-    expect(isUrlSafeSubdomain("-hotelv")).toBe(false);
-    expect(isUrlSafeSubdomain("hotelv-")).toBe(false);
-  });
-
-  it("rejects a label over 63 characters", () => {
-    expect(isUrlSafeSubdomain("a".repeat(63))).toBe(true);
-    expect(isUrlSafeSubdomain("a".repeat(64))).toBe(false);
-  });
-});
-
-describe("RESERVED_SUBDOMAINS", () => {
-  it("reserves the platform's own fixed hosts", () => {
-    expect(RESERVED_SUBDOMAINS.has("admin")).toBe(true);
-    expect(RESERVED_SUBDOMAINS.has("studio")).toBe(true);
-    expect(RESERVED_SUBDOMAINS.has("hotelv")).toBe(false);
   });
 });
