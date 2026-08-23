@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Hanken_Grotesk } from "next/font/google";
 import { fontVariables } from "@/lib/fonts";
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 // boatlocalprototype.netlify.app, which renders everything in Hanken
 // Grotesk) — see globals.css's `body` rule for where this is applied.
 // Geist above is kept only for --font-geist-mono's existing call sites
-// (e.g. subdomain/slug display) — nothing renders in Geist Sans itself
+// (e.g. company id/guide slug display) — nothing renders in Geist Sans itself
 // once this variable is wired in.
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken",
@@ -46,7 +47,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${hankenGrotesk.variable} ${fontVariables} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
