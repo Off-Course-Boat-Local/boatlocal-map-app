@@ -56,12 +56,26 @@ describe("createCompany", () => {
     expect(company.subdomain).toBe("canal-tours");
   });
 
-  it("honours an explicit initial status of active (\"live\")", async () => {
+  it("always starts a new company in 'setup', regardless of who creates it — Admin no longer picks an initial status", async () => {
     const company = await createCompany(
       { role: "admin" },
-      { name: "Jordaan B&B", companyType: "host", status: "active", ownerEmail: "owner@jordaanbb.example" },
+      { name: "Jordaan B&B", companyType: "host", ownerEmail: "owner@jordaanbb.example" },
     );
-    expect(company.status).toBe("active");
+    expect(company.status).toBe("setup");
+  });
+
+  it("companyType is optional and free text — no fixed vocabulary any more", async () => {
+    const company = await createCompany(
+      { role: "admin" },
+      { name: "No Type Co", ownerEmail: "owner@notype.example" },
+    );
+    expect(company.companyType).toBeNull();
+
+    const withType = await createCompany(
+      { role: "admin" },
+      { name: "Wine Bar Co", companyType: "Bar", ownerEmail: "owner@winebar.example" },
+    );
+    expect(withType.companyType).toBe("Bar");
   });
 
   it("rejects a blank company name", async () => {
@@ -107,9 +121,38 @@ describe("createCompany", () => {
 });
 
 describe("setCompanyStatus", () => {
-  it("only admin may change a company's status", async () => {
+  it("a company may publish (setup -> active) and unpublish (active -> setup) itself", async () => {
+    const companyActor = { role: "company" as const, companyId: COMPANY_ID };
+
+    const live = await setCompanyStatus(companyActor, COMPANY_ID, "active");
+    expect(live.status).toBe("active");
+
+    const unpublished = await setCompanyStatus(companyActor, COMPANY_ID, "setup");
+    expect(unpublished.status).toBe("setup");
+  });
+
+  it("a company may not suspend itself", async () => {
     await expect(
       setCompanyStatus({ role: "company", companyId: COMPANY_ID }, COMPANY_ID, "suspended"),
+    ).rejects.toThrow(StudioPermissionError);
+  });
+
+  it("a company may not reactivate itself out of 'suspended'", async () => {
+    await setCompanyStatus({ role: "admin" }, COMPANY_ID, "suspended");
+    await expect(
+      setCompanyStatus({ role: "company", companyId: COMPANY_ID }, COMPANY_ID, "active"),
+    ).rejects.toThrow(StudioPermissionError);
+  });
+
+  it("a company may not change another company's status", async () => {
+    await expect(
+      setCompanyStatus({ role: "company", companyId: "some-other-company" }, COMPANY_ID, "active"),
+    ).rejects.toThrow(StudioPermissionError);
+  });
+
+  it("a guide may not change any company's status", async () => {
+    await expect(
+      setCompanyStatus({ role: "guide", companyId: COMPANY_ID, guideId: "g1" }, COMPANY_ID, "active"),
     ).rejects.toThrow(StudioPermissionError);
   });
 

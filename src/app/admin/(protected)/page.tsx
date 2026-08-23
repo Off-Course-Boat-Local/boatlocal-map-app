@@ -147,7 +147,7 @@ export default async function AdminOverviewPage() {
           rows={companyPreview.map((company) => [
             company.name,
             company.subdomain,
-            company.companyType,
+            company.companyType ?? <span className="text-[var(--admin-ink-soft)]">—</span>,
             <StatusBadge
               key="status"
               status={STATUS_LABEL[company.status]}

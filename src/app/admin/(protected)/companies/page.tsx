@@ -1,9 +1,11 @@
 // Admin Companies (PRD §8.3): view/manage every tenant, per-company
 // performance, and the full onboarding flow (create a company, assign a
-// subdomain slug, set its type, set an initial setup/live status). Writes
-// go through src/lib/admin/companyActions.ts -> createCompany /
-// setCompanyStatus in src/lib/data/source.ts, admin-only and enforced
-// there the same way RLS will enforce it once a real database exists.
+// subdomain slug, optionally note its type). Every company starts in
+// "setup" — Admin no longer picks an initial status; the company publishes
+// itself live from Studio once it's ready (setCompanyStatus's own doc
+// comment). Writes go through src/lib/admin/companyActions.ts ->
+// createCompany / setCompanyStatus in src/lib/data/source.ts, admin-only
+// and enforced there the same way RLS enforces it for real.
 
 import type { Metadata } from "next";
 
@@ -36,12 +38,6 @@ const COLUMN_WIDTHS = [
 ];
 
 export const metadata: Metadata = { title: "Companies" };
-
-const COMPANY_TYPE_LABELS: Record<string, string> = {
-  hotel: "Hotel",
-  tour: "Tour operator",
-  host: "Host",
-};
 
 const STATUS_TONE: Record<CompanyStatus, "positive" | "neutral" | "warning"> = {
   setup: "neutral",
@@ -85,7 +81,7 @@ export default async function AdminCompaniesPage() {
         <span key="subdomain" className="font-mono text-xs">
           {company.subdomain}
         </span>,
-        COMPANY_TYPE_LABELS[company.companyType] ?? company.companyType,
+        company.companyType ?? <span className="text-[var(--admin-ink-soft)]">—</span>,
         company.ownerEmail ? (
           <div key="owner" className="flex flex-col gap-1.5">
             <span className="text-xs">{company.ownerEmail}</span>

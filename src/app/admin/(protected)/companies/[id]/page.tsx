@@ -22,12 +22,6 @@ import StatusBadge from "@/components/admin/StatusBadge";
 
 export const metadata: Metadata = { title: "Company" };
 
-const COMPANY_TYPE_LABELS: Record<string, string> = {
-  hotel: "Hotel",
-  tour: "Tour operator",
-  host: "Host",
-};
-
 // Matches src/app/admin/(protected)/companies/page.tsx's own label/tone
 // maps exactly, so a company/guide reads the same wherever it's seen.
 const STATUS_LABEL = { setup: "Setup", active: "Live", suspended: "Suspended" } as const;
@@ -79,8 +73,8 @@ export default async function AdminCompanyDetailPage({
               <StatusBadge status={STATUS_LABEL[company.status]} tone={STATUS_TONE[company.status]} />
             </div>
             <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-              <span className="font-mono">{company.subdomain}</span> ·{" "}
-              {COMPANY_TYPE_LABELS[company.companyType] ?? company.companyType}
+              <span className="font-mono">{company.subdomain}</span>
+              {company.companyType ? ` · ${company.companyType}` : ""}
             </p>
           </div>
           <CompanyRowActions companyId={company.id} companyName={company.name} status={company.status} />

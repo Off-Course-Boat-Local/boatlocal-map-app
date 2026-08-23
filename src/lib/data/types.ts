@@ -14,7 +14,12 @@
 import type { CategoryId } from "../types";
 
 export type AppRole = "admin" | "company" | "guide";
-export type CompanyType = "hotel" | "tour" | "host";
+// Free text, admin-entered, optional ("Hotel", "Shop", "Bar", ...) — see
+// supabase/migrations/20260823150000_company_type_free_text_and_self_publish.sql
+// for why this stopped being a fixed enum: it has never driven any
+// behaviour in the app, only ever been displayed, so a closed vocabulary
+// was friction with no payoff.
+export type CompanyType = string;
 // "setup" is an addition on top of the schema handed off from the schema
 // agent (whose migration only allowed 'active' | 'suspended' — see
 // supabase/migrations/20260805063610_init_schema.sql). Admin's onboarding
@@ -56,7 +61,7 @@ export interface CompanyRecord {
   id: string;
   name: string;
   subdomain: string;
-  companyType: CompanyType;
+  companyType: CompanyType | null;
   appName: string;
   brandPrimary: string;
   brandPrimaryDark: string;
@@ -226,9 +231,10 @@ export interface InviteGuideInput {
  * Admin's "create/onboard a company" flow (PRD §8.3). `subdomain` is
  * slugified and uniqueness-checked against every existing tenant (global,
  * not per-company — mirrors the `unique` constraint on `companies.subdomain`
- * in supabase/migrations/20260805063610_init_schema.sql). `status` defaults
- * to "setup" (PRD §2.3) when omitted — a brand-new tenant is never
- * guest-visible until an admin (or the company, later) flips it live.
+ * in supabase/migrations/20260805063610_init_schema.sql). Always starts
+ * "setup" (PRD §2.3) — Admin no longer picks an initial status; the company
+ * itself flips it live from Studio once it's ready (setCompanyStatus now
+ * allows that self-service toggle, see its own doc comment).
  *
  * No brand colours are asked for here on purpose: PRD §7.2's colour picker
  * is a Studio-side, company-editable concern, not part of Admin onboarding.
@@ -239,8 +245,8 @@ export interface CreateCompanyInput {
   name: string;
   /** Free text; will be slugified. Falls back to a slug of `name` if omitted/blank. */
   subdomain?: string;
-  companyType: CompanyType;
-  status?: CompanyStatus;
+  /** Free text, optional — e.g. "Hotel", "Shop", "Bar". Purely descriptive. */
+  companyType?: string;
   /**
    * Required, not optional — mirrors PRD §6.1's guide invite exactly: this
    * is who signs in to manage the company in Studio, not a general contact

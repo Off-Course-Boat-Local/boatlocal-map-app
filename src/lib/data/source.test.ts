@@ -779,7 +779,7 @@ describe("setCompanyStatus", () => {
     expect(live.status).toBe("active");
   });
 
-  it("only admin may change a company's status", async () => {
+  it("a company may not suspend itself (see src/lib/data/companyAdmin.test.ts for the full self-publish coverage)", async () => {
     await expect(
       setCompanyStatus({ role: "company", companyId: COMPANY_ID }, COMPANY_ID, "suspended"),
     ).rejects.toThrow(StudioPermissionError);

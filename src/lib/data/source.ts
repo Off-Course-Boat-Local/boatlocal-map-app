@@ -194,7 +194,7 @@ interface CompanyRow {
   id: string;
   name: string;
   subdomain: string;
-  company_type: CompanyType;
+  company_type: CompanyType | null;
   app_name: string;
   brand_primary: string;
   brand_primary_dark: string;
@@ -2120,7 +2120,7 @@ export async function createCompany(
       id: fakeId("company"),
       name,
       subdomain,
-      companyType: input.companyType,
+      companyType: input.companyType?.trim() || null,
       appName: name,
       brandPrimary: ONBOARDING_DEFAULT_BRAND.primary,
       brandPrimaryDark: ONBOARDING_DEFAULT_BRAND.primaryDark,
@@ -2130,7 +2130,7 @@ export async function createCompany(
       campaignParams: null,
       googleReviewUrl: null,
       tripadvisorReviewUrl: null,
-      status: input.status ?? "setup",
+      status: "setup",
       ownerEmail,
       ownerStatus: "invited",
       createdAt: created,
@@ -2157,13 +2157,13 @@ export async function createCompany(
     .insert({
       name,
       subdomain,
-      company_type: input.companyType,
+      company_type: input.companyType?.trim() || null,
       app_name: name,
       brand_primary: ONBOARDING_DEFAULT_BRAND.primary,
       brand_primary_dark: ONBOARDING_DEFAULT_BRAND.primaryDark,
       brand_accent: ONBOARDING_DEFAULT_BRAND.accent,
       brand_surround: ONBOARDING_DEFAULT_BRAND.surround,
-      status: input.status ?? "setup",
+      status: "setup",
       owner_email: ownerEmail,
       owner_status: "invited",
       owner_invite_token: generateInviteToken(),
@@ -2180,23 +2180,36 @@ export async function createCompany(
 }
 
 /**
- * Admin flips a company between setup/live/suspended (PRD §2.3, §8.3's
- * "manage" half of the Companies page) after onboarding. Admin-only — a
- * company cannot self-reactivate out of "suspended", matching how a guide
- * cannot self-reactivate in setGuideStatus above.
+ * Flips a company between setup/live/suspended. Admin may set any status;
+ * a company may only toggle itself between 'setup' and 'active' — its own
+ * self-service "publish / unpublish" (Studio), not a status Admin has to
+ * pick at onboarding time any more. 'suspended' stays admin-only in both
+ * directions — a punitive action a company can't self-reactivate out of,
+ * matching how a guide can't self-reactivate in setGuideStatus above.
+ * supabase/migrations/20260823150000_company_type_free_text_and_self_publish.sql's
+ * company_update_own_branding policy enforces the same rule server-side.
  */
 export async function setCompanyStatus(
   actor: StudioActor,
   companyId: string,
   status: CompanyStatus,
 ): Promise<CompanyRecord> {
-  if (actor.role !== "admin") {
-    throw new StudioPermissionError("Only admin may change a company's status.");
+  if (actor.role === "admin") {
+    // no further restriction
+  } else if (actor.role === "company" && actor.companyId === companyId) {
+    if (status === "suspended") {
+      throw new StudioPermissionError("A company may not suspend itself.");
+    }
+  } else {
+    throw new StudioPermissionError("Only admin, or the company itself, may change its status.");
   }
 
   if (isTestEnv) {
     const company = fakeStore.companies.find((c) => c.id === companyId);
     if (!company) throw new StudioPermissionError(`Company ${companyId} not found.`);
+    if (actor.role === "company" && company.status === "suspended") {
+      throw new StudioPermissionError("A suspended company may not reactivate itself.");
+    }
 
     company.status = status;
     company.updatedAt = new Date().toISOString();

@@ -16,12 +16,14 @@
 // its numbers through plain props, so wiring in a real analytics pipeline
 // later means changing what this page passes in, not those components.
 
+import CompanyPublishToggle from "@/components/studio/CompanyPublishToggle";
 import GuestActivityChart from "@/components/studio/dashboard/GuestActivityChart";
 import GuideLeaderboard from "@/components/studio/dashboard/GuideLeaderboard";
 import KpiRow from "@/components/studio/dashboard/KpiRow";
 import MostSavedTips from "@/components/studio/dashboard/MostSavedTips";
 import StudioBrandScope from "@/components/studio/StudioBrandScope";
 import {
+  getCompanyForStudio,
   getGuideAnalyticsSummary,
   getGuidesForCompany,
   getRecommendationsForStudio,
@@ -42,7 +44,10 @@ export default async function StudioDashboardPage() {
   const recommendations = await getRecommendationsForStudio(actor);
 
   if (session.role === "company") {
-    const guides = await getGuidesForCompany(actor, session.companyId);
+    const [guides, company] = await Promise.all([
+      getGuidesForCompany(actor, session.companyId),
+      getCompanyForStudio(actor, session.companyId),
+    ]);
     const activeGuides = guides.filter((g) => g.status === "active").length;
 
     const kpis = mockCompanyKpis(session.companyId, activeGuides);
@@ -56,6 +61,10 @@ export default async function StudioDashboardPage() {
           <h1 className="text-2xl font-semibold text-neutral-900">Dashboard</h1>
           <p className="mt-1 text-sm text-neutral-500">{session.companyName}</p>
         </div>
+
+        {company ? (
+          <CompanyPublishToggle companyId={company.id} status={company.status} />
+        ) : null}
 
         <StudioBrandScope>
           <div className="space-y-6">

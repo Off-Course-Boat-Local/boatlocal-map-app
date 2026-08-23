@@ -17,13 +17,10 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdminSession } from "@/lib/admin/devAuth";
 import { createCompany, deleteCompany, setCompanyStatus } from "@/lib/data/source";
-import type { CompanyStatus, CompanyType } from "@/lib/data/types";
+import type { CompanyStatus } from "@/lib/data/types";
 
 import { ADMIN_ACTOR } from "./actor";
 import { regenerateOwnerInvite, sendOwnerInvite } from "./ownerInvite";
-
-const COMPANY_TYPES: CompanyType[] = ["hotel", "tour", "host"];
-const COMPANY_STATUSES: CompanyStatus[] = ["setup", "active", "suspended"];
 
 export interface CreateCompanyActionState {
   error?: string;
@@ -47,17 +44,10 @@ export async function createCompanyAction(
   const name = String(formData.get("name") ?? "").trim();
   const ownerEmail = String(formData.get("ownerEmail") ?? "").trim();
   const subdomain = String(formData.get("subdomain") ?? "").trim();
-  const companyTypeRaw = String(formData.get("companyType") ?? "");
-  const statusRaw = String(formData.get("status") ?? "setup");
+  const companyType = String(formData.get("companyType") ?? "").trim();
 
   if (!name) return { error: "Company name is required." };
   if (!ownerEmail) return { error: "Owner's email is required." };
-  if (!COMPANY_TYPES.includes(companyTypeRaw as CompanyType)) {
-    return { error: "Choose a company type." };
-  }
-  if (!COMPANY_STATUSES.includes(statusRaw as CompanyStatus)) {
-    return { error: "Choose a valid initial status." };
-  }
 
   let companyId: string;
   try {
@@ -65,8 +55,7 @@ export async function createCompanyAction(
       name,
       ownerEmail,
       subdomain: subdomain || undefined,
-      companyType: companyTypeRaw as CompanyType,
-      status: statusRaw as CompanyStatus,
+      companyType: companyType || undefined,
     });
     companyId = created.id;
   } catch (err) {

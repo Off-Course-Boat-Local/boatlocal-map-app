@@ -13,9 +13,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 
-import PortalSelect from "@/components/PortalSelect";
 import { createCompanyAction, type CreateCompanyActionState } from "@/lib/admin/companyActions";
-import type { CompanyStatus, CompanyType } from "@/lib/data/types";
 
 const initialState: CreateCompanyActionState = {};
 
@@ -30,21 +28,6 @@ export interface CreateCompanyFormProps {
    */
   onDone?: () => void;
 }
-
-const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
-  { value: "hotel", label: "Hotel" },
-  { value: "tour", label: "Tour operator" },
-  { value: "host", label: "Host" },
-];
-
-// "active" is what PRD prose calls "live" — see the CompanyStatus comment
-// in src/lib/data/types.ts for why there's no separate DB value for it.
-// "suspended" is left out of onboarding on purpose: a company doesn't get
-// suspended at creation time, only afterwards (via the table's row action).
-const INITIAL_STATUS_OPTIONS: { value: CompanyStatus; label: string; hint: string }[] = [
-  { value: "setup", label: "Setup", hint: "Not shown to guests yet — still being configured." },
-  { value: "active", label: "Live", hint: "Immediately guest-visible at its subdomain." },
-];
 
 const inputClass =
   "mt-1 w-full rounded-md border border-[var(--admin-border)] bg-transparent px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--admin-accent)]";
@@ -74,7 +57,8 @@ export default function CreateCompanyForm({ onDone }: CreateCompanyFormProps) {
       <p className="text-xs text-[var(--admin-ink-soft)]">
         Starts with a neutral placeholder brand — the company customises colours and logo later in
         Studio &gt; Branding. The owner&rsquo;s email is who signs in to manage this company — not a
-        general contact address; they&rsquo;ll get an invite link to set their password.
+        general contact address; they&rsquo;ll get an invite link to set their password. Every
+        company starts hidden from guests until its owner publishes it themselves from Studio.
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -104,32 +88,14 @@ export default function CreateCompanyForm({ onDone }: CreateCompanyFormProps) {
           />
         </label>
 
-        <div>
-          <label htmlFor="companyType" className={labelClass}>
-            Type
-          </label>
-          <PortalSelect
-            id="companyType"
+        <label className={labelClass}>
+          Type <span className="font-normal text-[var(--admin-ink-soft)]">(optional)</span>
+          <input
             name="companyType"
-            defaultValue=""
-            placeholder="Choose one"
-            options={COMPANY_TYPE_OPTIONS}
-            className="mt-1"
+            placeholder="Hotel, Shop, Bar…"
+            className={inputClass}
           />
-        </div>
-
-        <div>
-          <label htmlFor="status" className={labelClass}>
-            Initial status
-          </label>
-          <PortalSelect
-            id="status"
-            name="status"
-            defaultValue="setup"
-            options={INITIAL_STATUS_OPTIONS}
-            className="mt-1"
-          />
-        </div>
+        </label>
       </div>
 
       <div className="mt-4 flex items-center gap-3">
