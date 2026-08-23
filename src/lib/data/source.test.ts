@@ -13,6 +13,7 @@ import {
   deleteRecommendation,
   getActiveCompanyRecord,
   getBoatCatalogForStudio,
+  getBookingOutcomeStatus,
   getBoatTours,
   getCompanyAnalyticsSummary,
   getCompanyBrand,
@@ -311,6 +312,66 @@ describe("recordBookingOutcome — the BoatLocal webhook's write side", () => {
       });
       expect(result).toEqual({ inserted: true, attributed: true });
     });
+  });
+});
+
+describe("getBookingOutcomeStatus — BoatLocal's own read-side verification endpoint", () => {
+  const CONFIRMED = {
+    clickId: "bkl_status_check",
+    bookingId: "BL-status-1",
+    event: "booking.confirmed" as const,
+    tourId: "sunset-canal",
+    guests: 2,
+    amountCents: 5600,
+    currency: "EUR",
+    bookedAt: "2026-08-20T18:00:00Z",
+  };
+
+  it("returns null for a booking_id that was never recorded", async () => {
+    expect(await getBookingOutcomeStatus("never-existed")).toBeNull();
+  });
+
+  it("reports attribution and a net count of 1 for a single confirmed booking", async () => {
+    await recordEvent({
+      eventType: "boat_book_click",
+      companyId: COMPANY_ID,
+      guideId: GUIDE_ID,
+      boatTourId: "sunset-canal",
+      metadata: { clickId: "bkl_status_check" },
+    });
+    await recordBookingOutcome(CONFIRMED);
+
+    const status = await getBookingOutcomeStatus("BL-status-1");
+    expect(status).toMatchObject({
+      bookingId: "BL-status-1",
+      attributed: true,
+      companyId: COMPANY_ID,
+      guideId: GUIDE_ID,
+      netCount: 1,
+    });
+    expect(status?.events).toHaveLength(1);
+    expect(status?.events[0]).toMatchObject({
+      event: "booking.confirmed",
+      guests: 2,
+      amountCents: 5600,
+      currency: "EUR",
+    });
+  });
+
+  it("nets to 0 once a cancellation for the same booking_id is also recorded", async () => {
+    await recordBookingOutcome({ ...CONFIRMED, bookingId: "BL-status-2" });
+    await recordBookingOutcome({ ...CONFIRMED, bookingId: "BL-status-2", event: "booking.cancelled" });
+
+    const status = await getBookingOutcomeStatus("BL-status-2");
+    expect(status?.netCount).toBe(0);
+    expect(status?.events).toHaveLength(2);
+  });
+
+  it("reports attributed: false for a booking with no resolvable company", async () => {
+    await recordBookingOutcome({ ...CONFIRMED, bookingId: "BL-status-3", clickId: "bkl_never_recorded" });
+
+    const status = await getBookingOutcomeStatus("BL-status-3");
+    expect(status).toMatchObject({ attributed: false, companyId: null, guideId: null });
   });
 });
 

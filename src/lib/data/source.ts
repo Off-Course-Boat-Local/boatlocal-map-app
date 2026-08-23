@@ -1107,6 +1107,108 @@ export async function recordBookingOutcome(
   return { inserted: true, attributed: !!click };
 }
 
+export interface BookingOutcomeStatusEvent {
+  event: "booking.confirmed" | "booking.cancelled";
+  occurredAt: string;
+  guests: number;
+  amountCents: number;
+  currency: string;
+}
+
+export interface BookingOutcomeStatus {
+  bookingId: string;
+  attributed: boolean;
+  companyId: string | null;
+  guideId: string | null;
+  boatTourId: string | null;
+  /** +1 per confirmed, -1 per cancelled — 0 means net cancelled, matching what every analytics RPC already counts this booking_id as. */
+  netCount: number;
+  events: BookingOutcomeStatusEvent[];
+}
+
+/**
+ * Read-side counterpart to recordBookingOutcome — lets the CALLER (BoatLocal's
+ * own team) verify a webhook delivery actually landed, without needing Admin
+ * dashboard access or trusting our 200 response on faith. Built because they
+ * asked for exactly this after their first live signed test against
+ * production: "Where we can see this ourselves next time... Right now we're
+ * trusting your 200 and can't verify independently."
+ *
+ * Deliberately narrow: returns only what's needed to confirm attribution and
+ * net outcome (see BookingOutcomeStatus) — never a full row dump, and never
+ * anything about a DIFFERENT booking_id than the one asked for. No Studio
+ * actor exists for this caller (same as the webhook itself), so this uses
+ * the service-role client directly, same posture as findAttributedClick.
+ */
+export async function getBookingOutcomeStatus(
+  bookingId: string,
+): Promise<BookingOutcomeStatus | null> {
+  if (isTestEnv) {
+    const rows = fakeStore.events.filter(
+      (e) => e.eventType === "booking_outcome" && e.metadata?.bookingId === bookingId,
+    );
+    if (rows.length === 0) return null;
+    return buildBookingOutcomeStatus(bookingId, rows);
+  }
+
+  const supabase = await adminClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select("company_id, guide_id, boat_tour_id, metadata, occurred_at")
+    .eq("event_type", "booking_outcome")
+    .eq("metadata->>bookingId", bookingId)
+    .order("occurred_at", { ascending: true });
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+
+  return buildBookingOutcomeStatus(
+    bookingId,
+    data.map((row) => ({
+      companyId: row.company_id as string | null,
+      guideId: row.guide_id as string | null,
+      boatTourId: row.boat_tour_id as string | null,
+      metadata: row.metadata as Record<string, unknown>,
+      occurredAt: row.occurred_at as string,
+    })),
+  );
+}
+
+/** Shared by both branches of getBookingOutcomeStatus above — every row for one bookingId shares the same attribution (it's set once, at first insert, and never changes on a later confirmed/cancelled row for that same id), so attribution is read off the first row while the net count sums every row. */
+function buildBookingOutcomeStatus(
+  bookingId: string,
+  rows: Array<{
+    companyId: string | null;
+    guideId: string | null;
+    boatTourId: string | null;
+    metadata: Record<string, unknown> | null | undefined;
+    occurredAt: string;
+  }>,
+): BookingOutcomeStatus {
+  const first = rows[0];
+  const events: BookingOutcomeStatusEvent[] = rows.map((row) => {
+    const m = row.metadata ?? {};
+    const event = m.event === "booking.cancelled" ? "booking.cancelled" : "booking.confirmed";
+    return {
+      event,
+      occurredAt: row.occurredAt,
+      guests: typeof m.guests === "number" ? m.guests : 0,
+      amountCents: typeof m.amountCents === "number" ? m.amountCents : 0,
+      currency: typeof m.currency === "string" ? m.currency : "EUR",
+    };
+  });
+  const netCount = events.reduce((sum, e) => sum + (e.event === "booking.cancelled" ? -1 : 1), 0);
+
+  return {
+    bookingId,
+    attributed: first.companyId != null,
+    companyId: first.companyId,
+    guideId: first.guideId,
+    boatTourId: first.boatTourId,
+    netCount,
+    events,
+  };
+}
+
 // =============================================================================
 // BoatLocal cruise-catalogue sync (docs/attribution.md's "cruise catalogue
 // sync" section) — shared by src/app/api/webhooks/boatlocal-cruise/route.ts
