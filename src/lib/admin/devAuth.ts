@@ -21,6 +21,17 @@
 // getAdminSession() / requireAdminSession() keep the exact signatures the
 // former DEV AUTH STAND-IN used, so every call site (layouts, pages,
 // actions) needed no changes for this swap.
+//
+// Password sign-in (added on top of magic-link, see src/app/admin/login/)
+// changes nothing about the above — signInWithPassword() establishes the
+// exact same kind of Supabase Auth session signInWithOtp() does, so
+// everything below still applies unchanged. The one addition is
+// `password_set` (supabase/migrations/20260823160000_admin_password_set.sql):
+// requireAdminSession() forces a not-yet-password'd admin to
+// /admin/set-password before it will hand back a session for anything else,
+// the same "layer 2 UX convenience, not the only check" way it already
+// forces a signed-out visitor to /admin/login — src/app/admin/set-password's
+// own page/action still re-check independently rather than trusting this.
 
 import { redirect } from "next/navigation";
 
@@ -31,7 +42,11 @@ import { isEmailAllowlistedForAdmin } from "./allowlist";
 
 export interface AdminSession {
   role: "admin";
+  /** auth.users id / profiles.id — needed to target this exact row for the service-role password_set flip. */
+  id: string;
   email: string;
+  /** See supabase/migrations/20260823160000_admin_password_set.sql. */
+  passwordSet: boolean;
 }
 
 export { isEmailAllowlistedForAdmin };
@@ -75,13 +90,21 @@ async function resolveAdminSession(): Promise<AdminSessionResult> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, email")
+    .select("id, role, email, password_set")
     .eq("id", userId)
     .maybeSingle();
 
   if (profile) {
     return profile.role === "admin"
-      ? { status: "ok", session: { role: "admin", email: profile.email } }
+      ? {
+          status: "ok",
+          session: {
+            role: "admin",
+            id: profile.id,
+            email: profile.email,
+            passwordSet: profile.password_set,
+          },
+        }
       : { status: "not-authorized" };
   }
 
@@ -93,7 +116,7 @@ async function resolveAdminSession(): Promise<AdminSessionResult> {
   const { data: created, error } = await admin
     .from("profiles")
     .insert({ id: userId, role: "admin", email })
-    .select("role, email")
+    .select("id, role, email, password_set")
     .single();
 
   if (error || !created) {
@@ -103,7 +126,15 @@ async function resolveAdminSession(): Promise<AdminSessionResult> {
     return { status: "not-authorized" };
   }
 
-  return { status: "ok", session: { role: "admin", email: created.email } };
+  return {
+    status: "ok",
+    session: {
+      role: "admin",
+      id: created.id,
+      email: created.email,
+      passwordSet: created.password_set,
+    },
+  };
 }
 
 /** Route Handler / Server Action only — clears the Supabase Auth session. */
@@ -115,6 +146,12 @@ export async function destroyAdminSession(): Promise<void> {
 /**
  * Server Component read of the current session, or null if signed out, not
  * yet authorized, or refused by the allowlist.
+ *
+ * Unlike requireAdminSession(), this does NOT redirect on `passwordSet ===
+ * false` — it hands back the session as-is. src/app/admin/set-password's
+ * page needs exactly that: a real, authorized admin session that may or may
+ * not have a password yet, without requireAdminSession()'s redirect
+ * immediately bouncing it back to the very page it's trying to render.
  */
 export async function getAdminSession(): Promise<AdminSession | null> {
   const result = await resolveAdminSession();
@@ -130,10 +167,23 @@ export async function getAdminSession(): Promise<AdminSession | null> {
  * Action under src/app/admin still needs to be safe to call directly,
  * since a "use server" action is effectively a public POST endpoint
  * regardless of what layout wraps its page.
+ *
+ * Also redirects an authorized-but-`passwordSet: false` admin to
+ * /admin/set-password before returning anything — this is what actually
+ * forces the "set your password" step for every /admin/(protected) page AND
+ * every Server Action that calls this (companyActions.ts, boatTourActions.ts,
+ * etc.), not just the page you land on right after the magic link. An admin
+ * who has only ever signed in via magic link should not be able to reach any
+ * of those merely by knowing the action to call directly.
  */
 export async function requireAdminSession(): Promise<AdminSession> {
   const result = await resolveAdminSession();
-  if (result.status === "ok") return result.session;
+  if (result.status === "ok") {
+    if (!result.session.passwordSet) {
+      redirect("/admin/set-password");
+    }
+    return result.session;
+  }
   if (result.status === "not-authorized") {
     redirect("/admin/login?error=not_authorized");
   }
