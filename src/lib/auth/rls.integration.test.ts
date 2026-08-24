@@ -72,6 +72,18 @@ describe("RLS enforcement + magic-link sign-in against the real Supabase project
   let asGuideA: SupabaseClient;
   let magicLinkSession: { accessToken: string; refreshToken: string; userId: string; email: string };
 
+  // --- Admin-curated recommendation security boundary fixtures -------------
+  // (supabase/migrations/20260824090000_recommendation_owner_type_add_admin.sql
+  // + 20260824090100_admin_recommendations_rls.sql) — a real owner_type='admin'
+  // row under company A, plus a real "company" (not guide) session, so the
+  // one RLS policy that actually changed (company_select_own_tenant) gets a
+  // genuine positive/negative control, not just the guide session this file
+  // already had.
+  let companyAOwnerUserId: string;
+  let companyAOwnerEmail: string;
+  let asCompanyA: SupabaseClient;
+  let companyAAdminOwnedRecommendationId: string;
+
   beforeAll(async () => {
     companyA = await insertCompany(admin, "a");
     companyB = await insertCompany(admin, "b");
@@ -179,6 +191,76 @@ describe("RLS enforcement + magic-link sign-in against the real Supabase project
       refresh_token: magicLinkSession.refreshToken,
     });
     if (setSessionError) throw setSessionError;
+
+    // --- Real auth user + profile for a COMPANY (not guide) actor, same
+    // tenant as guide A — needed to exercise company_select_own_tenant
+    // directly, the one policy 20260824090100_admin_recommendations_rls.sql
+    // actually changed. ---------------------------------------------------
+    companyAOwnerEmail = `rls-company-owner-${RUN_ID}@example.invalid`;
+    const { data: createdCompanyUser, error: createCompanyUserError } =
+      await admin.auth.admin.createUser({ email: companyAOwnerEmail, email_confirm: true });
+    if (createCompanyUserError) throw createCompanyUserError;
+    companyAOwnerUserId = createdCompanyUser.user.id;
+
+    const { error: companyProfileError } = await admin.from("profiles").insert({
+      id: companyAOwnerUserId,
+      role: "company",
+      company_id: companyA.id,
+      guide_id: null,
+      email: companyAOwnerEmail,
+    });
+    if (companyProfileError) throw companyProfileError;
+
+    const { data: companyLinkData, error: companyLinkError } = await admin.auth.admin.generateLink(
+      { type: "magiclink", email: companyAOwnerEmail },
+    );
+    if (companyLinkError) throw companyLinkError;
+
+    const anonForCompanySignIn = freshAnonClient();
+    const { data: companyVerifyData, error: companyVerifyError } =
+      await anonForCompanySignIn.auth.verifyOtp({
+        token_hash: companyLinkData.properties.hashed_token,
+        type: "magiclink",
+      });
+    if (companyVerifyError) throw companyVerifyError;
+    if (!companyVerifyData.session) {
+      throw new Error("verifyOtp succeeded but returned no session (company actor).");
+    }
+
+    asCompanyA = freshAnonClient();
+    const { error: setCompanySessionError } = await asCompanyA.auth.setSession({
+      access_token: companyVerifyData.session.access_token,
+      refresh_token: companyVerifyData.session.refresh_token,
+    });
+    if (setCompanySessionError) throw setCompanySessionError;
+
+    // --- One real owner_type='admin' recommendation under company A, via
+    // the service-role client (bypasses RLS entirely, same as every other
+    // fixture insert above — the point is to plant the row, not to prove
+    // admin_full_access, which admin_full_access already covers). Requires
+    // both 20260824090000_recommendation_owner_type_add_admin.sql (the enum
+    // value) and 20260824090100_admin_recommendations_rls.sql (the widened
+    // CHECK constraint) to already be applied — this insert is itself a
+    // real-Postgres proof that both migrations landed correctly. ----------
+    const { data: adminRec, error: adminRecError } = await admin
+      .from("recommendations")
+      .insert({
+        company_id: companyA.id,
+        owner_type: "admin",
+        guide_id: null,
+        category: "coffee",
+        name: `Admin-curated pick ${RUN_ID}`,
+        area: "Somewhere",
+        address: "4 Test Street",
+        lng: 4.9,
+        lat: 52.37,
+        note: "Planted by Boat Local staff — must be invisible/uneditable from company A's own Studio session.",
+        visible: true,
+      })
+      .select("id")
+      .single();
+    if (adminRecError) throw adminRecError;
+    companyAAdminOwnedRecommendationId = adminRec.id as string;
   }, 30_000);
 
   afterAll(async () => {
@@ -187,10 +269,14 @@ describe("RLS enforcement + magic-link sign-in against the real Supabase project
     // rest — this file's own RUN_ID tag means anything left behind is still
     // identifiable and prunable later.
     const cleanupSteps: Array<() => PromiseLike<unknown>> = [
+      () => admin.from("recommendations").delete().eq("id", companyAAdminOwnedRecommendationId),
       () => admin.from("recommendations").delete().eq("id", companyBRecommendationId),
       () => admin.from("recommendations").delete().eq("id", companyARecommendationId),
       () => (guideAUserId ? admin.auth.admin.deleteUser(guideAUserId) : Promise.resolve()),
       () => admin.from("profiles").delete().eq("id", guideAUserId),
+      () =>
+        companyAOwnerUserId ? admin.auth.admin.deleteUser(companyAOwnerUserId) : Promise.resolve(),
+      () => admin.from("profiles").delete().eq("id", companyAOwnerUserId),
       () => admin.from("guides").delete().eq("id", guideAId),
       () => admin.from("companies").delete().eq("id", companyA?.id),
       () => admin.from("companies").delete().eq("id", companyB?.id),
@@ -296,6 +382,116 @@ describe("RLS enforcement + magic-link sign-in against the real Supabase project
       if (data?.id) {
         await admin.from("recommendations").delete().eq("id", data.id);
       }
+    });
+  });
+
+  describe("RLS: an admin-curated recommendation (owner_type='admin') is invisible/uneditable from its own company's and guide's real sessions", () => {
+    // This is the actual security boundary the feature depends on: proving
+    // it holds even when queried directly against the table with a real
+    // authenticated session, not merely through source.ts's own in-code
+    // checks (which a bypass of the app layer would skip entirely). See
+    // supabase/migrations/20260824090100_admin_recommendations_rls.sql's
+    // header for the full per-policy reasoning this exercises.
+
+    it("company_select_own_tenant: company A's own session cannot see the admin-owned row at all — not a permission error, the row simply doesn't exist for this session", async () => {
+      const { data, error } = await asCompanyA
+        .from("recommendations")
+        .select("*")
+        .eq("id", companyAAdminOwnedRecommendationId);
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+    });
+
+    it("company A's session cannot UPDATE the admin-owned row (0 rows matched, not an error) — company_update_base_list still hard-requires owner_type='company'", async () => {
+      const { data, error } = await asCompanyA
+        .from("recommendations")
+        .update({ name: "Hijacked by company A" })
+        .eq("id", companyAAdminOwnedRecommendationId)
+        .select("id");
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+
+      // Positive control: the row is genuinely unchanged, confirmed via the
+      // service-role client (which bypasses RLS, so this is a neutral read).
+      const { data: unchanged } = await admin
+        .from("recommendations")
+        .select("name")
+        .eq("id", companyAAdminOwnedRecommendationId)
+        .single();
+      expect(unchanged?.name).toBe(`Admin-curated pick ${RUN_ID}`);
+    });
+
+    it("company A's session cannot DELETE the admin-owned row (0 rows matched, row survives)", async () => {
+      const { data, error } = await asCompanyA
+        .from("recommendations")
+        .delete()
+        .eq("id", companyAAdminOwnedRecommendationId)
+        .select("id");
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+
+      const { data: stillThere } = await admin
+        .from("recommendations")
+        .select("id")
+        .eq("id", companyAAdminOwnedRecommendationId)
+        .single();
+      expect(stillThere?.id).toBe(companyAAdminOwnedRecommendationId);
+    });
+
+    it("guide_select_base_and_own: guide A's own session cannot see the admin-owned row either, confirming the on-paper reasoning (null guide_id never equals a guide's own id) against real Postgres, not just logic on paper", async () => {
+      const { data, error } = await asGuideA
+        .from("recommendations")
+        .select("*")
+        .eq("id", companyAAdminOwnedRecommendationId);
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+    });
+
+    it("guide A's session cannot UPDATE the admin-owned row (0 rows matched) — guide_update_own_items hard-requires owner_type='guide'", async () => {
+      const { data, error } = await asGuideA
+        .from("recommendations")
+        .update({ name: "Hijacked by guide A" })
+        .eq("id", companyAAdminOwnedRecommendationId)
+        .select("id");
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+    });
+
+    it("guide A's session cannot DELETE the admin-owned row (0 rows matched, row survives)", async () => {
+      const { data, error } = await asGuideA
+        .from("recommendations")
+        .delete()
+        .eq("id", companyAAdminOwnedRecommendationId)
+        .select("id");
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+
+      const { data: stillThere } = await admin
+        .from("recommendations")
+        .select("id")
+        .eq("id", companyAAdminOwnedRecommendationId)
+        .single();
+      expect(stillThere?.id).toBe(companyAAdminOwnedRecommendationId);
+    });
+
+    it("guest_public_read: an anonymous session CAN read the visible admin-owned row — guest-visible exactly like any other recommendation", async () => {
+      const anon = freshAnonClient();
+      const { data, error } = await anon
+        .from("recommendations")
+        .select("*")
+        .eq("id", companyAAdminOwnedRecommendationId);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+      expect(data?.[0]?.owner_type).toBe("admin");
+    });
+
+    it("company A's own session CAN still see and manage its ordinary base-list row (positive control — this migration did not lock the company out of its own tenant)", async () => {
+      const { data, error } = await asCompanyA
+        .from("recommendations")
+        .select("*")
+        .eq("id", companyARecommendationId);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
     });
   });
 });

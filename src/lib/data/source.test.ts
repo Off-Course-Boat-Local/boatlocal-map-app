@@ -12,6 +12,7 @@ import {
   deleteCompany,
   deleteRecommendation,
   getActiveCompanyRecord,
+  getAdminRecommendationsForCompany,
   getBoatCatalogForStudio,
   getBookingOutcomeStatus,
   getBoatTours,
@@ -40,6 +41,7 @@ import {
   setBoatTourPosition,
   setCompanyStatus,
   setGuideStatus,
+  setRecommendationVisibility,
   syncCruiseFromBoatLocal,
   updateCompanyBranding,
   updateGuideProfile,
@@ -1190,6 +1192,165 @@ describe("Studio recommendation writes — mirrors RLS write policies", () => {
   });
 });
 
+describe("admin-curated recommendations (owner_type='admin') — security boundary", () => {
+  // Mirrors real Postgres RLS 1:1 (see
+  // supabase/migrations/20260824090100_admin_recommendations_rls.sql) —
+  // this is the ONLY enforcement that exists for this suite, since
+  // fakeStore has no RLS of its own. The equivalent real-Postgres proof
+  // (including "RLS itself would refuse this even if the app-layer check
+  // were bypassed") lives in src/lib/data/source.integration.test.ts.
+  const adminRecInput = {
+    category: "coffee" as const,
+    name: "Admin's Pick",
+    area: "Centrum",
+    address: "Keizersgracht 1",
+    lng: 4.89,
+    lat: 52.37,
+    note: "Admin-curated: planted by Boat Local staff for this one company.",
+    hours: "",
+    photos: [] as string[],
+  };
+  const companyActor = { role: "company" as const, companyId: COMPANY_ID };
+  const guideActor = { role: "guide" as const, companyId: COMPANY_ID, guideId: GUIDE_ID };
+
+  it("admin can create an admin-owned recommendation scoped to one company", async () => {
+    const rec = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID },
+    );
+    expect(rec.ownerType).toBe("admin");
+    expect(rec.guideId).toBeNull();
+    expect(rec.companyId).toBe(COMPANY_ID);
+  });
+
+  it("admin must specify a companyId to create an admin-owned recommendation", async () => {
+    await expect(saveRecommendation({ role: "admin" }, adminRecInput)).rejects.toThrow(
+      StudioPermissionError,
+    );
+  });
+
+  it("getAdminRecommendationsForCompany returns only that company's admin-owned rows", async () => {
+    const created = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID },
+    );
+    const rows = await getAdminRecommendationsForCompany({ role: "admin" }, COMPANY_ID);
+    expect(rows.map((r) => r.id)).toContain(created.id);
+    expect(rows.every((r) => r.ownerType === "admin" && r.companyId === COMPANY_ID)).toBe(true);
+  });
+
+  it("getAdminRecommendationsForCompany refuses a non-admin actor", async () => {
+    await expect(
+      getAdminRecommendationsForCompany(companyActor, COMPANY_ID),
+    ).rejects.toThrow(StudioPermissionError);
+  });
+
+  it("a company actor's getRecommendationsForStudio never returns an admin-owned row for its own tenant", async () => {
+    await saveRecommendation({ role: "admin" }, { ...adminRecInput, companyId: COMPANY_ID });
+    const rows = await getRecommendationsForStudio(companyActor);
+    expect(rows.some((r) => r.ownerType === "admin")).toBe(false);
+  });
+
+  it("a guide actor's getRecommendationsForStudio never returns an admin-owned row for its own tenant", async () => {
+    await saveRecommendation({ role: "admin" }, { ...adminRecInput, companyId: COMPANY_ID });
+    const rows = await getRecommendationsForStudio(guideActor);
+    expect(rows.some((r) => r.ownerType === "admin")).toBe(false);
+  });
+
+  it("company actor cannot edit an admin-owned row", async () => {
+    const admin = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID },
+    );
+    await expect(
+      saveRecommendation(companyActor, { ...adminRecInput, id: admin.id }),
+    ).rejects.toThrow(StudioPermissionError);
+  });
+
+  it("guide actor cannot edit an admin-owned row", async () => {
+    const admin = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID },
+    );
+    await expect(
+      saveRecommendation(guideActor, { ...adminRecInput, id: admin.id }),
+    ).rejects.toThrow(StudioPermissionError);
+  });
+
+  it("company actor's update/delete attempts on an admin-owned row both throw, and the row survives", async () => {
+    const admin = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID },
+    );
+    await expect(deleteRecommendation(companyActor, admin.id)).rejects.toThrow(
+      StudioPermissionError,
+    );
+    const stillThere = await getAdminRecommendationsForCompany({ role: "admin" }, COMPANY_ID);
+    expect(stillThere.some((r) => r.id === admin.id)).toBe(true);
+  });
+
+  it("guide actor's update/delete attempts on an admin-owned row both throw, and the row survives", async () => {
+    const admin = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID },
+    );
+    await expect(deleteRecommendation(guideActor, admin.id)).rejects.toThrow(
+      StudioPermissionError,
+    );
+    const stillThere = await getAdminRecommendationsForCompany({ role: "admin" }, COMPANY_ID);
+    expect(stillThere.some((r) => r.id === admin.id)).toBe(true);
+  });
+
+  it("company actor cannot toggle visibility of an admin-owned row", async () => {
+    const admin = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID, visible: true },
+    );
+    await expect(setRecommendationVisibility(companyActor, admin.id, false)).rejects.toThrow(
+      StudioPermissionError,
+    );
+  });
+
+  it("guide actor cannot toggle visibility of an admin-owned row", async () => {
+    const admin = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID, visible: true },
+    );
+    await expect(setRecommendationVisibility(guideActor, admin.id, false)).rejects.toThrow(
+      StudioPermissionError,
+    );
+  });
+
+  it("admin itself may still delete/toggle its own admin-owned row (matches admin_full_access)", async () => {
+    const admin = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID },
+    );
+    await setRecommendationVisibility({ role: "admin" }, admin.id, false);
+    await deleteRecommendation({ role: "admin" }, admin.id);
+    const rows = await getAdminRecommendationsForCompany({ role: "admin" }, COMPANY_ID);
+    expect(rows.some((r) => r.id === admin.id)).toBe(false);
+  });
+
+  it("guest-facing getPlaces includes a visible admin-owned recommendation for this company", async () => {
+    const admin = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID, visible: true },
+    );
+    const places = await getPlaces(COMPANY_ID);
+    expect(places.some((p) => p.id === admin.id)).toBe(true);
+  });
+
+  it("guest-facing getMapPins includes a visible admin-owned recommendation for this company", async () => {
+    const admin = await saveRecommendation(
+      { role: "admin" },
+      { ...adminRecInput, companyId: COMPANY_ID, visible: true },
+    );
+    const pins = await getMapPins(COMPANY_ID);
+    expect(pins.some((p) => p.id === admin.id)).toBe(true);
+  });
+});
+
 describe("cross-tenant isolation", () => {
   it("no company can read another company's guides", async () => {
     await expect(
@@ -1687,6 +1848,20 @@ describe("createCompany", () => {
     await expect(
       createCompany({ role: "company", companyId: COMPANY_ID }, newCompanyInput),
     ).rejects.toThrow(StudioPermissionError);
+  });
+
+  // DEFAULT_ADMIN_RECOMMENDATIONS (source.ts, next to createCompany) is the
+  // founder's planned "every new company starts with N admin-curated
+  // recommendations" seed list — currently EMPTY because the founder hasn't
+  // supplied the real content yet (see that constant's own comment for why
+  // no placeholder content is invented here). This proves the seeding loop
+  // is wired up but provably inert while the list is empty: a fresh company
+  // gets zero admin-owned recommendations, not zero because the loop was
+  // never written.
+  it("seeds no admin recommendations for a new company while the default list is empty", async () => {
+    const company = await createCompany(adminActor, newCompanyInput);
+    const seeded = await getAdminRecommendationsForCompany(adminActor, company.id);
+    expect(seeded).toHaveLength(0);
   });
 });
 

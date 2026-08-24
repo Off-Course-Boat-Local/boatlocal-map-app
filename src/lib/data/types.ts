@@ -40,7 +40,22 @@ export type CompanyStatus = "setup" | "active" | "suspended";
 // constraint gains that one value too (same migration file, same comment).
 // Nothing else about the table shape changes.
 export type GuideStatus = "invited" | "active" | "deactivated";
-export type RecommendationOwnerType = "company" | "guide";
+// "admin" is an addition on top of the schema handed off from the schema
+// agent (whose migration only allowed 'company' | 'guide' — see
+// supabase/migrations/20260805063610_init_schema.sql), same addition
+// pattern as CompanyStatus's "setup" and GuideStatus's "invited" above. An
+// 'admin'-owned row (guide_id always null, same shape as 'company') is a
+// recommendation Boat Local staff plants into ONE specific company's guest
+// map/list from Admin — it is guest-visible exactly like any other row, but
+// is a real security boundary the other two owner types are not: a company
+// or guide actor must never be able to SELECT, edit, or delete one, even by
+// querying the table directly, not just through this app's own functions.
+// See supabase/migrations/20260824090000_recommendation_owner_type_add_admin.sql
+// and 20260824090100_admin_recommendations_rls.sql for the schema/RLS side,
+// and getAdminRecommendationsForCompany / saveRecommendation /
+// deleteRecommendation / setRecommendationVisibility in source.ts for the
+// app-layer enforcement on top of RLS.
+export type RecommendationOwnerType = "company" | "guide" | "admin";
 export type BoatTourStatus = "active" | "hidden";
 export type EventPlatform = "ios" | "android" | "desktop" | "unknown";
 
@@ -347,6 +362,15 @@ export class StudioPermissionError extends Error {
 
 export interface SaveRecommendationInput {
   id?: string;
+  /**
+   * Required, and used, ONLY when the caller's actor is `{ role: "admin" }`
+   * — that shape carries no companyId of its own (unlike "company"/"guide"
+   * actors), so an admin-owned recommendation has nowhere else to say which
+   * tenant it's scoped to. Ignored for a "company"/"guide" actor, which
+   * always writes into its own `actor.companyId` regardless of what (if
+   * anything) is passed here. See saveRecommendation in source.ts.
+   */
+  companyId?: string;
   category: CategoryId;
   name: string;
   area: string;

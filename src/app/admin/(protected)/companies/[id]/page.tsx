@@ -12,8 +12,14 @@ import { notFound } from "next/navigation";
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
 import { companyPerformance } from "@/lib/admin/analytics";
 import { getOwnerInvite } from "@/lib/admin/ownerInvite";
-import { getGuidesForCompany, getPlatformDefaultCompany, listCompanies } from "@/lib/data/source";
+import {
+  getAdminRecommendationsForCompany,
+  getGuidesForCompany,
+  getPlatformDefaultCompany,
+  listCompanies,
+} from "@/lib/data/source";
 import type { GuideStatus } from "@/lib/data/types";
+import AdminRecommendationsManager from "@/components/admin/AdminRecommendationsManager";
 import AdminTable from "@/components/admin/AdminTable";
 import CompanyRowActions from "@/components/admin/CompanyRowActions";
 import { SectionHeading } from "@/components/admin/primitives";
@@ -50,11 +56,12 @@ export default async function AdminCompanyDetailPage({
   const company = companies.find((c) => c.id === id);
   if (!company) notFound();
 
-  const [guides, performance, invite, platformDefault] = await Promise.all([
+  const [guides, performance, invite, platformDefault, adminRecommendations] = await Promise.all([
     getGuidesForCompany(ADMIN_ACTOR, company.id),
     companyPerformance(company.id),
     getOwnerInvite(company.id),
     getPlatformDefaultCompany(),
+    getAdminRecommendationsForCompany(ADMIN_ACTOR, company.id),
   ]);
 
   return (
@@ -137,6 +144,20 @@ export default async function AdminCompanyDetailPage({
             />,
           ])}
           emptyMessage="No guides yet."
+        />
+      </section>
+
+      <section>
+        <SectionHeading
+          title="Admin recommendations"
+          description={`${adminRecommendations.length} admin-curated recommendation${
+            adminRecommendations.length === 1 ? "" : "s"
+          } for ${company.name}`}
+        />
+        <AdminRecommendationsManager
+          companyId={company.id}
+          companyName={company.name}
+          initialRecommendations={adminRecommendations}
         />
       </section>
     </div>

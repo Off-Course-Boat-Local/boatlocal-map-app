@@ -1,0 +1,26 @@
+-- Adds 'admin' as a third value of public.recommendation_owner_type, on top
+-- of the existing 'company' / 'guide' values (see
+-- 20260805063610_init_schema.sql line ~55). This is step 1 of 2 for the new
+-- "admin-curated recommendation, scoped to one company, invisible/uneditable
+-- in that company's own Studio" capability — see the next migration
+-- (20260824090100_admin_recommendations_rls.sql) for the CHECK constraint
+-- and RLS changes that actually make the new value meaningful.
+--
+-- WHY THIS IS ITS OWN MIGRATION FILE, NOT FOLDED INTO THE NEXT ONE:
+-- Postgres does not let a transaction both ADD a new enum value and USE that
+-- same value (e.g. in a CHECK constraint's expression, which gets evaluated
+-- against every existing row when the constraint is added, or in a policy
+-- `using`/`with check` clause that gets planned) within the same
+-- transaction — attempting to do so raises "unsafe use of new value ...
+-- of enum type". This has been true since enum values became addable
+-- without a full type rewrite (Postgres 12+): the ADD VALUE itself can run
+-- inside a transaction, but the value isn't safely *usable* until that
+-- transaction has committed.
+--
+-- Supabase's migration runner applies each migration file as its own
+-- transaction, so splitting the ADD VALUE into its own file (this one) and
+-- deferring every reference to 'admin' to the next file guarantees the first
+-- transaction has committed before the second ever runs — no reliance on
+-- statement ordering within one transaction, which is the fragile way to
+-- try to work around this restriction.
+alter type public.recommendation_owner_type add value 'admin';

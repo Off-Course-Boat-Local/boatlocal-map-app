@@ -1857,18 +1857,37 @@ function assertCompanyScope(actor: StudioActor, companyId: string): void {
 }
 
 /**
- * Recommendations visible to this actor in Studio: admin sees all, a
- * company sees every row under its own tenant (base list + every guide's
- * items, for dashboards), a guide sees the base list read-only plus their
- * own items — never another guide's items, never another tenant's rows.
+ * Recommendations visible to this actor in Studio: admin sees all
+ * (including every tenant's admin-owned rows — this is Admin's own internal
+ * "everything" read, not a Studio surface; see getAdminRecommendationsForCompany
+ * for the one-company, admin-owned-only equivalent Admin's UI actually
+ * uses), a company sees every row under its own tenant EXCEPT admin-owned
+ * ones (base list + every guide's items, for dashboards), a guide sees the
+ * base list read-only plus their own items — never another guide's items,
+ * never another tenant's rows, and never an admin-owned row either.
+ *
+ * owner_type='admin' rows are the one deliberate exception to "a company
+ * sees everything under its own tenant": those rows must stay invisible to
+ * that company's own Studio dashboard by design (see
+ * supabase/migrations/20260824090100_admin_recommendations_rls.sql's
+ * header). The `owner_type <> 'admin'` filter below is DEFENSE IN DEPTH on
+ * top of that RLS change, matching this file's own "every layer re-checks"
+ * pattern (see assertAdmin and its callers) — company_select_own_tenant
+ * already enforces this server-side for the real backend, and the guide
+ * branch's own condition already never matches an admin-owned row for a
+ * structural reason (guide_id is null on one, non-null on the actor), not
+ * because of this added clause, but the clause is kept anyway so this
+ * function's behaviour doesn't silently depend on that being true forever.
  *
  * Real backend: authed client. Admin: unfiltered select (admin_full_access
- * does the rest). Company/guide: `.eq('company_id', actor.companyId)` is
- * enough — RLS (company_select_own_tenant / guide_select_base_and_own)
- * narrows a guide's rows to base-list+own server-side, so no client-side
- * owner_type/guideId re-filtering is needed for the real query (the
- * fakeStore branch below keeps its own in-code filtering, which is harmless
- * duplication once RLS is real, per this file's own mapping notes).
+ * does the rest). Company/guide: `.eq('company_id', actor.companyId)` plus
+ * an explicit `.neq('owner_type', 'admin')` — RLS (company_select_own_tenant
+ * / guide_select_base_and_own) narrows a guide's rows to base-list+own and
+ * excludes admin-owned rows from a company's own tenant server-side too, so
+ * this client-side filter is redundant against a correctly-configured RLS
+ * policy, which is the correct direction to be redundant in (the fakeStore
+ * branch below keeps its own in-code filtering, which is the ONLY
+ * enforcement in tests, since fakeStore has no RLS of its own).
  */
 export async function getRecommendationsForStudio(
   actor: StudioActor,
@@ -1877,13 +1896,16 @@ export async function getRecommendationsForStudio(
     if (actor.role === "admin") return [...fakeStore.recommendations];
 
     if (actor.role === "company") {
-      return fakeStore.recommendations.filter((r) => r.companyId === actor.companyId);
+      return fakeStore.recommendations.filter(
+        (r) => r.companyId === actor.companyId && r.ownerType !== "admin",
+      );
     }
 
     // guide
     return fakeStore.recommendations.filter(
       (r) =>
         r.companyId === actor.companyId &&
+        r.ownerType !== "admin" &&
         (r.ownerType === "company" || r.guideId === actor.guideId),
     );
   }
@@ -1891,7 +1913,7 @@ export async function getRecommendationsForStudio(
   const supabase = await authedClient();
   let query = supabase.from("recommendations").select("*");
   if (actor.role !== "admin") {
-    query = query.eq("company_id", actor.companyId);
+    query = query.eq("company_id", actor.companyId).neq("owner_type", "admin");
   }
   const { data, error } = await query;
   if (error) throw error;
@@ -1899,30 +1921,80 @@ export async function getRecommendationsForStudio(
 }
 
 /**
+ * Admin's own read for its company-scoped curated recommendations — the
+ * ONLY listing Admin's UI (the new "Admin recommendations for {company}"
+ * section on the company detail page) actually uses, as opposed to
+ * getRecommendationsForStudio(ADMIN_ACTOR) above, which returns EVERY
+ * tenant's EVERY row (all owner types) and is Studio-shaped, not what a
+ * one-company admin-curated list needs. Admin-only: a company/guide actor
+ * has no legitimate reason to call this (it would defeat the entire point
+ * of these rows being invisible to them), so it's refused before any query,
+ * same pattern as assertAdmin's other callers.
+ */
+export async function getAdminRecommendationsForCompany(
+  actor: StudioActor,
+  companyId: string,
+): Promise<RecommendationRecord[]> {
+  assertAdmin(actor, "view a company's admin-curated recommendations");
+
+  if (isTestEnv) {
+    return fakeStore.recommendations.filter(
+      (r) => r.companyId === companyId && r.ownerType === "admin",
+    );
+  }
+
+  const supabase = await authedClient();
+  const { data, error } = await supabase
+    .from("recommendations")
+    .select("*")
+    .eq("company_id", companyId)
+    .eq("owner_type", "admin");
+  if (error) throw error;
+  return ((data ?? []) as RecommendationRow[]).map(fromRecommendationRow);
+}
+
+/**
  * Creates or updates a recommendation. A company may only write base-list
  * rows (ownerType "company") in its own tenant; a guide may only write
- * their own rows. Mirrors company_manage_base_list / guide_manage_own_items.
+ * their own rows; admin may only write admin-owned rows (ownerType "admin"),
+ * scoped to whichever company `input.companyId` names — never a company's or
+ * guide's own tenant content. Mirrors company_manage_base_list /
+ * guide_manage_own_items / (for the admin case) the CHECK constraint added
+ * by 20260824090100_admin_recommendations_rls.sql, since there is no
+ * separate `admin_manage_own_items`-style RLS policy — admin_full_access
+ * already grants admin unrestricted CRUD on this table, so THIS function's
+ * own admin.role branch below is the only thing stopping admin from writing
+ * a company's or guide's row through this call — a real business rule
+ * ("admin only ever owns the new admin-curated lane, nothing else"), not
+ * just RLS-mirroring.
  *
- * Real backend: authed client. Admin refusal and the boats-category refusal
- * are both applied before any query — the admin refusal is LOAD-BEARING (a
- * business rule, "admin does not own tenant content", not just RLS-
- * mirroring: RLS's admin_full_access would technically permit the write).
- * For an edit, the existing row is fetched first (via the same authed
- * client, so RLS narrows what an actor can even see) to reproduce the exact
- * ownership check the fakeStore branch makes; if RLS itself already hides
- * the row from this actor (e.g. a guide targeting another guide's item),
- * that fetch returns null and this throws the same StudioPermissionError a
- * mismatched-but-visible row would — see file-level note on
- * deleteRecommendation for the one case where this can't be reproduced
- * identically.
+ * Real backend: authed client. The admin-requires-companyId check and the
+ * boats-category refusal are both applied before any query. For an edit,
+ * the existing row is fetched first (via the same authed client, so RLS
+ * narrows what an actor can even see) to reproduce the exact ownership
+ * check the fakeStore branch makes — this is also where a company/guide
+ * actor's attempt to edit an admin-owned row gets refused: `existing
+ * .owner_type === ownerType` can never be true when `ownerType` is
+ * "company"/"guide" and the existing row's owner_type is "admin", so that
+ * case already falls into the same StudioPermissionError this whole check
+ * throws for any other ownership mismatch — belt and suspenders on top of
+ * RLS (company_update_base_list / guide_update_own_items each hard-require
+ * their own owner_type already, so RLS would refuse the same write too, but
+ * this app-layer check runs and throws first, without ever reaching the
+ * database, in fakeStore's test-mode branch where RLS doesn't exist at
+ * all). If RLS itself already hides the row from this actor (e.g. a guide
+ * targeting another guide's item), that fetch returns null and this throws
+ * the same StudioPermissionError a mismatched-but-visible row would — see
+ * file-level note on deleteRecommendation for the one case where this can't
+ * be reproduced identically.
  */
 export async function saveRecommendation(
   actor: StudioActor,
   input: SaveRecommendationInput,
 ): Promise<RecommendationRecord> {
-  if (actor.role === "admin") {
+  if (actor.role === "admin" && !input.companyId) {
     throw new StudioPermissionError(
-      "Admin does not own tenant recommendations; act as the company or guide instead.",
+      "Admin must specify which company an admin-curated recommendation belongs to.",
     );
   }
   if (input.category === "boats") {
@@ -1930,7 +2002,10 @@ export async function saveRecommendation(
     throw new StudioPermissionError("Boat tours are a separate table, never a recommendation.");
   }
 
-  const companyId = actor.companyId;
+  // Admin has no companyId of its own on the actor (unlike "company"/
+  // "guide"); an admin-owned row instead takes it from the input, which the
+  // check above already guarantees is present by this point.
+  const companyId = actor.role === "admin" ? (input.companyId as string) : actor.companyId;
   const ownerType = actor.role;
   const guideId = actor.role === "guide" ? actor.guideId : null;
 
@@ -2054,10 +2129,25 @@ export async function saveRecommendation(
 }
 
 /**
- * Real backend: authed client. See saveRecommendation's comment on why the
- * existing row is fetched first. DOCUMENTED BEHAVIOUR DIFFERENCE: if the
- * actor cannot even SELECT the target row under RLS (e.g. a guide targeting
- * another guide's item, or any actor targeting a row outside their tenant),
+ * Real backend: authed client. Admin may delete ANY recommendation
+ * regardless of owner_type (including its own admin-owned rows) — this
+ * mirrors admin_full_access exactly and is intentionally broader than
+ * saveRecommendation's admin rule (which confines admin to only ever
+ * CREATING/EDITING its own admin-owned lane). A company/guide actor's
+ * `allowed` check below already requires `owner_type === 'company'` /
+ * `'guide'` respectively, which an admin-owned row (owner_type='admin') can
+ * never satisfy — so an attempt to delete an admin-owned row as a company
+ * or guide actor throws the same StudioPermissionError as any other
+ * ownership mismatch, before the DELETE is ever issued. Belt and suspenders
+ * on top of RLS (whose own company_delete_base_list/guide_delete_own_items
+ * policies hard-require the same owner_type and would refuse it too), and
+ * the ONLY enforcement at all in fakeStore's test-mode branch below, which
+ * has no RLS to fall back on.
+ *
+ * See saveRecommendation's comment on why the existing row is fetched
+ * first. DOCUMENTED BEHAVIOUR DIFFERENCE: if the actor cannot even SELECT
+ * the target row under RLS (e.g. a guide targeting another guide's item, or
+ * any actor targeting a row outside their tenant),
  * the fetch returns null and this function no-ops silently — exactly like
  * "not found" — instead of throwing StudioPermissionError the way the
  * fakeStore branch does (which has no RLS, so it always finds the row and
@@ -3159,6 +3249,30 @@ const ONBOARDING_DEFAULT_BRAND = {
 };
 
 /**
+ * The founder's planned "every new company starts with N admin-curated
+ * recommendations" seed list ("I'll give you the four") — DELIBERATELY
+ * EMPTY until the founder supplies the real content. Do NOT invent
+ * placeholder recommendations here (no fake venue names, no lorem-ipsum,
+ * nothing that could accidentally ship as real guest-facing copy) — an
+ * admin-owned recommendation is guest-visible the instant it's created (see
+ * this migration's own comment: guest_public_read has no owner_type
+ * filter), so seeding fabricated content here would leak fake places onto
+ * a brand-new company's real guest map the moment it's onboarded.
+ *
+ * createCompany() below loops over this array and inserts one owner_type
+ * 'admin' recommendation per entry for the newly-created company, via the
+ * exact same saveRecommendation() path Admin's own "Admin recommendations
+ * for {company}" UI uses (src/components/admin/AdminRecommendationsManager.tsx)
+ * — so the ONLY remaining step once the founder hands over the real four is
+ * populating this array; zero further engineering. Confirmed empty (seeds
+ * nothing) by src/lib/data/source.test.ts's
+ * "createCompany seeds no admin recommendations while the default list is empty" case.
+ */
+const DEFAULT_ADMIN_RECOMMENDATIONS: Array<
+  Omit<SaveRecommendationInput, "id" | "companyId" | "visible">
+> = [];
+
+/**
  * Admin's "create/onboard a company" flow (PRD §8.3). There is nothing for
  * an admin to type as the company's identifier any more — its `id`
  * (`gen_random_uuid()`, the primary key) is the only identifier guest links
@@ -3174,6 +3288,14 @@ const ONBOARDING_DEFAULT_BRAND = {
  * 20260807000000_company_owner_invite.sql closed it. Redemption itself
  * (creating the auth user + profiles row) happens at src/app/join/[token],
  * the same place a guide's invite is redeemed.
+ *
+ * Also seeds DEFAULT_ADMIN_RECOMMENDATIONS (see that constant's own
+ * comment) into the brand-new company, one saveRecommendation() call per
+ * entry, sequentially (same "stop at the first failure, don't roll back
+ * what already landed" reasoning as reorderBoatToursAction in
+ * src/lib/admin/boatTourActions.ts — a small, admin-curated list, so N
+ * sequential calls is an acceptable cost). Currently a no-op loop over an
+ * empty array; see that constant for when this stops being true.
  *
  * Real backend: authed client.
  */
@@ -3213,6 +3335,9 @@ export async function createCompany(
       updatedAt: created,
     };
     fakeStore.companies.push(record);
+    for (const seed of DEFAULT_ADMIN_RECOMMENDATIONS) {
+      await saveRecommendation({ role: "admin" }, { ...seed, companyId: record.id });
+    }
     return record;
   }
 
@@ -3236,7 +3361,13 @@ export async function createCompany(
     .select("*")
     .single();
   if (error) throw error;
-  return fromCompanyRow(data as CompanyRow);
+  const created = fromCompanyRow(data as CompanyRow);
+
+  for (const seed of DEFAULT_ADMIN_RECOMMENDATIONS) {
+    await saveRecommendation({ role: "admin" }, { ...seed, companyId: created.id });
+  }
+
+  return created;
 }
 
 /**

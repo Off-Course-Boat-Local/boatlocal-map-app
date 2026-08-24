@@ -129,6 +129,55 @@ describe("source.ts round-tripping against the real Supabase project", () => {
     expect(pins.some((p) => !p.isBoat)).toBe(true);
   });
 
+  describe("admin-curated recommendations (owner_type='admin') are guest-visible like any other row", () => {
+    // supabase/migrations/20260824090000_recommendation_owner_type_add_admin.sql
+    // + 20260824090100_admin_recommendations_rls.sql: guest_public_read has
+    // no owner_type filter at all, so an admin-owned row must appear in both
+    // guest-facing reads the instant it's marked visible=true — proven here
+    // against the real anon-role RLS path (getPlaces' plain select, and
+    // getMapPins' guest_map_pins RPC, both `security invoker` / anon-client),
+    // not just the fakeStore mirror in src/lib/data/source.test.ts.
+    let adminRecId: string;
+
+    beforeAll(async () => {
+      const { data, error } = await adminClient()
+        .from("recommendations")
+        .insert({
+          company_id: companyId,
+          owner_type: "admin",
+          guide_id: null,
+          category: "coffee",
+          name: "Integration-test admin pick",
+          area: "Somewhere",
+          address: "5 Test Street",
+          lng: 4.9,
+          lat: 52.37,
+          note: "Planted directly via the service-role client — guest reads must still surface this.",
+          visible: true,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      adminRecId = data.id as string;
+    });
+
+    afterAll(async () => {
+      if (adminRecId) {
+        await adminClient().from("recommendations").delete().eq("id", adminRecId);
+      }
+    });
+
+    it("getPlaces includes the visible admin-owned recommendation", async () => {
+      const places = await getPlaces(companyId);
+      expect(places.some((p) => p.id === adminRecId)).toBe(true);
+    });
+
+    it("getMapPins includes the visible admin-owned recommendation", async () => {
+      const pins = await getMapPins(companyId);
+      expect(pins.some((p) => p.id === adminRecId)).toBe(true);
+    });
+  });
+
   describe("recordEvent", () => {
     const marker = `integration-test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
