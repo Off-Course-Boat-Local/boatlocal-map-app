@@ -92,8 +92,8 @@ export default async function GuestLayout({
               {brand.companyName}
             </p>
             <h1
-              className="text-3xl leading-tight text-neutral-900"
-              style={{ fontFamily: "var(--font-display)" }}
+              className="text-3xl font-semibold leading-tight text-neutral-900"
+              style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}
             >
               {brand.appName}
             </h1>
