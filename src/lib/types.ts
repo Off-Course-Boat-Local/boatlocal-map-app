@@ -63,8 +63,12 @@ export interface BoatTour {
   area: string;
   lng: number;
   lat: number;
-  /** e.g. "90 min · €28 pp · drinks incl." */
+  /** e.g. "90 min · €28 pp · drinks incl." — combined legacy fallback, used when durationLabel/priceLabel are null (an admin-curated tour with no BoatLocal sync data). */
   meta: string;
+  /** "1 hour & 30 mins" alone — set only for a BoatLocal-synced tour. */
+  durationLabel: string | null;
+  /** "from €15.95 pp" alone — set only for a BoatLocal-synced tour. */
+  priceLabel: string | null;
   note: string;
   bookingUrl: string;
   photos: string[];

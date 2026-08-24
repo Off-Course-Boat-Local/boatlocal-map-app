@@ -467,6 +467,11 @@ function toBoatTourView(tour: BoatTourRecord): BoatTourView {
     lng: tour.lng,
     lat: tour.lat,
     meta: tour.meta,
+    durationLabel: tour.cruiseDuration,
+    priceLabel:
+      tour.startingPriceCents != null
+        ? formatStartingPriceCents(tour.startingPriceCents, tour.priceCurrency ?? "EUR")
+        : null,
     note: tour.note,
     bookingUrl: tour.bookingUrl,
     photos: tour.photos,
@@ -730,6 +735,9 @@ interface MapPinRow {
   lat: number;
   note: string;
   meta: string;
+  cruise_duration: string | null;
+  starting_price_cents: number | null;
+  price_currency: string | null;
   photos: string[];
   is_boat: boolean;
   booking_url: string | null;
@@ -771,6 +779,8 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
       lat: t.lat,
       note: t.note,
       meta: t.meta,
+      durationLabel: t.durationLabel,
+      priceLabel: t.priceLabel,
       photos: t.photos,
       isBoat: true,
       bookingUrl: t.bookingUrl,
@@ -803,6 +813,11 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
     lat: row.lat,
     note: row.note,
     meta: row.meta,
+    durationLabel: row.is_boat ? row.cruise_duration : null,
+    priceLabel:
+      row.is_boat && row.starting_price_cents != null
+        ? formatStartingPriceCents(row.starting_price_cents, row.price_currency ?? "EUR")
+        : null,
     photos: row.photos,
     isBoat: row.is_boat,
     bookingUrl: row.is_boat ? (row.booking_url ?? undefined) : undefined,
@@ -1324,6 +1339,20 @@ function formatCruiseMeta(cruise: BoatLocalCruise): string {
  */
 function toStartingPriceCents(startingPrice: number | null): number | null {
   return startingPrice != null ? Math.round(startingPrice * 100) : null;
+}
+
+/**
+ * The inverse of toStartingPriceCents, for display: stored integer cents ->
+ * "from €15.95 pp". Same formatting rule as formatCruiseMeta's price half
+ * (EUR gets its symbol, any other currency keeps its code with a space,
+ * whole-euro prices stay bare, fractional ones get two decimals) — kept as
+ * its own function because this one starts from cents and is called from
+ * guest-facing MapPin/BoatTour construction (toBoatTourView, getMapPins),
+ * not from the BoatLocal feed's raw float.
+ */
+function formatStartingPriceCents(cents: number, currency: string): string {
+  const amount = cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2);
+  return currency === "EUR" ? `from €${amount} pp` : `from ${currency} ${amount} pp`;
 }
 
 /**

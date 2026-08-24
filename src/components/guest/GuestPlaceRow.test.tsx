@@ -18,10 +18,20 @@ describe("GuestPlaceRow", () => {
     expect(screen.getByText(place.meta)).toBeInTheDocument();
   });
 
-  it("shows a boat's duration/price line in the card footer", () => {
-    render(<GuestPlaceRow item={boat} saved={false} onToggleSaved={() => {}} onAction={() => {}} />);
+  // REGRESSION FIX: a boat's duration/price used to render as a large bold
+  // line in the card FOOTER — inconsistent with PlaceCard.tsx, which shows
+  // the exact same `meta` string small and muted with a clock icon, up in
+  // the metadata row (that's the "top pick" card on the welcome screen the
+  // founder pointed to as the reference — same component, floating={false}).
+  // It now lives in the same metadata row as the pin icon, matching
+  // PlaceCard exactly; the footer holds only the CTA button.
+  it("shows a boat's duration/price line in the metadata row, clock-iconed and muted like PlaceCard", () => {
+    const { container } = render(
+      <GuestPlaceRow item={boat} saved={false} onToggleSaved={() => {}} onAction={() => {}} />,
+    );
     expect(screen.getByText(boat.meta)).toBeInTheDocument();
     expect(screen.getByText(boat.area)).toBeInTheDocument();
+    expect(container.querySelector(".lucide-clock")).not.toBeNull();
   });
 
   it("hides the locator pin row entirely when area is empty (BoatLocal-synced cruises carry no location name)", () => {
@@ -34,21 +44,26 @@ describe("GuestPlaceRow", () => {
     expect(container.querySelector("div.mt-3")).not.toBeNull();
     unmount();
 
-    const { container: emptyArea } = render(
+    // Empty BOTH area and meta — meta alone (a boat's duration/price) is
+    // now enough to keep the row alive on its own, so a boat with only an
+    // empty area (the common BoatLocal case) still shows its price line.
+    // This test is specifically about the row vanishing when there is truly
+    // nothing to show at all.
+    const { container: empty } = render(
       <GuestPlaceRow
-        item={{ ...boat, area: "" }}
+        item={{ ...boat, area: "", meta: "" }}
         saved={false}
         onToggleSaved={() => {}}
         onAction={() => {}}
       />,
     );
-    expect(emptyArea.querySelector(".lucide-map-pin")).toBeNull();
-    // Not just the icon: for a boat with no area the metadata row would be
-    // completely empty, and a zero-height flex row still stacks its mt-3
-    // above the footer's mt-4 — a visible dead gap between the blurb and the
-    // duration/price footer. The whole row (and its margin) must vanish so
-    // the blurb-to-footer rhythm collapses to the footer's own spacing.
-    expect(emptyArea.querySelector("div.mt-3")).toBeNull();
+    expect(empty.querySelector(".lucide-map-pin")).toBeNull();
+    // Not just the icon: for a boat with no area and no meta the metadata
+    // row would be completely empty, and a zero-height flex row still
+    // stacks its mt-3 above the footer's mt-4 — a visible dead gap between
+    // the blurb and the footer. The whole row (and its margin) must vanish
+    // so the blurb-to-footer rhythm collapses to the footer's own spacing.
+    expect(empty.querySelector("div.mt-3")).toBeNull();
   });
 
   it("never renders a star rating", () => {

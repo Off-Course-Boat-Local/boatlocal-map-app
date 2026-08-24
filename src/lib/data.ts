@@ -205,6 +205,8 @@ export const BOAT_TOURS: BoatTour[] = [
     lng: 4.9003,
     lat: 52.3791,
     meta: "90 min · €28 pp · drinks incl.",
+    durationLabel: null,
+    priceLabel: null,
     note: "My absolute favourite — book for golden hour.",
     bookingUrl: "https://boatlocal.nl/tours/sunset-canal-cruise",
     photos: photo("sunset"),
@@ -217,6 +219,8 @@ export const BOAT_TOURS: BoatTour[] = [
     lng: 4.8837,
     lat: 52.3766,
     meta: "60 min · €22 pp · quiet canals",
+    durationLabel: null,
+    priceLabel: null,
     note: "Before the crowds. The canals are glass at 9am.",
     bookingUrl: "https://boatlocal.nl/tours/morning-gracht",
     photos: photo("morning"),
@@ -229,6 +233,8 @@ export const BOAT_TOURS: BoatTour[] = [
     lng: 4.8829,
     lat: 52.3695,
     meta: "2 hrs · from €180 · up to 8 guests",
+    durationLabel: null,
+    priceLabel: null,
     note: "Worth splitting with a group. Bring your own snacks.",
     bookingUrl: "https://boatlocal.nl/tours/private-charter",
     photos: photo("charter"),
@@ -241,6 +247,8 @@ export const BOAT_TOURS: BoatTour[] = [
     lng: 4.8912,
     lat: 52.3856,
     meta: "2 hrs · €45 pp · dinner cruise",
+    durationLabel: null,
+    priceLabel: null,
     note: "Sounds like a gimmick. Is not a gimmick.",
     bookingUrl: "https://boatlocal.nl/tours/pizza-boat",
     photos: photo("pizza"),
@@ -253,6 +261,8 @@ export const BOAT_TOURS: BoatTour[] = [
     lng: 4.8867,
     lat: 52.3648,
     meta: "From €90 / 2 hrs · no licence needed",
+    durationLabel: null,
+    priceLabel: null,
     note: "Easier than it looks. Stay right, mind the tour boats.",
     bookingUrl: "https://boatlocal.nl/tours/self-drive",
     photos: photo("selfdrive"),
@@ -265,6 +275,8 @@ export const BOAT_TOURS: BoatTour[] = [
     lng: 4.8978,
     lat: 52.3776,
     meta: "75 min · €26 pp · covered boat",
+    durationLabel: null,
+    priceLabel: null,
     note: "The bridges are lit up. Good one for a rainy night.",
     bookingUrl: "https://boatlocal.nl/tours/evening-lights",
     photos: photo("lights"),
@@ -281,8 +293,15 @@ export interface MapPin {
   lng: number;
   lat: number;
   note: string;
-  /** "90 min · €28 pp" for boats, opening hours for places. */
+  /** "90 min · €28 pp" for boats, opening hours for places — the combined
+   * legacy display string, kept as the fallback when a boat has no
+   * structured durationLabel/priceLabel (an admin-curated tour with no
+   * BoatLocal sync data). */
   meta: string;
+  /** Boats only, and only when synced from BoatLocal: "1 hour & 30 mins" alone, for the small clock-iconed metadata row. Null for places and for admin-curated tours — render `meta` instead in that case. */
+  durationLabel?: string | null;
+  /** Boats only, and only when synced from BoatLocal: "from €15.95 pp" alone, for the bold footer price line. Null for places and for admin-curated tours — `meta` already carries the combined string in that case, so no separate bold price line renders. */
+  priceLabel?: string | null;
   photos: string[];
   isBoat: boolean;
   bookingUrl?: string;

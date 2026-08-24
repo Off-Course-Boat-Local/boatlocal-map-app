@@ -141,8 +141,19 @@ export function GuestPlaceRow({
             the locator only renders when there's a name to locate. The whole
             metadata row (with its mt-3) disappears when it would be empty:
             a zero-height flex row still stacks its own top margin above the
-            footer's, leaving a visible dead gap between blurb and footer. */}
-        {(item.area.trim() !== "" || (!item.isBoat && item.meta)) && (
+            footer's, leaving a visible dead gap between blurb and footer.
+            A boat's DURATION ALONE (item.durationLabel, e.g. "1 hour & 30
+            mins") lives here — small, muted, clock-iconed, matching
+            PlaceCard.tsx's locator line — while its PRICE goes in the bold
+            footer line below, not here: showing "1 hour · from €15 pp"
+            all in one small line read as visually flat with no price
+            emphasis; showing the whole combined string bold in the footer
+            read as oversized. Splitting them is the founder's own call
+            after seeing both. `durationLabel`/`priceLabel` are null for an
+            admin-curated tour with no BoatLocal sync data — `item.meta`
+            (the old combined string) is the fallback for that case, shown
+            here in full so nothing is lost, just not split. */}
+        {(item.area.trim() !== "" || item.durationLabel || (!item.durationLabel && item.meta)) && (
           <div
             className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.75rem]"
             style={{ color: MUTED }}
@@ -153,24 +164,22 @@ export function GuestPlaceRow({
                 {item.area}
               </span>
             )}
-            {!item.isBoat && item.meta && (
+            {(item.durationLabel || item.meta) && (
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" aria-hidden />
-                {item.meta}
+                {item.durationLabel || item.meta}
               </span>
             )}
           </div>
         )}
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          {item.isBoat && item.meta ? (
-            // "90 min · €28 pp" — the boat's duration/price line takes the
-            // reference card's price slot.
+          {item.priceLabel ? (
             <p
-              className="text-[0.9375rem] font-semibold"
+              className="text-[1.0625rem] font-bold"
               style={{ margin: 0, color: INK, fontFamily: displayFontFamily }}
             >
-              {item.meta}
+              {item.priceLabel}
             </p>
           ) : (
             <span />
