@@ -21,6 +21,15 @@
 
 import type { Metadata } from "next";
 
+// This page is the one place outside src/app/studio/ that renders Studio's
+// own components (BrandingForm, RecommendationsManager) — see the
+// `.studio-root` wrapper further down for why. Next.js only includes a CSS
+// import in a route's compiled stylesheet when something in that route's
+// own tree actually imports it — Studio's protected layout importing this
+// file does nothing for a request that never enters src/app/studio/, so it
+// has to be imported again, right here, or `.studio-root`'s custom
+// properties don't exist on this page at all.
+import "@/app/studio/studio-theme.css";
 import DefaultCompanyHeader from "@/components/admin/DefaultCompanyHeader";
 import DefaultCompanyPicker from "@/components/admin/DefaultCompanyPicker";
 import BrandingForm from "@/components/studio/BrandingForm";
@@ -106,28 +115,45 @@ export default async function AdminDefaultCompanyPage() {
 
       <DefaultCompanyHeader company={flagged} otherCompanies={otherCompanies} />
 
-      {/* StudioPreviewProvider is the one bit of Studio plumbing BrandingForm
-          genuinely can't run without (it calls useStudioPreview() on every
-          field change) — see that context's own header comment. Admin has
-          no phone-preview panel of its own; this just satisfies the
-          context requirement so the form doesn't crash, nothing renders
-          from it here. */}
-      <StudioPreviewProvider initialBrand={initialBrand} initialLogoUrl={flagged.logoUrl}>
-        <BrandingForm
-          companyId={flagged.id}
-          initialBrand={initialBrand}
-          initialLogoUrl={flagged.logoUrl}
-          saveAction={saveDefaultCompanyBrandingAction}
-        />
-      </StudioPreviewProvider>
+      {/* REGRESSION FIX (2026-08-24): BrandingForm/RecommendationsManager are
+          Studio's own components, styled entirely through `var(--studio-*)`
+          custom properties — but those properties are only ever DEFINED by
+          the `.studio-root` class (src/app/studio/studio-theme.css), which
+          Studio's own protected layout applies and this Admin page never
+          did. Every `var(--studio-border)`/`var(--studio-surface)`/etc.
+          reference inside these two components was silently resolving to
+          nothing, so they rendered in bare browser-default styling — no
+          radius, no shadow, no brand font — right below an otherwise fully
+          restyled Admin page. `.studio-root` only SCOPES CSS custom
+          properties (see that file's own header comment: "Mirrors
+          admin-theme.css value-for-value" — it carries no layout rules of
+          its own beyond the variables), so wrapping just these two
+          components in it is enough to fix their styling without pulling
+          in any of Studio's actual page-shell layout. */}
+      <div className="studio-root space-y-8">
+        {/* StudioPreviewProvider is the one bit of Studio plumbing BrandingForm
+            genuinely can't run without (it calls useStudioPreview() on every
+            field change) — see that context's own header comment. Admin has
+            no phone-preview panel of its own; this just satisfies the
+            context requirement so the form doesn't crash, nothing renders
+            from it here. */}
+        <StudioPreviewProvider initialBrand={initialBrand} initialLogoUrl={flagged.logoUrl}>
+          <BrandingForm
+            companyId={flagged.id}
+            initialBrand={initialBrand}
+            initialLogoUrl={flagged.logoUrl}
+            saveAction={saveDefaultCompanyBrandingAction}
+          />
+        </StudioPreviewProvider>
 
-      <RecommendationsManager
-        recommendations={recommendations}
-        role="company"
-        deleteAction={deleteDefaultCompanyRecommendationAction}
-        setVisibilityAction={setDefaultCompanyRecommendationVisibilityAction}
-        saveAction={saveDefaultCompanyRecommendationAction.bind(null, flagged.id)}
-      />
+        <RecommendationsManager
+          recommendations={recommendations}
+          role="company"
+          deleteAction={deleteDefaultCompanyRecommendationAction}
+          setVisibilityAction={setDefaultCompanyRecommendationVisibilityAction}
+          saveAction={saveDefaultCompanyRecommendationAction.bind(null, flagged.id)}
+        />
+      </div>
     </div>
   );
 }
