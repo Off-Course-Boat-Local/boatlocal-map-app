@@ -119,6 +119,35 @@ describe("guest reads (unauthenticated / anon-equivalent)", () => {
     expect(firstPlaceIndex).toBe(BOAT_TOURS.length);
   });
 
+  // REGRESSION, found live on production 2026-08-24: every BoatLocal-synced
+  // cruise sat at the lat=0/lng=0 sentinel syncCruiseFromBoatLocal writes
+  // when the feed has no cruise.departure data (see that function's own doc
+  // comment) — guest_map_pins was plotting all of them at Null Island, so
+  // the map showed zero boats even though the List screen (which never
+  // reads lat/lng) correctly showed all twelve. A cruise with no real
+  // location is still a valid recommendation — it just can't go on a map
+  // without inventing a coordinate, which the "never geocode ourselves"
+  // rule forbids.
+  it("excludes a boat tour with no real location (lat=0/lng=0) from the map, but keeps it in the list", async () => {
+    const unlocated = await saveBoatTour({ role: "admin" }, {
+      name: "Mystery Cruise With No Departure Data Yet",
+      area: "",
+      lng: 0,
+      lat: 0,
+      meta: "1 hour",
+      note: "Awaiting real coordinates from BoatLocal.",
+      bookingUrl: "https://boatlocal.nl/cruise/mystery",
+      photos: [],
+    });
+    await setBoatFeature({ role: "company", companyId: COMPANY_ID }, unlocated.id, true, 999);
+
+    const tours = await getBoatTours(COMPANY_ID);
+    expect(tours.some((t) => t.id === unlocated.id)).toBe(true);
+
+    const pins = await getMapPins(COMPANY_ID);
+    expect(pins.some((p) => p.id === unlocated.id)).toBe(false);
+  });
+
   it("scopes reads to the requested tenant — an unknown company gets nothing", async () => {
     expect(await getPlaces(OTHER_COMPANY_ID)).toEqual([]);
     expect(await getBoatTours(OTHER_COMPANY_ID)).toEqual([]);

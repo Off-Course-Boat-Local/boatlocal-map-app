@@ -740,6 +740,17 @@ interface MapPinRow {
  * model must never be buried), then everything else. Matches
  * src/lib/data.ts's ALL_PINS shape exactly.
  *
+ * A boat tour synced from BoatLocal with no `cruise.departure` data yet
+ * sits at the lat=0/lng=0 sentinel syncCruiseFromBoatLocal writes when a
+ * NOT NULL column has nothing real to put in it (BoatLocal's public
+ * catalogue feed has no location field in production as of this writing —
+ * see that function's own doc comment). That cruise is still a perfectly
+ * valid recommendation (getBoatTours/List still show it), it just can't be
+ * placed on a map without inventing a coordinate, which the "never geocode
+ * ourselves" rule forbids — so it's excluded here rather than plotted at
+ * Null Island. See supabase/migrations/20260824030000_guest_map_pins_exclude_unlocated_boats.sql
+ * for the real RPC's identical exclusion.
+ *
  * Real backend: anon client, RPC `guest_map_pins(p_company_id)` — boats-
  * first ordering already built into the function.
  */
@@ -747,7 +758,9 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
   if (isTestEnv) {
     const [tours, places] = await Promise.all([getBoatTours(companyId), getPlaces(companyId)]);
 
-    const boatPins: MapPin[] = tours.map((t) => ({
+    const boatPins: MapPin[] = tours
+      .filter((t) => !(t.lat === 0 && t.lng === 0))
+      .map((t) => ({
       id: t.id,
       name: t.name,
       category: "boats",
