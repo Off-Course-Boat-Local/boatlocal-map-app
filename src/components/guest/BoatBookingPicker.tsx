@@ -2,13 +2,15 @@
 
 // The date + guest-count picker triggered by the Boats filter (PRD §5.5).
 //
-// A native `<input type="date">` rather than a custom calendar widget —
-// consistent with keeping guest-facing input simple, and it gets a11y and
-// mobile date-wheel UX for free on every platform. Setting trip details is
-// entirely optional: closing this without saving, or booking with no date/
-// guest count set, is a fully supported path (see
-// src/lib/boatBookingHandoff.ts) — the picker exists to make booking faster
-// when a guest already knows their plans, not to gate it.
+// The date field is the custom DatePickerField calendar (product owner
+// rejected native `<input type="date">` — the picker must match the guest
+// design system on every platform, not the OS widget). It stores the same
+// `YYYY-MM-DD` string the native input did, so everything downstream is
+// untouched. Setting trip details is entirely optional: closing this
+// without saving, or booking with no date/guest count set, is a fully
+// supported path (see src/lib/boatBookingHandoff.ts) — the picker exists to
+// make booking faster when a guest already knows their plans, not to gate
+// it.
 //
 // Visual language matches PlaceCard.tsx (same white card, same neutral
 // chrome constants, same shadow) since this sheet sits in the same map
@@ -18,6 +20,7 @@ import { useId, useState, type CSSProperties } from "react";
 
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { formatBookingDate, type BoatBookingSelection } from "@/lib/boatBookingHandoff";
+import { DatePickerField } from "./DatePickerField";
 
 const INK = "#17181C";
 const MUTED = "#6B7280";
@@ -138,24 +141,14 @@ export function BoatBookingPicker({
       >
         Date
       </label>
-      <input
-        id={dateInputId}
-        type="date"
-        value={date}
-        min={today}
-        onChange={(e) => setDate(e.target.value)}
-        style={{
-          width: "100%",
-          height: 44,
-          borderRadius: 10,
-          border: `1px solid ${BORDER}`,
-          padding: "0 12px",
-          fontSize: 15,
-          fontFamily: bodyFontFamily,
-          color: INK,
-          marginBottom: 14,
-        }}
-      />
+      <div style={{ marginBottom: 14 }}>
+        <DatePickerField
+          id={dateInputId}
+          value={date || null}
+          min={today}
+          onChange={setDate}
+        />
+      </div>
 
       <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: MUTED, marginBottom: 4 }}>
         Guests
