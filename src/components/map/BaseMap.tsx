@@ -201,6 +201,22 @@ export default function BaseMap({
       };
 
       const instance = new MapLibreGLMap(options);
+
+      // `attributionControl: { compact: true }` above only makes the
+      // control STYLABLE as a small pill — it doesn't start collapsed.
+      // MapLibre renders it as a native `<details open>` element and sets
+      // `open` by default, so without this it flashes the full "OpenFreeMap
+      // · OpenMapTiles · © OpenStreetMap" credit line open on every load
+      // before a guest can collapse it themselves. Attribution still has to
+      // stay reachable — that's a real term of OpenFreeMap/OpenStreetMap's
+      // usage, not just cosmetic — so this closes the <details> rather than
+      // removing the control: the ⓘ toggle is still there, tap it and the
+      // same text opens right back up. This has to run synchronously, right
+      // after construction, since the control's DOM node already exists by
+      // the time the constructor returns — waiting for a later event (e.g.
+      // "load") would still show the open flash first.
+      instance.getContainer().querySelector(".maplibregl-ctrl-attrib")?.removeAttribute("open");
+
       instance.touchZoomRotate.disableRotation();
       if (process.env.NODE_ENV !== "production") {
         // Handy when tuning the style from the devtools console.
