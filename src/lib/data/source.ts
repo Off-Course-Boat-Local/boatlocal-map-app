@@ -369,6 +369,9 @@ interface BoatTourRow {
   boatlocal_updated_at: string | null;
   boatlocal_headline: string | null;
   location_source: string | null;
+  cruise_duration: string | null;
+  starting_price_cents: number | null;
+  price_currency: string | null;
 }
 
 function fromBoatTourRow(row: BoatTourRow): BoatTourRecord {
@@ -395,6 +398,9 @@ function fromBoatTourRow(row: BoatTourRow): BoatTourRecord {
     boatlocalUpdatedAt: row.boatlocal_updated_at,
     boatlocalHeadline: row.boatlocal_headline,
     locationSource: row.location_source,
+    cruiseDuration: row.cruise_duration,
+    startingPriceCents: row.starting_price_cents,
+    priceCurrency: row.price_currency,
   };
 }
 
@@ -1293,6 +1299,19 @@ function formatCruiseMeta(cruise: BoatLocalCruise): string {
 }
 
 /**
+ * Feed euros -> stored integer cents for `starting_price_cents` (see the
+ * 20260824020000_boat_tours_structured_meta.sql migration comment for why
+ * cents). Math.round, not `* 100` alone: 22.5 * 100 is exactly 2250 in IEEE
+ * 754, but that's luck of the particular value — e.g. 22.13 * 100 is
+ * 2212.9999999999995, which would truncate to 2212 through any integer
+ * coercion. Rounding makes every two-decimal price land on its exact cent
+ * amount regardless.
+ */
+function toStartingPriceCents(startingPrice: number | null): number | null {
+  return startingPrice != null ? Math.round(startingPrice * 100) : null;
+}
+
+/**
  * Upserts one cruise from BoatLocal's catalogue into `boat_tours`, keyed on
  * `fareharbor_pk` (falling back to `boatlocal_id` only if fareharbor_pk is
  * ever absent — per the confirmed schema it shouldn't be, but this is
@@ -1377,6 +1396,14 @@ function formatCruiseMeta(cruise: BoatLocalCruise): string {
  */
 export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<void> {
   const meta = formatCruiseMeta(cruise);
+  // The structured counterparts of the `meta` line above (see the
+  // 20260824020000_boat_tours_structured_meta.sql migration comment):
+  // BoatLocal-owned like name/photos/booking_url, written on INSERT and
+  // rewritten on EVERY update in both branches below, so a price or duration
+  // change on their side propagates on the next sync. `meta` itself is
+  // unchanged and still written alongside — it stays the composed display
+  // fallback (and the only line an admin-curated tour has).
+  const startingPriceCents = toStartingPriceCents(cruise.startingPrice);
 
   if (isTestEnv) {
     const existing =
@@ -1413,6 +1440,9 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
       Object.assign(existing, {
         name: cruise.name,
         meta,
+        cruiseDuration: cruise.cruiseDuration,
+        startingPriceCents,
+        priceCurrency: cruise.currency,
         note,
         photos: cruise.images,
         bookingUrl: cruise.bookingUrl,
@@ -1456,6 +1486,9 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
       lng: cruise.departure?.lng ?? 0,
       lat: cruise.departure?.lat ?? 0,
       meta,
+      cruiseDuration: cruise.cruiseDuration,
+      startingPriceCents,
+      priceCurrency: cruise.currency,
       // A cruise with a headline arrives guest-ready: note starts as a copy
       // of it and status follows BoatLocal's active flag immediately. Without
       // one, the old behavior exactly: note "" and parked hidden pending
@@ -1515,6 +1548,9 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
     const updates: Partial<BoatTourRow> = {
       name: cruise.name,
       meta,
+      cruise_duration: cruise.cruiseDuration,
+      starting_price_cents: startingPriceCents,
+      price_currency: cruise.currency,
       note,
       photos: cruise.images,
       booking_url: cruise.bookingUrl,
@@ -1564,6 +1600,9 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
     lng: cruise.departure?.lng ?? 0,
     lat: cruise.departure?.lat ?? 0,
     meta,
+    cruise_duration: cruise.cruiseDuration,
+    starting_price_cents: startingPriceCents,
+    price_currency: cruise.currency,
     // See the isTestEnv branch above: a headline arrives guest-ready (note =
     // headline, status follows BoatLocal's active flag); no headline keeps
     // the old note-""/forced-hidden pending-completion behavior exactly.
@@ -2935,6 +2974,9 @@ export async function saveBoatTour(
       boatlocalUpdatedAt: null,
       boatlocalHeadline: null,
       locationSource: null,
+      cruiseDuration: null,
+      startingPriceCents: null,
+      priceCurrency: null,
     };
     fakeStore.boatTours.push(record);
     return record;

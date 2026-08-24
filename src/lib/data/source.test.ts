@@ -537,6 +537,12 @@ describe("BoatLocal cruise-catalogue sync", () => {
       // Guest-facing meta line: duration verbatim, then a from-price with
       // the € symbol for EUR and a bare integer amount.
       expect(created?.meta).toBe("1 hour & 30 mins · from €29 pp");
+      // The structured counterparts land alongside the composed meta line on
+      // INSERT (20260824020000_boat_tours_structured_meta.sql) — price in
+      // integer cents, duration/currency verbatim.
+      expect(created?.cruiseDuration).toBe("1 hour & 30 mins");
+      expect(created?.startingPriceCents).toBe(2900);
+      expect(created?.priceCurrency).toBe("EUR");
     });
 
     it("formats a fractional price with two decimals and a non-EUR currency with its code", async () => {
@@ -558,6 +564,61 @@ describe("BoatLocal cruise-catalogue sync", () => {
       expect(matches).toHaveLength(1);
       expect(matches[0].name).toBe("Renamed Cruise");
       expect(matches[0].meta).toContain("35");
+      // BoatLocal-owned, so the structured price refreshes on UPDATE right
+      // along with the composed meta line — 29 on insert, 35 after.
+      expect(matches[0].startingPriceCents).toBe(3500);
+    });
+
+    it("stores the structured duration/price fields and refreshes all three on every sync", async () => {
+      await syncCruiseFromBoatLocal(CRUISE);
+      let row = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+      expect(row?.cruiseDuration).toBe("1 hour & 30 mins");
+      expect(row?.startingPriceCents).toBe(2900);
+      expect(row?.priceCurrency).toBe("EUR");
+
+      await syncCruiseFromBoatLocal({
+        ...CRUISE,
+        cruiseDuration: "2 hours",
+        startingPrice: 22.5,
+        currency: "USD",
+      });
+      row = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+      expect(row?.cruiseDuration).toBe("2 hours");
+      // 22.5 must land as EXACTLY 2250 — the sync converts with Math.round,
+      // never a bare `* 100` cast, so no fractional euro amount can ever
+      // truncate to the wrong cent (22.13 * 100 is 2212.999… in IEEE 754).
+      expect(row?.startingPriceCents).toBe(2250);
+      expect(row?.priceCurrency).toBe("USD");
+    });
+
+    it("stores null structured fields when the feed omits duration/price, without touching meta's own composition", async () => {
+      await syncCruiseFromBoatLocal({
+        ...CRUISE,
+        cruiseDuration: null,
+        startingPrice: null,
+        currency: null,
+      });
+      const row = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+      expect(row?.cruiseDuration).toBeNull();
+      expect(row?.startingPriceCents).toBeNull();
+      expect(row?.priceCurrency).toBeNull();
+      expect(row?.meta).toBe("");
+    });
+
+    it("leaves the structured fields null on an admin-curated tour created through saveBoatTour", async () => {
+      const created = await saveBoatTour(adminActor, {
+        name: "Hand-Curated Tour",
+        area: "Jordaan",
+        lng: 4.88,
+        lat: 52.37,
+        meta: "2 hours · from €40 pp",
+        note: "Admin-entered tour, no BoatLocal identity.",
+        bookingUrl: "https://example.com/book",
+        photos: [],
+      });
+      expect(created.cruiseDuration).toBeNull();
+      expect(created.startingPriceCents).toBeNull();
+      expect(created.priceCurrency).toBeNull();
     });
 
     it("keeps a brand-new row hidden on the very next sync even though BoatLocal still reports it active (the sticky safety-net gate)", async () => {

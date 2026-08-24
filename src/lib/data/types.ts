@@ -187,6 +187,30 @@ export interface BoatTourRecord {
    */
   boatlocalHeadline: string | null;
   /**
+   * BoatLocal's own duration text ("1 hour & 30 mins"), verbatim from the
+   * feed's `cruise_duration`, rewritten on every sync. The structured half
+   * of what `meta` composes into one display line — kept separate so the
+   * guest UI can show duration and price independently. Null for an
+   * admin-curated tour (whose only guest-facing line is `meta`) and for a
+   * BoatLocal row not re-synced since the
+   * 20260824020000_boat_tours_structured_meta.sql migration shipped.
+   */
+  cruiseDuration: string | null;
+  /**
+   * BoatLocal's from-price in integer cents (feed sends 22.5 → stored 2250;
+   * syncCruiseFromBoatLocal converts once with Math.round to sidestep
+   * `22.5 * 100` float drift), rewritten on every sync. Same nullability
+   * story as cruiseDuration above.
+   */
+  startingPriceCents: number | null;
+  /**
+   * Currency code for startingPriceCents ("EUR"), verbatim from the feed,
+   * rewritten on every sync. May be null even when a price is present
+   * (formatters fall back to EUR, matching formatCruiseMeta). Same
+   * nullability story as cruiseDuration above.
+   */
+  priceCurrency: string | null;
+  /**
    * Which BoatLocal `departure.source` value (if any) the current area/lng/
    * lat came from, e.g. so Admin could eventually show a confidence hint
    * ("geocoded" vs. "pinned on Maps") — no UI built for that yet, but kept

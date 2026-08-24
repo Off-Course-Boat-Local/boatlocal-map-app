@@ -136,6 +136,9 @@ function seedBoatTours(): BoatTourRecord[] {
     boatlocalUpdatedAt: null,
     boatlocalHeadline: null,
     locationSource: null,
+    cruiseDuration: null,
+    startingPriceCents: null,
+    priceCurrency: null,
   }));
 }
 
