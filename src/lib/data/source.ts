@@ -84,6 +84,7 @@ import type {
   GuideStatus,
   InviteGuideInput,
   NewEventInput,
+  NewGuestReviewInput,
   RecommendationOwnerType,
   RecommendationRecord,
   SaveBoatTourInput,
@@ -831,6 +832,51 @@ export async function recordEvent(input: NewEventInput): Promise<void> {
       guest_session_id: input.guestSessionId ?? null,
       platform: input.platform ?? "unknown",
       metadata: input.metadata ?? {},
+      is_test: isTest,
+    });
+  if (error) throw error;
+}
+
+/**
+ * Records a guest's star rating for the Review screen (PRD §5.6) — see
+ * supabase/migrations/20260824000000_guest_reviews.sql. Same anon-insert-
+ * only, is_test-tagged shape as recordEvent above, against a separate table
+ * rather than overloading `events.metadata` (which is what the private-
+ * feedback path used to do before this table existed).
+ *
+ * ONE function for both call sites this table's migration comment
+ * describes, distinguished only by which fields the caller passes:
+ *   - a bare star pick: `{ companyId, rating }` — feedbackText/contact left
+ *     undefined, so `guest_reviews.feedback_text`/`.contact` land null.
+ *   - a private-feedback submission: the same, plus `feedbackText` (and
+ *     optionally `contact`).
+ * Both are legitimate, separate rows — see the migration for why this isn't
+ * deduped into "one row per session" (there is no guest session id to
+ * correlate them by in this anonymous flow).
+ */
+export async function recordGuestReview(input: NewGuestReviewInput): Promise<void> {
+  const isTest = isNonProductionDeployment();
+
+  if (isTestEnv) {
+    fakeStore.guestReviews.push({
+      id: fakeId("guest_review"),
+      companyId: input.companyId,
+      rating: input.rating,
+      feedbackText: input.feedbackText ?? null,
+      contact: input.contact ?? null,
+      createdAt: new Date().toISOString(),
+      isTest,
+    });
+    return;
+  }
+
+  const { error } = await anonClient()
+    .from("guest_reviews")
+    .insert({
+      company_id: input.companyId,
+      rating: input.rating,
+      feedback_text: input.feedbackText ?? null,
+      contact: input.contact ?? null,
       is_test: isTest,
     });
   if (error) throw error;

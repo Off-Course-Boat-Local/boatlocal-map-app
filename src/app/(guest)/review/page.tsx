@@ -6,10 +6,15 @@
 //       .tripadvisorReviewUrl in src/lib/data/types.ts), asked from the
 //       guest app's Review tab.
 //   (b) A boat-tour review — a different flow entirely, out of scope here.
-// Never gate by rating: every guest gets the same public-review path, and
-// "share private feedback instead" is an equal, non-hidden option, not a
-// low-rating escape hatch. See src/components/guest/GuestReviewScreen.tsx
-// for exactly how that's enforced in the UI.
+// A 5-star rating widget (src/components/guest/GuestReviewScreen.tsx) now
+// exists and drives which of the two options below is shown with visual
+// EMPHASIS — but never which ones exist. Never gate by rating: every guest
+// still gets the same public-review path AND the same private-feedback
+// path, fully rendered, clickable, and never `disabled`, at every rating
+// value including zero. "Share private feedback instead" is an equal,
+// non-hidden option, not a low-rating escape hatch. See
+// src/components/guest/GuestReviewScreen.tsx for exactly how that's
+// enforced in the UI.
 //
 // Server Component: resolves the company + review links through the
 // DataSource interface (src/lib/data/source.ts), same pattern as

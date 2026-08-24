@@ -388,3 +388,42 @@ export interface NewEventInput {
   platform?: EventPlatform;
   metadata?: Record<string, unknown>;
 }
+
+/**
+ * A guest-submitted star rating for the Review screen (PRD §5.6) — see
+ * supabase/migrations/20260824000000_guest_reviews.sql. Unrelated to the
+ * "no rating/review_count/stars field" note above: that note is about
+ * crowd-sourced ratings on guest-facing Place/BoatTour content (the guide's
+ * own curated recommendations), a deliberately different concern from a
+ * company collecting feedback about its own service here.
+ *
+ * `companyId` is required (unlike `NewEventInput.companyId`, which is
+ * nullable) because `guest_reviews.company_id` is a NOT NULL foreign key —
+ * there is no "unattributed" row in this table the way an unattributed
+ * event is allowed to exist.
+ */
+export interface NewGuestReviewInput {
+  companyId: string;
+  /**
+   * Null when the guest reached the private-feedback form without ever
+   * picking a star — that option is fully clickable at rating 0, so this
+   * has to be a real, explicit case, not an oversight. Never pass 0; the
+   * table's check constraint only allows 1-5 or null.
+   */
+  rating: number | null;
+  /** Set only on the private-feedback submission path; absent for a bare star pick. */
+  feedbackText?: string | null;
+  /** Optional email/phone, private-feedback path only. */
+  contact?: string | null;
+}
+
+export interface GuestReviewRecord {
+  id: string;
+  companyId: string;
+  rating: number | null;
+  feedbackText: string | null;
+  contact: string | null;
+  createdAt: string;
+  /** Same convention as EventRecord.isTest — see that field's doc comment. */
+  isTest: boolean;
+}

@@ -27,6 +27,7 @@ import {
   getPlaces,
   recordBookingOutcome,
   recordEvent,
+  recordGuestReview,
 } from "./source";
 
 function adminClient() {
@@ -295,6 +296,89 @@ describe("source.ts round-tripping against the real Supabase project", () => {
       expect(rpcError).toBeNull();
       const rows = (summary ?? []) as Array<{ event_type: string; event_count: number }>;
       expect(rows.find((r) => r.event_type === "booking_outcome")).toBeUndefined();
+    });
+  });
+
+  describe("recordGuestReview — guest_reviews table (20260824000000_guest_reviews.sql)", () => {
+    // guest_reviews has no jsonb metadata column to stash a unique marker in
+    // (unlike `events`), so cleanup instead scopes by a captured start
+    // timestamp — every row this describe block inserts (across all three
+    // tests below) lands after `startedAt`, and the single afterAll sweeps
+    // exactly that window for this seeded test company, never touching a
+    // real guest's row from before the run.
+    let startedAt: string;
+
+    beforeAll(() => {
+      startedAt = new Date().toISOString();
+    });
+
+    afterAll(async () => {
+      await adminClient()
+        .from("guest_reviews")
+        .delete()
+        .eq("company_id", companyId)
+        .gte("created_at", startedAt);
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("actually inserts a bare star-pick row (anon insert-only policy), with feedback_text/contact left null", async () => {
+      await recordGuestReview({ companyId, rating: 5 });
+
+      const { data, error } = await adminClient()
+        .from("guest_reviews")
+        .select("*")
+        .eq("company_id", companyId)
+        .gte("created_at", startedAt)
+        .eq("rating", 5)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+      expect(data?.[0]?.feedback_text).toBeNull();
+      expect(data?.[0]?.contact).toBeNull();
+      expect(data?.[0]?.is_test).toBe(false);
+    });
+
+    it("actually inserts a private-feedback row with rating, feedback_text, and contact", async () => {
+      await recordGuestReview({
+        companyId,
+        rating: 2,
+        feedbackText: "Integration test feedback.",
+        contact: "integration-test@example.com",
+      });
+
+      const { data, error } = await adminClient()
+        .from("guest_reviews")
+        .select("*")
+        .eq("company_id", companyId)
+        .gte("created_at", startedAt)
+        .eq("rating", 2)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+      expect(data?.[0]?.feedback_text).toBe("Integration test feedback.");
+      expect(data?.[0]?.contact).toBe("integration-test@example.com");
+    });
+
+    it("a row recorded on a stubbed non-production deployment is tagged is_test — same convention as recordBookingOutcome's", async () => {
+      vi.stubEnv("VERCEL_ENV", "preview");
+      await recordGuestReview({ companyId, rating: 4 });
+
+      const { data, error } = await adminClient()
+        .from("guest_reviews")
+        .select("is_test")
+        .eq("company_id", companyId)
+        .gte("created_at", startedAt)
+        .eq("rating", 4)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      expect(error).toBeNull();
+      expect(data?.is_test).toBe(true);
     });
   });
 });

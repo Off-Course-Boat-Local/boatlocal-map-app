@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BRANDS } from "../brand";
 import { BOAT_TOURS, GUIDE, PLACES } from "../data";
 import type { BoatLocalCruise } from "./types";
-import { resetFakeStore } from "./fakeStore";
+import { fakeStore, resetFakeStore } from "./fakeStore";
 import {
   createCompany,
   deactivateBoatLocalCruise,
@@ -33,6 +33,7 @@ import {
   reconcileBoatLocalCatalog,
   recordBookingOutcome,
   recordEvent,
+  recordGuestReview,
   saveBoatTour,
   saveRecommendation,
   setBoatFeature,
@@ -130,6 +131,72 @@ describe("recordEvent", () => {
     await recordEvent({ eventType: "tip_viewed", companyId: COMPANY_ID, platform: "ios" });
     const summary = await getCompanyAnalyticsSummary({ role: "company", companyId: COMPANY_ID }, COMPANY_ID);
     expect(summary.find((r) => r.eventType === "tip_viewed")?.count).toBe(1);
+  });
+});
+
+describe("recordGuestReview", () => {
+  it("records a bare star pick with no feedback/contact", async () => {
+    await recordGuestReview({ companyId: COMPANY_ID, rating: 5 });
+
+    expect(fakeStore.guestReviews).toHaveLength(1);
+    expect(fakeStore.guestReviews[0]).toMatchObject({
+      companyId: COMPANY_ID,
+      rating: 5,
+      feedbackText: null,
+      contact: null,
+      isTest: false,
+    });
+  });
+
+  it("records a private-feedback submission with its rating, text, and optional contact", async () => {
+    await recordGuestReview({
+      companyId: COMPANY_ID,
+      rating: 2,
+      feedbackText: "The dock was hard to find.",
+      contact: "guest@example.com",
+    });
+
+    expect(fakeStore.guestReviews).toHaveLength(1);
+    expect(fakeStore.guestReviews[0]).toMatchObject({
+      companyId: COMPANY_ID,
+      rating: 2,
+      feedbackText: "The dock was hard to find.",
+      contact: "guest@example.com",
+    });
+  });
+
+  it("records the bare rating and a later private-feedback submission as two separate rows", async () => {
+    await recordGuestReview({ companyId: COMPANY_ID, rating: 5 });
+    await recordGuestReview({
+      companyId: COMPANY_ID,
+      rating: 5,
+      feedbackText: "Loved it!",
+    });
+
+    expect(fakeStore.guestReviews).toHaveLength(2);
+  });
+
+  // REGRESSION: "Share private feedback instead" is fully clickable at
+  // rating 0 (GuestReviewScreen's own hard rule — see that file's header
+  // comment), so a guest can reach and submit the feedback form without
+  // ever picking a star. The real table's check constraint only allows 1-5
+  // or null — passing 0 straight through would violate it, and since
+  // recordGuestReview's caller (recordGuestReview in guestEvents.ts)
+  // swallows all errors, that failure would be silent: the guest sees
+  // "Thanks — that's been passed along" while nothing was actually saved.
+  it("records a private-feedback submission with a null rating when no star was picked", async () => {
+    await recordGuestReview({
+      companyId: COMPANY_ID,
+      rating: null,
+      feedbackText: "Not rating it, but wanted to say the crew was great.",
+    });
+
+    expect(fakeStore.guestReviews).toHaveLength(1);
+    expect(fakeStore.guestReviews[0]).toMatchObject({
+      companyId: COMPANY_ID,
+      rating: null,
+      feedbackText: "Not rating it, but wanted to say the crew was great.",
+    });
   });
 });
 
@@ -994,6 +1061,14 @@ describe("is_test tagging — non-production Vercel deployments never pollute re
       COMPANY_ID,
     );
     expect(rows.find((r) => r.eventType === "tip_saved")).toBeUndefined();
+  });
+
+  it("recordGuestReview tags a row is_test when VERCEL_ENV is a non-production value", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    await recordGuestReview({ companyId: COMPANY_ID, rating: 3 });
+
+    expect(fakeStore.guestReviews).toHaveLength(1);
+    expect(fakeStore.guestReviews[0].isTest).toBe(true);
   });
 
   it("recordBookingOutcome tags a booking is_test on a preview/staging deployment, excluded from admin-facing sums", async () => {

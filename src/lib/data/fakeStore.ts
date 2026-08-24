@@ -18,6 +18,7 @@ import type {
   CompanyBoatFeatureRecord,
   CompanyRecord,
   EventRecord,
+  GuestReviewRecord,
   GuideRecord,
   RecommendationRecord,
 } from "./types";
@@ -160,6 +161,8 @@ export interface FakeStore {
   boatTours: BoatTourRecord[];
   companyBoatFeatures: CompanyBoatFeatureRecord[];
   events: EventRecord[];
+  /** Backs recordGuestReview — see supabase/migrations/20260824000000_guest_reviews.sql. */
+  guestReviews: GuestReviewRecord[];
   /**
    * Stands in for `companies.is_platform_default` (see
    * supabase/migrations/20260823190000_platform_default_company.sql) — kept
@@ -180,6 +183,7 @@ function seedStore(): FakeStore {
     boatTours: seedBoatTours(),
     companyBoatFeatures: seedCompanyBoatFeatures(),
     events: [],
+    guestReviews: [],
     platformDefaultCompanyId: null,
   };
 }
@@ -195,6 +199,7 @@ export function resetFakeStore(): void {
   fakeStore.boatTours = fresh.boatTours;
   fakeStore.companyBoatFeatures = fresh.companyBoatFeatures;
   fakeStore.events = fresh.events;
+  fakeStore.guestReviews = fresh.guestReviews;
   fakeStore.platformDefaultCompanyId = fresh.platformDefaultCompanyId;
 }
 
