@@ -4,7 +4,7 @@
 // pattern as src/lib/supabase/admin.ts. Do not remove it as a "cleanup".
 //
 // Resend is the transactional-email provider for everything the app itself
-// sends: company-owner invites (Admin), guide invites (Studio). It is NOT
+// sends: company-owner invites, Admin user invites, and guide invites. It is NOT
 // what sends Supabase Auth's own magic-link / password-reset mail — those
 // come from Supabase's mailer unless Resend is separately configured as
 // custom SMTP in the Supabase dashboard (Project Settings -> Auth -> SMTP).

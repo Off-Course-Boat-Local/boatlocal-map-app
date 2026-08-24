@@ -1,10 +1,9 @@
 // Admin auth: real Supabase Auth (magic link) gated by a staff allowlist.
 //
-// Admin has no invite system — it's Boat Local's own staff, not a
-// self-serve product. The only gate is ADMIN_ALLOWED_EMAILS (a comma-
-// separated env var, see .env.example): an allowlisted email's first
-// successful magic-link verification creates their `profiles` row with
-// role='admin'; anyone else is refused outright. Nobody can ever land here
+// ADMIN_ALLOWED_EMAILS remains the bootstrap path for the first Boat Local
+// Staff account. Additional Staff can be invited deliberately from Admin >
+// Users; after redemption they already have a role='admin' profile and do not
+// need an environment-variable edit. Nobody can ever land here
 // with a default/unset role as a side effect of merely signing in — a
 // `profiles` row is only ever created by the deliberate allowlist check
 // below, never implicitly.

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     template: "%s · Map App Admin",
   },
   description:
-    "Map App staff console — platform overview, boat catalog, companies, and guides.",
+    "Map App staff console — platform overview, users, boat catalog, companies, and guides.",
 };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

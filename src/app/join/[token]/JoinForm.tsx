@@ -14,12 +14,22 @@ const initialState: JoinActionState = {};
 
 export default function JoinForm({
   token,
-  defaultName,
+  defaultName = "",
+  defaultFirstName = "",
+  defaultLastName = "",
   email,
+  nameMode = "single",
+  accountLabel,
+  companyName,
 }: {
   token: string;
-  defaultName: string;
+  defaultName?: string;
+  defaultFirstName?: string;
+  defaultLastName?: string;
   email: string;
+  nameMode?: "single" | "split";
+  accountLabel?: string;
+  companyName?: string;
 }) {
   const boundJoinAction = joinAction.bind(null, token);
   const [state, formAction, pending] = useActionState(boundJoinAction, initialState);
@@ -36,20 +46,48 @@ export default function JoinForm({
         <div>
           <h1 className="text-xl font-semibold text-neutral-900">You&rsquo;ve been invited</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Finish setting up your Studio account to start adding your own recommendations.
+            {accountLabel
+              ? `Finish setting up your ${accountLabel} account${companyName ? ` for ${companyName}` : ""}.`
+              : "Finish setting up your Studio account to start adding your own recommendations."}
           </p>
         </div>
 
-        <label className="block text-sm font-medium text-neutral-700">
-          Name
-          <input
-            name="name"
-            type="text"
-            required
-            defaultValue={defaultName}
-            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500"
-          />
-        </label>
+        {nameMode === "split" ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-neutral-700">
+              First name
+              <input
+                name="firstName"
+                type="text"
+                required
+                maxLength={80}
+                defaultValue={defaultFirstName}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500"
+              />
+            </label>
+            <label className="block text-sm font-medium text-neutral-700">
+              Last name <span className="font-normal text-neutral-400">(optional)</span>
+              <input
+                name="lastName"
+                type="text"
+                maxLength={80}
+                defaultValue={defaultLastName}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500"
+              />
+            </label>
+          </div>
+        ) : (
+          <label className="block text-sm font-medium text-neutral-700">
+            Name
+            <input
+              name="name"
+              type="text"
+              required
+              defaultValue={defaultName}
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500"
+            />
+          </label>
+        )}
 
         <label className="block text-sm font-medium text-neutral-700">
           Email

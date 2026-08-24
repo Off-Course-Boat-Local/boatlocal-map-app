@@ -25,9 +25,128 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { hashUserInviteToken } from "@/lib/admin/userInviteToken";
+import { initialFromName, uniqueSlug } from "@/lib/slug";
 
 export interface JoinActionState {
   error?: string;
+}
+
+interface PlatformInviteRow {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: "admin" | "company" | "guide";
+  company_id: string | null;
+}
+
+async function redeemPlatformUserInvite(
+  supabaseAdmin: SupabaseClient,
+  invite: PlatformInviteRow,
+  firstName: string,
+  lastName: string,
+  email: string,
+  password: string,
+): Promise<JoinActionState> {
+  if (email !== invite.email.toLowerCase()) {
+    return { error: "That email doesn't match this invite." };
+  }
+  if (!firstName) return { error: "Enter your first name." };
+
+  const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email: invite.email,
+    password,
+    email_confirm: true,
+  });
+  if (createError || !created?.user) {
+    if (createError && /already/i.test(createError.message)) {
+      return { error: "An account already exists for this email — sign in instead." };
+    }
+    return { error: "Could not create your account. Please try again." };
+  }
+
+  const newUser = created.user;
+  let guideId: string | null = null;
+
+  if (invite.role === "guide") {
+    if (!invite.company_id) {
+      await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+      return { error: "This guide invitation is missing its company." };
+    }
+    const { data: existingGuides, error: slugError } = await supabaseAdmin
+      .from("guides")
+      .select("slug")
+      .eq("company_id", invite.company_id);
+    if (slugError) {
+      await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+      return { error: "Could not finish setting up your account. Please try again." };
+    }
+
+    const publicGuideName = firstName;
+    const slug = uniqueSlug(
+      publicGuideName,
+      (existingGuides ?? []).map((guide) => guide.slug),
+    );
+    const { data: guide, error: guideError } = await supabaseAdmin
+      .from("guides")
+      .insert({
+        company_id: invite.company_id,
+        name: publicGuideName,
+        email: invite.email,
+        slug,
+        avatar_initial: initialFromName(publicGuideName),
+        welcome_message: "",
+        status: "active",
+      })
+      .select("id")
+      .single();
+    if (guideError || !guide) {
+      await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+      return { error: "Could not finish setting up your guide account. Please try again." };
+    }
+    guideId = guide.id;
+  }
+
+  const displayName = [firstName, lastName].filter(Boolean).join(" ");
+  const { error: profileError } = await supabaseAdmin.from("profiles").insert({
+    id: newUser.id,
+    role: invite.role,
+    company_id: invite.role === "admin" ? null : invite.company_id,
+    guide_id: guideId,
+    email: invite.email,
+    display_name: displayName,
+    // Staff choose their password on this very form, so the Admin login flow
+    // must not force them through a second password-setup screen.
+    password_set: invite.role === "admin",
+  });
+  if (profileError) {
+    if (guideId) await supabaseAdmin.from("guides").delete().eq("id", guideId);
+    await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+    return { error: "Could not finish setting up your account. Please try again." };
+  }
+
+  const { data: accepted, error: acceptError } = await supabaseAdmin
+    .from("user_invites")
+    .update({ accepted_at: new Date().toISOString() })
+    .eq("id", invite.id)
+    .is("accepted_at", null)
+    .is("revoked_at", null)
+    .select("id")
+    .maybeSingle();
+  if (acceptError || !accepted) {
+    if (guideId) await supabaseAdmin.from("guides").delete().eq("id", guideId);
+    await supabaseAdmin.auth.admin.deleteUser(newUser.id);
+    return { error: "This invite has already been used or is no longer valid." };
+  }
+
+  const supabase = await createClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: invite.email,
+    password,
+  });
+  if (signInError) redirect(invite.role === "admin" ? "/admin/login" : "/studio/login");
+  redirect(invite.role === "admin" ? "/admin" : "/studio");
 }
 
 async function redeemGuideInvite(
@@ -214,17 +333,40 @@ export async function joinAction(
   formData: FormData,
 ): Promise<JoinActionState> {
   const name = String(formData.get("name") ?? "").trim();
+  const firstName = String(formData.get("firstName") ?? "").trim();
+  const lastName = String(formData.get("lastName") ?? "").trim();
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (!name) return { error: "Enter your name." };
   if (password.length < 8) {
     return { error: "Choose a password with at least 8 characters." };
   }
 
   const supabaseAdmin = createAdminClient();
+
+  const { data: platformInvite } = await supabaseAdmin
+    .from("user_invites")
+    .select("id, email, first_name, last_name, role, company_id, accepted_at, revoked_at")
+    .eq("token_hash", hashUserInviteToken(token))
+    .maybeSingle();
+
+  if (platformInvite) {
+    if (platformInvite.accepted_at || platformInvite.revoked_at) {
+      return { error: "This invite has already been used or is no longer valid." };
+    }
+    return redeemPlatformUserInvite(
+      supabaseAdmin,
+      platformInvite as PlatformInviteRow,
+      firstName,
+      lastName,
+      email,
+      password,
+    );
+  }
+
+  if (!name) return { error: "Enter your name." };
 
   // Re-fetch + re-check status here, not just at page-render time: closes
   // the race where the same link is submitted twice, or the invite is

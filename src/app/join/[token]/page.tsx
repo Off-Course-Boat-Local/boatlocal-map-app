@@ -30,22 +30,31 @@
 import Link from "next/link";
 
 import MapAppMark from "@/components/MapAppMark";
+import { hashUserInviteToken } from "@/lib/admin/userInviteToken";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import JoinForm from "./JoinForm";
 
 export const metadata = {
-  title: "Join Studio — Map App",
+  title: "Join Map App",
 };
+
+const ROLE_LABEL = {
+  admin: "Staff",
+  company: "Company admin",
+  guide: "Guide",
+} as const;
 
 function InviteUnavailable({
   heading,
   message,
   showLoginLink,
+  loginHref = "/studio/login",
 }: {
   heading: string;
   message: string;
   showLoginLink?: boolean;
+  loginHref?: string;
 }) {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-neutral-100 p-6">
@@ -58,7 +67,7 @@ function InviteUnavailable({
           <p className="text-sm text-neutral-500">{message}</p>
           {showLoginLink ? (
             <Link
-              href="/studio/login"
+              href={loginHref}
               className="inline-block text-sm font-medium text-neutral-900 underline underline-offset-2"
             >
               Go to sign in
@@ -78,6 +87,49 @@ export default async function JoinPage({
   const { token } = await params;
 
   const supabaseAdmin = createAdminClient();
+  const { data: platformInvite } = await supabaseAdmin
+    .from("user_invites")
+    .select("email, first_name, last_name, role, company_id, accepted_at, revoked_at")
+    .eq("token_hash", hashUserInviteToken(token))
+    .maybeSingle();
+
+  if (platformInvite) {
+    if (platformInvite.accepted_at || platformInvite.revoked_at) {
+      return (
+        <InviteUnavailable
+          heading="Invite no longer valid"
+          message="This invite has already been used or is no longer valid."
+          showLoginLink
+          loginHref={platformInvite.role === "admin" ? "/admin/login" : "/studio/login"}
+        />
+      );
+    }
+
+    let companyName: string | undefined;
+    if (platformInvite.company_id) {
+      const { data: company } = await supabaseAdmin
+        .from("companies")
+        .select("name")
+        .eq("id", platformInvite.company_id)
+        .maybeSingle();
+      companyName = company?.name;
+    }
+
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-neutral-100 p-6">
+        <JoinForm
+          token={token}
+          nameMode="split"
+          defaultFirstName={platformInvite.first_name ?? ""}
+          defaultLastName={platformInvite.last_name ?? ""}
+          email={platformInvite.email}
+          accountLabel={ROLE_LABEL[platformInvite.role as keyof typeof ROLE_LABEL]}
+          companyName={companyName}
+        />
+      </div>
+    );
+  }
+
   const { data: guide } = await supabaseAdmin
     .from("guides")
     .select("name, email, status")

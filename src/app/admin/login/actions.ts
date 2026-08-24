@@ -35,7 +35,7 @@ import { redirect } from "next/navigation";
 
 import { isEmailAllowlistedForAdmin } from "@/lib/admin/allowlist";
 import { decideAdminLoginMode } from "@/lib/admin/loginMethod";
-import { getAdminPasswordSet } from "@/lib/admin/passwordStatus";
+import { getAdminLoginProfileState } from "@/lib/admin/passwordStatus";
 import { currentOrigin } from "@/lib/studio/requestOrigin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -78,13 +78,14 @@ export async function checkAdminLoginMethodAction(
   }
 
   const allowlisted = isEmailAllowlistedForAdmin(email);
-  // Only worth a lookup at all when the address could possibly matter —
-  // skips a service-role round trip for the common "not staff" case, and
-  // more importantly keeps the two "magic-link" causes symmetric: a
-  // non-allowlisted email never even queries `profiles`.
-  const passwordSet = allowlisted ? await getAdminPasswordSet(email) : false;
+  // Admin > Users can now create Staff deliberately without requiring a
+  // deployment-time allowlist edit. An existing role='admin' profile is
+  // therefore an authorization source in its own right; the allowlist stays
+  // as the bootstrap path for the first/legacy Staff accounts.
+  const adminProfile = await getAdminLoginProfileState(email);
+  const authorized = allowlisted || adminProfile.exists;
 
-  const mode = decideAdminLoginMode({ allowlisted, passwordSet });
+  const mode = decideAdminLoginMode({ allowlisted: authorized, passwordSet: adminProfile.passwordSet });
 
   if (mode === "password") {
     return { passwordMode: true, email };
@@ -96,7 +97,9 @@ export async function checkAdminLoginMethodAction(
   await supabase.auth.signInWithOtp({
     email,
     options: {
-      shouldCreateUser: allowlisted,
+      // Only the environment allowlist may bootstrap a brand-new account.
+      // Staff invited through Admin > Users already have an auth.users row.
+      shouldCreateUser: allowlisted && !adminProfile.exists,
       // Lands on the forced password-setup page rather than /admin directly
       // — this is always this admin's first successful sign-in (no password
       // set yet is exactly the condition that put us in this branch).

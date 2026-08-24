@@ -120,8 +120,9 @@ export interface RenderedEmail {
 
 /**
  * The email Staff send when onboarding a company's FIRST company admin
- * (createCompany's owner_invite_token). Subsequent company admins and
- * guides are invited from inside Studio, not from here.
+ * (createCompany's owner_invite_token). The unified Staff-managed user flow
+ * uses platformUserInviteEmail below; this older template remains specific to
+ * first-owner company onboarding.
  *
  * Deliberately does not mention a password: the recipient sets one at
  * /join/<token>, and telling them to "use your password" before they have
@@ -155,6 +156,57 @@ export function companyOwnerInviteEmail({
       `Your account for ${companyName} is ready. Set a password and finish`,
       "setting up your company — branding, your logo, and the recommendations",
       "your guests will see.",
+      "",
+      inviteUrl,
+    ].join("\n"),
+  };
+}
+
+export interface PlatformUserInviteEmailInput {
+  firstName?: string;
+  roleLabel: "Staff" | "Company admin" | "Guide";
+  companyName?: string;
+  /** Absolute /join/<token> URL built from emailBaseUrl(). */
+  inviteUrl: string;
+  baseUrl: string;
+}
+
+/**
+ * Staff-issued invitation from Admin > Users. This intentionally uses the
+ * same wordmark, layout and CTA treatment as the existing company-owner mail
+ * so recipients see one Map App invitation system even though the role/link
+ * metadata is stored in a separate, generic invite record.
+ */
+export function platformUserInviteEmail({
+  firstName,
+  roleLabel,
+  companyName,
+  inviteUrl,
+  baseUrl,
+}: PlatformUserInviteEmailInput): RenderedEmail {
+  const safeFirstName = firstName ? escapeHtml(firstName) : null;
+  const safeRole = escapeHtml(roleLabel);
+  const safeCompany = companyName ? escapeHtml(companyName) : null;
+  const safeUrl = escapeHtml(inviteUrl);
+  const greeting = safeFirstName ? `Hi ${safeFirstName}, ` : "";
+  const scope = safeCompany ? ` for <strong style="color:${INK};">${safeCompany}</strong>` : "";
+
+  return {
+    subject: `You're invited to Map App as ${roleLabel}`,
+    html: layout({
+      baseUrl,
+      heading: "You've been invited",
+      body:
+        `${greeting}you've been invited to join Map App as ` +
+        `<strong style="color:${INK};">${safeRole}</strong>${scope}. ` +
+        "Set your password and confirm your name to finish creating your account.",
+      cta: button(safeUrl, "Accept invitation"),
+    }),
+    text: [
+      safeFirstName ? `Hi ${firstName},` : "You've been invited to Map App",
+      "",
+      `You've been invited to join Map App as ${roleLabel}${companyName ? ` for ${companyName}` : ""}.`,
+      "Set your password and confirm your name to finish creating your account.",
       "",
       inviteUrl,
     ].join("\n"),

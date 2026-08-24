@@ -1,4 +1,4 @@
-// SERVER-ONLY: looks up whether an allowlisted admin has already set a
+// SERVER-ONLY: looks up whether a Staff profile has already set a
 // password, from the email alone, before any Supabase Auth session exists
 // (the visitor has only typed an email into /admin/login — see
 // checkAdminLoginMethodAction in src/app/admin/login/actions.ts). There is
@@ -26,7 +26,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * claims email in devAuth.ts's resolveAdminSession()) — no ILIKE, to avoid
  * treating a stray `%`/`_` in user input as a SQL LIKE wildcard.
  */
-export async function getAdminPasswordSet(email: string): Promise<boolean> {
+export interface AdminLoginProfileState {
+  exists: boolean;
+  passwordSet: boolean;
+}
+
+export async function getAdminLoginProfileState(email: string): Promise<AdminLoginProfileState> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("profiles")
@@ -35,5 +40,9 @@ export async function getAdminPasswordSet(email: string): Promise<boolean> {
     .eq("email", email)
     .maybeSingle();
 
-  return data?.password_set ?? false;
+  return { exists: Boolean(data), passwordSet: data?.password_set ?? false };
+}
+
+export async function getAdminPasswordSet(email: string): Promise<boolean> {
+  return (await getAdminLoginProfileState(email)).passwordSet;
 }
