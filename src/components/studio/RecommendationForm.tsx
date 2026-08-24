@@ -5,8 +5,9 @@
 //
 // LOCATION: the longitude/latitude number inputs are gone — a guide types
 // an address or a venue name, picks a suggestion, and drags the pin to
-// correct it (see ./AddressField.tsx, which still submits `lng`/`lat` as
-// hidden fields, so nothing downstream changed).
+// correct it (see ../AddressField.tsx — promoted to a shared, cross-portal
+// component once Admin's BoatTourForm needed the same UX — which still
+// submits `lng`/`lat` as hidden fields, so nothing downstream changed).
 //
 // VISIBILITY sits at the TOP of the form, not buried at the bottom above
 // the Save button — founder's call: "the toggle for making the
@@ -29,7 +30,7 @@ import {
 } from "@/lib/studio/recommendationActions";
 import { NOTE_MAX_LENGTH, RECOMMENDATION_CATEGORIES } from "@/lib/studio/recommendationForm";
 import { GhostButton, PrimaryButton, inputClass, labelClass } from "./primitives";
-import AddressField from "./AddressField";
+import AddressField from "@/components/AddressField";
 import RecommendationPhotosField from "./RecommendationPhotosField";
 
 const initialState: RecommendationFormState = {};

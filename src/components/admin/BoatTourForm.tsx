@@ -4,8 +4,16 @@
 // ONLY place a boat tour's own fields can be created or edited — Studio's
 // Boat tours tab only toggles/reorders which tours a company features.
 //
-// Manual lng/lat entry only — no Google Places autocomplete (house rule),
-// same convention as Studio's RecommendationForm.
+// LOCATION: the longitude/latitude number inputs are gone — an admin types
+// a place name or address (or pastes a Google Maps link), picks a
+// suggestion, and drags the pin to correct it — same shared AddressField
+// Studio's RecommendationForm uses (see src/components/AddressField.tsx),
+// pointed at Admin's own session-gated /api/admin/geocode route instead of
+// Studio's. This is still not Google Places autocomplete (the house rule
+// Studio's own form documents) — AddressField's search is OSM/Photon-based,
+// no Google involved at all; only a pasted Google Maps *link* gets its
+// coordinates decoded, which is plain URL string parsing, not a call to any
+// Google API.
 //
 // "Price & duration" edits BoatTourRecord.meta directly — see
 // src/lib/admin/boatTourForm.ts's module comment for why there is no
@@ -16,6 +24,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 
+import AddressField from "@/components/AddressField";
 import PortalSelect from "@/components/PortalSelect";
 import type { BoatTourRecord } from "@/lib/data/types";
 import {
@@ -87,37 +96,15 @@ export default function BoatTourForm({
       </label>
 
       <div>
-        <div className="grid grid-cols-2 gap-4">
-          <label className={labelClass}>
-            Longitude
-            <input
-              name="lng"
-              type="number"
-              step="any"
-              required
-              defaultValue={tour?.lng}
-              placeholder="4.9003"
-              className={inputClass}
-            />
-          </label>
-          <label className={labelClass}>
-            Latitude
-            <input
-              name="lat"
-              type="number"
-              step="any"
-              required
-              defaultValue={tour?.lat}
-              placeholder="52.3791"
-              className={inputClass}
-            />
-          </label>
-        </div>
+        <AddressField
+          geocodeEndpoint="/api/admin/geocode"
+          initialAddress={tour?.area}
+          initialLng={tour?.lng}
+          initialLat={tour?.lat}
+        />
         <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
-          No address lookup — drop a pin in your map app of choice, then copy its
-          coordinates here. For a tour synced from BoatLocal, this is often
-          already filled in from their own departure-point data — check
-          before overwriting it.
+          For a tour synced from BoatLocal, this is often already filled in
+          from their own departure-point data — check before overwriting it.
         </p>
       </div>
 

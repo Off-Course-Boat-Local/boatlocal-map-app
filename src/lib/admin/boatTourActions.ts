@@ -30,7 +30,7 @@ import {
   saveBoatTour,
   setBoatTourPosition,
 } from "@/lib/data/source";
-import { StudioPermissionError } from "@/lib/data/types";
+import { StudioPermissionError, type BoatTourStatus } from "@/lib/data/types";
 import { requireAdminSession } from "./devAuth";
 import { parseBoatTourForm } from "./boatTourForm";
 import { ADMIN_ACTOR } from "./actor";
@@ -83,32 +83,88 @@ export async function deleteBoatTourAction(id: string): Promise<{ error?: string
 }
 
 /**
- * Moves a tour up/down one slot in the catalog's global position order, by
- * swapping its `boat_tours.position` with its immediate neighbour's. A
- * no-op at either end of the list. This is the "drag or numeric order"
- * requirement's quick-click half — the same position can also be set
- * directly from the numeric field in BoatTourForm.
+ * Persists a full drag-and-drop (or keyboard arrow) reorder of the catalog:
+ * `orderedIds` is the ENTIRE new id order (not just the id that moved), and
+ * every id gets its `boat_tours.position` set to its 1-based index in that
+ * list. This replaces the old moveBoatTourAction single-step swap — dropping
+ * row 6 between rows 1 and 2 isn't a single swap, it's a renumbering of
+ * every row from the drop point onward, so the caller (BoatToursManager)
+ * always sends the full resulting order rather than "move this one row".
+ *
+ * Persistence strategy: sequential setBoatTourPosition calls, stopping at
+ * the first failure. Considered and rejected:
+ *   - Promise.all (parallel): faster, but failure containment gets murky —
+ *     several positions can land before a later one rejects, in a
+ *     non-deterministic completion order, which is harder to reason about
+ *     than "everything before the failure point definitely landed, in
+ *     order, nothing after it did."
+ *   - A single bulk UPDATE: would need a raw SQL statement (e.g. a CASE
+ *     expression or an UPDATE ... FROM VALUES) or an RPC function, neither
+ *     of which exists yet for boat_tours and both of which are out of this
+ *     change's scope (no source.ts edits). N is a boat catalog — small by
+ *     construction — so N sequential calls, each of which already
+ *     re-verifies admin, is an acceptable cost here.
+ *
+ * Partial-failure behaviour (e.g. call 3 of 6 rejects): the loop stops
+ * immediately and returns that error. Positions 1..2 that already
+ * succeeded are NOT rolled back — rolling back would itself be more calls
+ * that could also fail, and mid-list, "admin lost their session" is the
+ * realistic failure mode (setBoatTourPosition's only thrown error besides a
+ * genuine DB error), not a per-row data problem, so a retry of the same
+ * reorder is the right recovery, not an automatic undo. The client's
+ * router.refresh() (fired unconditionally in BoatToursManager's runAction)
+ * then shows exactly what's actually persisted — a partially-applied
+ * reorder, not silently wrong data and not a crash.
  */
-export async function moveBoatTourAction(
-  id: string,
-  direction: "up" | "down",
-): Promise<{ error?: string }> {
+export async function reorderBoatToursAction(orderedIds: string[]): Promise<{ error?: string }> {
+  await requireAdminSession();
+
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    try {
+      await setBoatTourPosition(ADMIN_ACTOR, orderedIds[index], index + 1);
+    } catch (err) {
+      if (err instanceof StudioPermissionError) return { error: err.message };
+      throw err;
+    }
+  }
+
+  revalidatePath(BOATS_PATH);
+  return {};
+}
+
+/**
+ * Quick "Activate"/"Deactivate" toggle from the row's kebab menu, so an
+ * admin doesn't have to open the full edit form just to flip a tour's
+ * status. saveBoatTour's update path can't patch status alone — its
+ * SaveBoatTourInput requires name/area/lng/lat/meta/note/bookingUrl/photos
+ * too (see its call in saveBoatTourAction above), so this reads the tour's
+ * current record via listBoatTourCatalog first and resends it unchanged
+ * alongside the flipped status, rather than adding a new narrower
+ * source.ts function (out of this change's file scope).
+ */
+export async function toggleBoatTourStatusAction(id: string): Promise<{ error?: string }> {
   await requireAdminSession();
 
   const ordered = await listBoatTourCatalog(ADMIN_ACTOR);
+  const tour = ordered.find((t) => t.id === id);
+  if (!tour) return {};
 
-  const index = ordered.findIndex((t) => t.id === id);
-  if (index === -1) return {};
-
-  const swapIndex = direction === "up" ? index - 1 : index + 1;
-  if (swapIndex < 0 || swapIndex >= ordered.length) return {};
-
-  const current = ordered[index];
-  const neighbour = ordered[swapIndex];
+  const nextStatus: BoatTourStatus = tour.status === "active" ? "hidden" : "active";
 
   try {
-    await setBoatTourPosition(ADMIN_ACTOR, current.id, neighbour.position);
-    await setBoatTourPosition(ADMIN_ACTOR, neighbour.id, current.position);
+    await saveBoatTour(ADMIN_ACTOR, {
+      id: tour.id,
+      name: tour.name,
+      area: tour.area,
+      lng: tour.lng,
+      lat: tour.lat,
+      meta: tour.meta,
+      note: tour.note,
+      bookingUrl: tour.bookingUrl,
+      photos: tour.photos,
+      position: tour.position,
+      status: nextStatus,
+    });
   } catch (err) {
     if (err instanceof StudioPermissionError) return { error: err.message };
     throw err;

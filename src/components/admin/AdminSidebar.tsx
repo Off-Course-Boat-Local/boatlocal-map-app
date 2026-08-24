@@ -12,6 +12,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Star } from "lucide-react";
 
 import MapAppMark from "@/components/MapAppMark";
 import {
@@ -21,9 +22,20 @@ import {
   GridIcon,
   LogoutIcon,
   PersonIcon,
-  StarIcon,
   UsersIcon,
 } from "@/components/PortalIcons";
+
+/**
+ * lucide-react's Star, sized/stroked to match PortalIcons' own `base()`
+ * defaults (18px, 1.75 stroke) — everything else in the sidebar stays in
+ * the shared hand-traced PortalIcons family, but the founder specifically
+ * flagged this one hand-drawn star as looking rougher than the rest
+ * ("premium icons please") and asked for it swapped, so it's the one
+ * deliberate exception rather than a rule change for sidebar icons.
+ */
+function PremiumStarIcon(props: { className?: string }) {
+  return <Star size={18} strokeWidth={1.75} {...props} />;
+}
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Overview", icon: GridIcon },
@@ -37,7 +49,7 @@ const NAV_ITEMS = [
   // all. A separate page from Companies because managing its content
   // (branding + recommendations) reuses Studio's own editors, not the
   // Companies table's row actions.
-  { href: "/admin/default-company", label: "Default company", icon: StarIcon },
+  { href: "/admin/default-company", label: "Default company", icon: PremiumStarIcon },
 ] as const;
 
 export interface AdminSidebarProps {

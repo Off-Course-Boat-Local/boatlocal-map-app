@@ -71,7 +71,13 @@ export default function AdminTable({
                     <td
                       key={cellIndex}
                       className={[
-                        "px-5 py-4 align-middle text-[var(--admin-ink)]",
+                        // Nowrap, unconditionally: a long name (a real
+                        // BoatLocal cruise title easily runs 60+ characters)
+                        // must push the column wider and let the table's own
+                        // overflow-x-auto scroll horizontally, never wrap
+                        // into a multi-line cell that balloons every row's
+                        // height as the viewport narrows.
+                        "px-5 py-4 align-middle whitespace-nowrap text-[var(--admin-ink)]",
                         columnWidths?.[cellIndex] ?? "",
                       ].join(" ")}
                     >

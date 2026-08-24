@@ -171,3 +171,101 @@ export async function geocodeSearch(
     .map((f, i) => toGeocodeResult(f, i))
     .filter((r): r is GeocodeResult => r !== null);
 }
+
+/* ------------------------------------------------------------------ */
+/*  Google Maps URL parsing                                            */
+/* ------------------------------------------------------------------ */
+//
+// A founder-requested shortcut: a lot of the time the "address" someone has
+// in hand is really a Google Maps link they just copied out of their own
+// browser — a share link, or the address bar after they dragged the map
+// around. Those links usually already carry the exact coordinates as plain
+// text in the URL, so there is no reason to send that string to the
+// geocoder as a search query (it would either fail outright or match
+// nothing sensible). This is PURE URL PARSING: no request to Google, no API
+// key, no dependency on their geocoding service at all — it only decodes
+// digits a human already copied.
+
+function toUrl(raw: string): URL | null {
+  try {
+    return new URL(raw);
+  } catch {
+    // Pasted address-bar text sometimes arrives without a scheme.
+  }
+  try {
+    return new URL(`https://${raw}`);
+  } catch {
+    return null;
+  }
+}
+
+function isValidCoord(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
+/**
+ * Pulls a {lat, lng} out of a pasted Google Maps URL, or returns null for
+ * anything else — including a Google Maps URL that doesn't happen to carry
+ * coordinates in its text (a plain place-name search link, or a shortened
+ * `maps.app.goo.gl` link whose target lives server-side, not in the text
+ * itself). The caller falls back to treating the input as a normal search
+ * query in that case.
+ *
+ * Handles, checked in priority order (most to least precise — a
+ * `/maps/place/...` URL commonly carries both an `@lat,lng` for the map's
+ * *viewport* centre and a `!3d..!4d..` for the actual pinned place, and
+ * those two are not always the same point):
+ *  - `!3d{lat}!4d{lng}` — e.g. `.../maps/place/Foo/@52.37,4.89,17z/data=
+ *    !4m5!3m4!1s0x0:0x0!8m2!3d52.375!4d4.9003`
+ *  - `@{lat},{lng}` — e.g. `https://www.google.com/maps/@52.3702,4.8952,17z`
+ *  - `?q={lat},{lng}` — the older link form, e.g.
+ *    `https://maps.google.com/?q=52.3702,4.8952`
+ */
+export function parseGoogleMapsUrl(input: string): { lat: number; lng: number } | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const url = toUrl(trimmed);
+  if (!url) return null;
+
+  const host = url.hostname.toLowerCase();
+  const isGoogleHost = host === "google.com" || host.endsWith(".google.com");
+  const isMapsHost = host === "maps.google.com";
+  const isGoogleMapsPath = isGoogleHost && url.pathname.startsWith("/maps");
+  if (!isMapsHost && !isGoogleMapsPath) return null;
+
+  const href = url.href;
+
+  const dPair = href.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (dPair) {
+    const lat = Number(dPair[1]);
+    const lng = Number(dPair[2]);
+    if (isValidCoord(lat, lng)) return { lat, lng };
+  }
+
+  const atPair = href.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  if (atPair) {
+    const lat = Number(atPair[1]);
+    const lng = Number(atPair[2]);
+    if (isValidCoord(lat, lng)) return { lat, lng };
+  }
+
+  const q = url.searchParams.get("q");
+  if (q) {
+    const qPair = q.match(/^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/);
+    if (qPair) {
+      const lat = Number(qPair[1]);
+      const lng = Number(qPair[2]);
+      if (isValidCoord(lat, lng)) return { lat, lng };
+    }
+  }
+
+  return null;
+}
