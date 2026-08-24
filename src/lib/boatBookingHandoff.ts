@@ -20,14 +20,25 @@ export interface BoatBookingSelection {
   guests: number;
 }
 
-/** What a boat pin's booking flow starts from before the guest has touched
- * the picker — no date, a party of two. Booking with no pre-filled trip
- * details is a fully supported path (see buildBoatBookingHandoff), not an
- * error state; this is just a sensible starting point for the stepper. */
-export const DEFAULT_BOAT_BOOKING_SELECTION: BoatBookingSelection = {
-  date: null,
-  guests: 2,
-};
+/**
+ * What a boat pin's booking flow starts from before the guest has touched
+ * the picker: today's date, a party of two — a boat trip always has SOME
+ * date (nobody is booking "no day in particular"), so defaulting to today
+ * means "Book this tour" already carries a real, useful date without
+ * forcing the guest through the picker first. They can still change it (or,
+ * per `boatBookingHandoff`'s own params-building, book with `date: null` if
+ * they explicitly clear it — that stays a fully supported path, just no
+ * longer the unprompted default).
+ *
+ * A FUNCTION, not a plain object: a `Date` frozen at module-load time would
+ * go stale across a long-lived page session (a guest who opens the app in
+ * the morning and books that evening would still see this morning's date).
+ * Call it fresh at the point you need "today", e.g. inside a lazy
+ * `useState(getDefaultBoatBookingSelection)` initializer.
+ */
+export function getDefaultBoatBookingSelection(): BoatBookingSelection {
+  return { date: new Date(), guests: 2 };
+}
 
 /** YYYY-MM-DD in local time — the exact shape buildBookingUrl's `date` param expects. */
 export function formatBookingDate(date: Date): string {

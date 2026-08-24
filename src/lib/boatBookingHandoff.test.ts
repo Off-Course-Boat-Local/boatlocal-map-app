@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_BOAT_BOOKING_SELECTION,
+  getDefaultBoatBookingSelection,
   buildBoatBookingHandoff,
   formatBookingDate,
   formatBookingDateLabel,
@@ -10,9 +10,18 @@ import {
 
 const TOUR_BOOKING_URL = "https://boatlocal.nl/cruise/sunset-canal-cruise";
 
-describe("DEFAULT_BOAT_BOOKING_SELECTION", () => {
-  it("defaults to no date and a party of two", () => {
-    expect(DEFAULT_BOAT_BOOKING_SELECTION).toEqual({ date: null, guests: 2 });
+describe("getDefaultBoatBookingSelection", () => {
+  it("defaults to today's date and a party of two", () => {
+    const selection = getDefaultBoatBookingSelection();
+    expect(selection.guests).toBe(2);
+    expect(selection.date).toBeInstanceOf(Date);
+    expect(formatBookingDate(selection.date!)).toBe(formatBookingDate(new Date()));
+  });
+
+  it("returns a fresh Date each call, not a shared reference", () => {
+    const a = getDefaultBoatBookingSelection();
+    const b = getDefaultBoatBookingSelection();
+    expect(a.date).not.toBe(b.date);
   });
 });
 

@@ -60,7 +60,7 @@ import {
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { guestPinAction } from "@/lib/guestActions";
 import {
-  DEFAULT_BOAT_BOOKING_SELECTION,
+  getDefaultBoatBookingSelection,
   formatBookingDateLabel,
   type BoatBookingSelection,
 } from "@/lib/boatBookingHandoff";
@@ -127,7 +127,7 @@ export default function GuestMapScreen({
   // in the shared filter context) because it is Map-specific trip state, not
   // a cross-screen filter choice.
   const [bookingSelection, setBookingSelection] = useState<BoatBookingSelection>(
-    DEFAULT_BOAT_BOOKING_SELECTION,
+    getDefaultBoatBookingSelection,
   );
   const [showBookingPicker, setShowBookingPicker] = useState(false);
 
@@ -142,6 +142,20 @@ export default function GuestMapScreen({
   const pins = useMemo(
     () => (filter ? allPins.filter((p) => p.category === filter) : allPins),
     [allPins, filter],
+  );
+
+  // Boat tours synced from BoatLocal with no cruise.departure data yet sit
+  // at the lat=0/lng=0 sentinel (see getMapPins in src/lib/data/source.ts —
+  // that function stays deliberately unfiltered, since List needs the same
+  // pins with no coordinate requirement at all). This is the one place that
+  // rule actually bites: a marker on the map means a real location, so a
+  // pin with no real one is dropped here, right before rendering — never
+  // upstream, where it would also strip it out of the header count or
+  // (were this ever reused there) any other screen. "Never geocode
+  // ourselves" means this pin waits for BoatLocal, not a pin at Null Island.
+  const mappablePins = useMemo(
+    () => pins.filter((p) => !(p.lat === 0 && p.lng === 0)),
+    [pins],
   );
 
   const selected = useMemo(
@@ -195,7 +209,7 @@ export default function GuestMapScreen({
         onMapReady={setMap}
       >
         <MapPins
-          pins={pins}
+          pins={mappablePins}
           selectedId={selectedId}
           onSelect={(id) => {
             // The booking picker and the PlaceCard occupy the same corner
