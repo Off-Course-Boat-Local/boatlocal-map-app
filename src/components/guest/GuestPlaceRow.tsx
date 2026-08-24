@@ -135,21 +135,31 @@ export function GuestPlaceRow({
           </p>
         )}
 
-        <div
-          className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.75rem]"
-          style={{ color: MUTED }}
-        >
-          <span className="inline-flex items-center gap-1">
-            <MapPinIcon className="h-3.5 w-3.5" aria-hidden />
-            {item.area}
-          </span>
-          {!item.isBoat && item.meta && (
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" aria-hidden />
-              {item.meta}
-            </span>
-          )}
-        </div>
+        {/* BoatLocal-synced cruises carry no location name at all (area is
+            ""), and a pin icon with nothing after it reads as a glitch — so
+            the locator only renders when there's a name to locate. The whole
+            metadata row (with its mt-3) disappears when it would be empty:
+            a zero-height flex row still stacks its own top margin above the
+            footer's, leaving a visible dead gap between blurb and footer. */}
+        {(item.area.trim() !== "" || (!item.isBoat && item.meta)) && (
+          <div
+            className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.75rem]"
+            style={{ color: MUTED }}
+          >
+            {item.area.trim() !== "" && (
+              <span className="inline-flex items-center gap-1">
+                <MapPinIcon className="h-3.5 w-3.5" aria-hidden />
+                {item.area}
+              </span>
+            )}
+            {!item.isBoat && item.meta && (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" aria-hidden />
+                {item.meta}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 flex items-center justify-between gap-3">
           {item.isBoat && item.meta ? (

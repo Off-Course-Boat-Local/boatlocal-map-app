@@ -24,6 +24,33 @@ describe("GuestPlaceRow", () => {
     expect(screen.getByText(boat.area)).toBeInTheDocument();
   });
 
+  it("hides the locator pin row entirely when area is empty (BoatLocal-synced cruises carry no location name)", () => {
+    const { container, unmount } = render(
+      <GuestPlaceRow item={boat} saved={false} onToggleSaved={() => {}} onAction={() => {}} />,
+    );
+    // Positive controls first, so the selectors below are proven to match
+    // the real pin icon / metadata row rather than trivially finding nothing.
+    expect(container.querySelector(".lucide-map-pin")).not.toBeNull();
+    expect(container.querySelector("div.mt-3")).not.toBeNull();
+    unmount();
+
+    const { container: emptyArea } = render(
+      <GuestPlaceRow
+        item={{ ...boat, area: "" }}
+        saved={false}
+        onToggleSaved={() => {}}
+        onAction={() => {}}
+      />,
+    );
+    expect(emptyArea.querySelector(".lucide-map-pin")).toBeNull();
+    // Not just the icon: for a boat with no area the metadata row would be
+    // completely empty, and a zero-height flex row still stacks its mt-3
+    // above the footer's mt-4 — a visible dead gap between the blurb and the
+    // duration/price footer. The whole row (and its margin) must vanish so
+    // the blurb-to-footer rhythm collapses to the footer's own spacing.
+    expect(emptyArea.querySelector("div.mt-3")).toBeNull();
+  });
+
   it("never renders a star rating", () => {
     const { container } = render(
       <GuestPlaceRow item={place} saved={false} onToggleSaved={() => {}} onAction={() => {}} />,

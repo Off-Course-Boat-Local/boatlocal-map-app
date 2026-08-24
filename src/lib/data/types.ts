@@ -176,6 +176,17 @@ export interface BoatTourRecord {
   /** The catalogue/webhook payload's own `updated_at` for this cruise. */
   boatlocalUpdatedAt: string | null;
   /**
+   * BoatLocal's own one-line marketing headline for this cruise ("BYO Drinks
+   * Welcome • Small Group • Hidden Canal Routes"), recorded on every sync.
+   * `note` starts as a copy of it and remains admin-editable — a sync only
+   * refreshes `note` while it still matches this field (or is empty). Null
+   * for an admin-curated tour, and for a BoatLocal-sourced row that hasn't
+   * synced since this column shipped (or whose cruise has no headline). See
+   * syncCruiseFromBoatLocal in src/lib/data/source.ts and the
+   * 20260824010000_boat_tours_headline.sql migration comment.
+   */
+  boatlocalHeadline: string | null;
+  /**
    * Which BoatLocal `departure.source` value (if any) the current area/lng/
    * lat came from, e.g. so Admin could eventually show a confidence hint
    * ("geocoded" vs. "pinned on Maps") — no UI built for that yet, but kept
@@ -225,6 +236,15 @@ export interface BoatLocalCruise {
   name: string;
   cruiseType: string | null;
   cruiseDuration: string | null;
+  /**
+   * BoatLocal's one-line marketing copy for this cruise ("BYO Drinks Welcome
+   * • Small Group • Hidden Canal Routes"). Null when absent or empty on the
+   * wire — the feed serves one for all 61 current cruises, but the parser
+   * stays tolerant, matching every other optional field here. This is the
+   * closest thing the feed has to a description (it carries none), and it
+   * seeds the synced row's `note` — see syncCruiseFromBoatLocal.
+   */
+  headline: string | null;
   startingPrice: number | null;
   currency: string | null;
   images: string[];

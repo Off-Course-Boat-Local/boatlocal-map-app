@@ -90,6 +90,11 @@ export function parseBoatLocalCruise(json: unknown): BoatLocalCruise | null {
   const slug = typeof j.slug === "string" && j.slug ? j.slug : null;
   const cruiseType = typeof j.cruise_type === "string" ? j.cruise_type : null;
   const cruiseDuration = typeof j.cruise_duration === "string" ? j.cruise_duration : null;
+  // Tolerant like every other optional field: missing, non-string, or
+  // empty/whitespace-only all mean "no headline" (null), never a rejected
+  // row. Kept verbatim otherwise — syncCruiseFromBoatLocal compares it
+  // byte-for-byte against the row's note/boatlocal_headline.
+  const headline = typeof j.headline === "string" && j.headline.trim() !== "" ? j.headline : null;
   const startingPrice = typeof j.starting_price === "number" ? j.starting_price : null;
   const currency = typeof j.currency === "string" ? j.currency : null;
   const images = Array.isArray(j.images) ? j.images.filter((i): i is string => typeof i === "string") : [];
@@ -103,6 +108,7 @@ export function parseBoatLocalCruise(json: unknown): BoatLocalCruise | null {
     name,
     cruiseType,
     cruiseDuration,
+    headline,
     startingPrice,
     currency,
     images,

@@ -205,24 +205,29 @@ export function GuestPlaceDetail({
           >
             {item.name}
           </h1>
-          <p
-            style={{
-              margin: "4px 0 0",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              fontSize: 13,
-              lineHeight: "18px",
-              color: MUTED,
-            }}
-          >
-            {item.isBoat ? (
-              <Clock size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
-            ) : (
-              <MapPinIcon size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
-            )}
-            {locator}
-          </p>
+          {/* No locator text (e.g. a BoatLocal-synced cruise, whose feed has
+              no location name — area is "") means no row at all: an orphaned
+              icon with nothing after it reads as a glitch. */}
+          {locator.trim() !== "" && (
+            <p
+              style={{
+                margin: "4px 0 0",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                fontSize: 13,
+                lineHeight: "18px",
+                color: MUTED,
+              }}
+            >
+              {item.isBoat ? (
+                <Clock size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+              ) : (
+                <MapPinIcon size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+              )}
+              {locator}
+            </p>
+          )}
 
           <p style={{ margin: "14px 0 0", fontSize: 14.5, lineHeight: "21px", color: "#334051" }}>
             {item.note}

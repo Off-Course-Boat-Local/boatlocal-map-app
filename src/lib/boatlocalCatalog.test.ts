@@ -29,6 +29,9 @@ describe("parseBoatLocalCruise", () => {
       name: "Amsterdam Boat Tour of the Old City Center",
       cruiseType: "shared",
       cruiseDuration: "1 hour & 30 mins",
+      // Absent from this fixture — the live feed serves one per cruise, but
+      // the parser tolerates its absence (see the headline tests below).
+      headline: null,
       startingPrice: 29,
       currency: "EUR",
       images: ["https://example.com/photo.jpg"],
@@ -59,6 +62,22 @@ describe("parseBoatLocalCruise", () => {
     const parsed = parseBoatLocalCruise({ ...VALID_CRUISE, fareharbor_pk: null, slug: null });
     expect(parsed?.fareharborPk).toBeNull();
     expect(parsed?.slug).toBeNull();
+  });
+
+  it("parses the headline verbatim when present", () => {
+    const parsed = parseBoatLocalCruise({
+      ...VALID_CRUISE,
+      headline: "BYO Drinks Welcome • Small Group • Hidden Canal Routes",
+    });
+    expect(parsed?.headline).toBe("BYO Drinks Welcome • Small Group • Hidden Canal Routes");
+  });
+
+  it("treats a missing, empty, whitespace-only, or non-string headline as null rather than rejecting the row", () => {
+    expect(parseBoatLocalCruise(VALID_CRUISE)?.headline).toBeNull();
+    expect(parseBoatLocalCruise({ ...VALID_CRUISE, headline: "" })?.headline).toBeNull();
+    expect(parseBoatLocalCruise({ ...VALID_CRUISE, headline: "   " })?.headline).toBeNull();
+    expect(parseBoatLocalCruise({ ...VALID_CRUISE, headline: 42 })?.headline).toBeNull();
+    expect(parseBoatLocalCruise({ ...VALID_CRUISE, headline: null })?.headline).toBeNull();
   });
 
   it("defaults images to an empty array rather than rejecting when absent", () => {

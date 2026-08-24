@@ -315,27 +315,32 @@ export function PlaceCard({
           >
             {item.name}
           </h2>
-          <p
-            style={{
-              margin: "4px 0 0",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              fontSize: 12,
-              lineHeight: "16px",
-              color: MUTED,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {item.isBoat ? (
-              <Clock size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
-            ) : (
-              <MapPinIcon size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
-            )}
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{locator}</span>
-          </p>
+          {/* No locator text (e.g. a BoatLocal-synced cruise, whose feed has
+              no location name — area is "") means no row at all: an orphaned
+              icon with nothing after it reads as a glitch. */}
+          {locator.trim() !== "" && (
+            <p
+              style={{
+                margin: "4px 0 0",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                fontSize: 12,
+                lineHeight: "16px",
+                color: MUTED,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {item.isBoat ? (
+                <Clock size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+              ) : (
+                <MapPinIcon size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+              )}
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{locator}</span>
+            </p>
+          )}
           <p
             style={{
               margin: "6px 0 0",

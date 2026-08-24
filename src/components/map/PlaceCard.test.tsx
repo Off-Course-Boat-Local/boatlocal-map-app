@@ -27,6 +27,25 @@ describe("PlaceCard", () => {
     expect(container.textContent).not.toMatch(/★|\d\.\d\s*★|rating/i);
   });
 
+  it("hides the locator row entirely when there is no locator text (no orphaned icon)", () => {
+    // Positive control: a real area renders the pin icon.
+    const { container, unmount } = render(<PlaceCard item={place} />);
+    expect(container.querySelector(".lucide-map-pin")).not.toBeNull();
+    unmount();
+
+    // A place with an empty area (e.g. a BoatLocal-synced cruise, whose feed
+    // has no location name) must not render a pin icon with nothing after it.
+    const { container: emptyArea, unmount: unmount2 } = render(
+      <PlaceCard item={{ ...place, area: "" }} />,
+    );
+    expect(emptyArea.querySelector(".lucide-map-pin")).toBeNull();
+    unmount2();
+
+    // Same for a boat whose meta (its locator line) is empty.
+    const { container: emptyMeta } = render(<PlaceCard item={{ ...boat, meta: "" }} />);
+    expect(emptyMeta.querySelector(".lucide-clock")).toBeNull();
+  });
+
   it("offers 'Book this tour' for a boat and directions for a place", () => {
     const { unmount } = render(<PlaceCard item={boat} />);
     expect(screen.getByRole("button", { name: /book/i })).toBeInTheDocument();

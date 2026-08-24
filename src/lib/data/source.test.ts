@@ -499,6 +499,10 @@ describe("BoatLocal cruise-catalogue sync", () => {
     name: "Amsterdam Boat Tour of the Old City Center",
     cruiseType: "shared",
     cruiseDuration: "1 hour & 30 mins",
+    // Most headline-behavior tests below override this — the base fixture
+    // keeps it null so the long-standing "hidden pending admin completion"
+    // tests still exercise the headline-less path they were written for.
+    headline: null,
     startingPrice: 29,
     currency: "EUR",
     images: ["https://example.com/photo.jpg"],
@@ -530,6 +534,19 @@ describe("BoatLocal cruise-catalogue sync", () => {
       expect(created?.bookingUrl).toBe(CRUISE.bookingUrl);
       expect(created?.slug).toBe(CRUISE.slug);
       expect(created?.boatlocalId).toBe("1");
+      // Guest-facing meta line: duration verbatim, then a from-price with
+      // the € symbol for EUR and a bare integer amount.
+      expect(created?.meta).toBe("1 hour & 30 mins · from €29 pp");
+    });
+
+    it("formats a fractional price with two decimals and a non-EUR currency with its code", async () => {
+      await syncCruiseFromBoatLocal({ ...CRUISE, startingPrice: 22.5 });
+      let row = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+      expect(row?.meta).toBe("1 hour & 30 mins · from €22.50 pp");
+
+      await syncCruiseFromBoatLocal({ ...CRUISE, startingPrice: 22.5, currency: "USD" });
+      row = (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+      expect(row?.meta).toBe("1 hour & 30 mins · from USD 22.50 pp");
     });
 
     it("updates an already-known fareharbor_pk in place rather than creating a second row", async () => {
@@ -703,6 +720,127 @@ describe("BoatLocal cruise-catalogue sync", () => {
         expect(after?.locationSource).toBe("google_maps_link");
       });
     });
+
+    describe("headline → note (BoatLocal's one-line marketing copy)", () => {
+      const HEADLINE = "BYO Drinks Welcome • Small Group • Hidden Canal Routes";
+      const CRUISE_WITH_HEADLINE: BoatLocalCruise = { ...CRUISE, headline: HEADLINE };
+      const find = async () =>
+        (await listBoatTourCatalog(adminActor)).find((t) => t.fareharborPk === 85146);
+
+      it("inserts a cruise with a headline guest-ready: note = headline, status follows BoatLocal's active flag immediately", async () => {
+        await syncCruiseFromBoatLocal(CRUISE_WITH_HEADLINE);
+        const created = await find();
+        expect(created?.note).toBe(HEADLINE);
+        expect(created?.boatlocalHeadline).toBe(HEADLINE);
+        expect(created?.status).toBe("active");
+      });
+
+      it("still respects active: false on insert even with a headline", async () => {
+        await syncCruiseFromBoatLocal({ ...CRUISE_WITH_HEADLINE, active: false });
+        const created = await find();
+        expect(created?.note).toBe(HEADLINE);
+        expect(created?.status).toBe("hidden");
+
+        // Not parked pending completion — a reactivation flips it live with
+        // no admin step, unlike a headline-less row.
+        await syncCruiseFromBoatLocal({ ...CRUISE_WITH_HEADLINE, active: true });
+        expect((await find())?.status).toBe("active");
+      });
+
+      it("inserts a cruise without a headline exactly as before: note \"\" and parked hidden pending admin completion", async () => {
+        await syncCruiseFromBoatLocal(CRUISE);
+        const created = await find();
+        expect(created?.note).toBe("");
+        expect(created?.boatlocalHeadline).toBeNull();
+        expect(created?.status).toBe("hidden");
+      });
+
+      it("refreshes a still-unedited note when BoatLocal changes the headline", async () => {
+        await syncCruiseFromBoatLocal(CRUISE_WITH_HEADLINE);
+        await syncCruiseFromBoatLocal({ ...CRUISE, headline: "Now With More Canals" });
+
+        const after = await find();
+        expect(after?.note).toBe("Now With More Canals");
+        expect(after?.boatlocalHeadline).toBe("Now With More Canals");
+        expect(after?.status).toBe("active");
+      });
+
+      it("fills a headline into a pre-headline row that was still empty-note pending completion, and un-parks it", async () => {
+        await syncCruiseFromBoatLocal(CRUISE); // note "", hidden
+        await syncCruiseFromBoatLocal(CRUISE_WITH_HEADLINE);
+
+        const after = await find();
+        expect(after?.note).toBe(HEADLINE);
+        expect(after?.status).toBe("active");
+      });
+
+      it("NEVER touches an admin-customized note, while still recording the latest headline", async () => {
+        await syncCruiseFromBoatLocal(CRUISE_WITH_HEADLINE);
+        const created = (await find())!;
+        await saveBoatTour(adminActor, {
+          id: created.id,
+          name: created.name,
+          area: created.area,
+          lng: created.lng,
+          lat: created.lat,
+          meta: created.meta,
+          note: "A guide's own hand-written endorsement.",
+          bookingUrl: created.bookingUrl,
+          photos: created.photos,
+          status: "active",
+        });
+
+        await syncCruiseFromBoatLocal({ ...CRUISE, headline: "A Brand New Headline" });
+
+        const after = await find();
+        expect(after?.note).toBe("A guide's own hand-written endorsement.");
+        expect(after?.boatlocalHeadline).toBe("A Brand New Headline");
+        expect(after?.status).toBe("active");
+      });
+
+      it("adopts the one-time backfill as BoatLocal-owned: note equals the incoming headline while stored boatlocal_headline is still null", async () => {
+        // Recreate the backfilled state: the row synced before the headline
+        // column existed (boatlocalHeadline null), then note was hand-set to
+        // the cruise's real headline by the one-time DB backfill.
+        await syncCruiseFromBoatLocal(CRUISE);
+        const created = (await find())!;
+        await saveBoatTour(adminActor, {
+          id: created.id,
+          name: created.name,
+          area: created.area,
+          lng: created.lng,
+          lat: created.lat,
+          meta: created.meta,
+          note: HEADLINE,
+          bookingUrl: created.bookingUrl,
+          photos: created.photos,
+          status: "active",
+        });
+        expect((await find())?.boatlocalHeadline).toBeNull();
+
+        // First post-ship sync: note === incoming headline counts as
+        // BoatLocal-owned even with no stored headline to compare against.
+        await syncCruiseFromBoatLocal(CRUISE_WITH_HEADLINE);
+        expect((await find())?.boatlocalHeadline).toBe(HEADLINE);
+
+        // ...which is proven by the NEXT headline change following through
+        // to the note instead of being treated as admin copy forever.
+        await syncCruiseFromBoatLocal({ ...CRUISE, headline: "Changed After Backfill" });
+        const after = await find();
+        expect(after?.note).toBe("Changed After Backfill");
+        expect(after?.boatlocalHeadline).toBe("Changed After Backfill");
+      });
+
+      it("re-parks a still-unedited row hidden pending completion if BoatLocal drops the headline again", async () => {
+        await syncCruiseFromBoatLocal(CRUISE_WITH_HEADLINE);
+        await syncCruiseFromBoatLocal(CRUISE); // headline gone
+
+        const after = await find();
+        expect(after?.note).toBe("");
+        expect(after?.boatlocalHeadline).toBeNull();
+        expect(after?.status).toBe("hidden");
+      });
+    });
   });
 
   describe("deactivateBoatLocalCruise", () => {
@@ -827,6 +965,7 @@ function toWireCruise(cruise: BoatLocalCruise) {
     name: cruise.name,
     cruise_type: cruise.cruiseType,
     cruise_duration: cruise.cruiseDuration,
+    headline: cruise.headline,
     starting_price: cruise.startingPrice,
     currency: cruise.currency,
     images: cruise.images,

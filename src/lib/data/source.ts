@@ -367,6 +367,7 @@ interface BoatTourRow {
   active: boolean | null;
   deactivation_reason: string | null;
   boatlocal_updated_at: string | null;
+  boatlocal_headline: string | null;
   location_source: string | null;
 }
 
@@ -392,6 +393,7 @@ function fromBoatTourRow(row: BoatTourRow): BoatTourRecord {
     boatlocalActive: row.active,
     deactivationReason: row.deactivation_reason,
     boatlocalUpdatedAt: row.boatlocal_updated_at,
+    boatlocalHeadline: row.boatlocal_headline,
     locationSource: row.location_source,
   };
 }
@@ -1267,11 +1269,26 @@ function buildBookingOutcomeStatus(
 // all use the service-role client, never authedClient().
 // =============================================================================
 
-/** Turns BoatLocal's duration/price fields into this table's existing free-text `meta` line — the same "one guest-facing field" convention BoatTourForm's manual entry already uses (see src/lib/admin/boatTourForm.ts's own note on why there's no separate structured price column). */
+/**
+ * Turns BoatLocal's duration/price fields into this table's existing
+ * free-text `meta` line — the same "one guest-facing field" convention
+ * BoatTourForm's manual entry already uses (see src/lib/admin/boatTourForm.ts's
+ * own note on why there's no separate structured price column). Format:
+ * "1 hour & 30 mins · from €29 pp" — starting_price is a from-price, EUR gets
+ * its symbol (any other currency keeps its code with a space, e.g.
+ * "from USD 29 pp"), integer prices stay bare and fractional ones get two
+ * decimals ("from €22.50 pp").
+ */
 function formatCruiseMeta(cruise: BoatLocalCruise): string {
   const parts: string[] = [];
   if (cruise.cruiseDuration) parts.push(cruise.cruiseDuration);
-  if (cruise.startingPrice != null) parts.push(`${cruise.currency ?? "EUR"} ${cruise.startingPrice} pp`);
+  if (cruise.startingPrice != null) {
+    const amount = Number.isInteger(cruise.startingPrice)
+      ? String(cruise.startingPrice)
+      : cruise.startingPrice.toFixed(2);
+    const currency = cruise.currency ?? "EUR";
+    parts.push(currency === "EUR" ? `from €${amount} pp` : `from ${currency} ${amount} pp`);
+  }
   return parts.join(" · ");
 }
 
@@ -1282,59 +1299,81 @@ function formatCruiseMeta(cruise: BoatLocalCruise): string {
  * cheap insurance against a single malformed feed entry, not a bet that it
  * will actually happen).
  *
- * JUDGMENT CALL, clearly flagged: BoatLocal's feed carries no guide-written
- * "note" — this table's one remaining NOT NULL column with no BoatLocal
- * counterpart at all. It now DOES sometimes carry real departure coordinates
+ * NOTE / HEADLINE OWNERSHIP: BoatLocal's feed carries no guide-written
+ * description, but it now DOES serve a one-line marketing `headline` per
+ * cruise ("BYO Drinks Welcome • Small Group • Hidden Canal Routes" — all 61
+ * current cruises have one). Every sync records the latest headline into
+ * `boatlocal_headline` verbatim, and the guest-facing `note` is seeded from
+ * it: on INSERT, `note` starts as a copy of the headline (or the old `""`
+ * placeholder when BoatLocal has none). On UPDATE, the note is refreshed to
+ * the latest headline ONLY while it is still "BoatLocal-owned" — i.e. the
+ * current note is empty, equals the previously-recorded
+ * `boatlocal_headline`, or equals the incoming headline itself. That last
+ * comparison exists for the 2026-08-24 one-time backfill, which set
+ * note = headline by hand before `boatlocal_headline` existed (so the stored
+ * value is null there) — without it, every backfilled row would be mistaken
+ * for admin copy forever. The moment an admin writes their own note in
+ * BoatTourForm, it stops matching and is NEVER touched by a sync again,
+ * exactly like every other admin-curated field. (Corollary judgment call: if
+ * BoatLocal later drops a cruise's headline entirely, a still-unedited note
+ * reverts to `""` and the row parks hidden again — the note was only ever a
+ * copy of BoatLocal's own copy, so it follows BoatLocal's copy out.)
+ *
+ * The feed also sometimes carries real departure coordinates
  * (`cruise.departure` — lat/lng/address/source, confirmed shipping to
  * BoatLocal's staging first, not yet in their production feed as of this
  * comment) for most cruises, `null` for a small seasonal/candlelight subset
  * with neither a Google Maps link nor an address (~4 of 61 as of this
  * writing). On a genuinely NEW cruise (no existing row for this
- * fareharbor_pk yet), this inserts it with `note: ""` and `status` forced to
- * 'hidden' REGARDLESS of BoatLocal's own `active` flag or whether real
- * departure data is present — **the founder's explicit instruction: "don't
- * auto-publish on departure != null alone — a guide's personal note is still
- * yours to write."** area/lng/lat are populated from `cruise.departure` when
- * present (address/lng/lat verbatim, `location_source` recording which of
+ * fareharbor_pk yet): with a headline, the row arrives guest-ready and
+ * `status` follows BoatLocal's `active` flag immediately; without one, it
+ * inserts with `note: ""` and `status` forced to 'hidden' REGARDLESS of
+ * BoatLocal's own `active` flag or whether real departure data is present —
+ * **the founder's instruction that departure data alone must never
+ * auto-publish still holds: it takes a real one-liner (BoatLocal's headline
+ * or an admin's own note), not just coordinates, to go live.**
+ * area/lng/lat are populated from `cruise.departure` when present
+ * (address/lng/lat verbatim, `location_source` recording which of
  * `departure.source`'s confidence levels it came from) and left at the old
  * `""`/`0`/`0` placeholder — never geocoded or defaulted on Map App's own
  * side — when `departure` is `null`, exactly as before this field existed.
  * `active`/`fareharbor_pk`/`slug`/`boatlocal_id`/`cruise_type`/
  * `boatlocal_updated_at`/name/meta/photos/booking_url are all still recorded
  * immediately either way, so nothing about the cruise's identity is lost
- * while it waits on that admin step.
+ * while a headline-less cruise waits on that admin step.
  *
  * On every subsequent sync of an ALREADY-KNOWN fareharbor_pk, the
  * BoatLocal-owned fields above are re-written the same way (BoatLocal is the
  * source of truth for name/price/duration/photos/booking_url/active — a
  * price change on their side should propagate on the next sync).
- * area/lng/lat/note/position are Map App's own curation layer and are never
- * touched here once an admin (or an earlier sync's departure-backfill below)
- * has given the row a real, non-placeholder area — exactly like an
- * admin-curated tour's fields never are. The ONE exception: while `area` is
- * still the exact `""` placeholder this function itself writes, a
- * newly-available `cruise.departure` is backfilled into area/lng/lat/
- * location_source on the spot, so a cruise that synced before BoatLocal had
- * departure data to offer doesn't have to wait for an admin to hand-enter
- * coordinates BoatLocal can now supply automatically. This still never
- * publishes anything by itself — see the note-gate below.
+ * area/lng/lat/position — and `note`, once an admin has customized it — are
+ * Map App's own curation layer and are never touched here once real, exactly
+ * like an admin-curated tour's fields never are. The ONE location exception:
+ * while `area` is still the exact `""` placeholder this function itself
+ * writes, a newly-available `cruise.departure` is backfilled into
+ * area/lng/lat/location_source on the spot, so a cruise that synced before
+ * BoatLocal had departure data to offer doesn't have to wait for an admin to
+ * hand-enter coordinates BoatLocal can now supply automatically. This still
+ * never publishes anything by itself — see the note-gate below.
  *
  * The "hidden pending completion" gate is STICKY, not one-time, and is keyed
- * off `note`, NOT `area`: `status` is only driven by BoatLocal's `active`
- * flag once the row's `note` is no longer empty — i.e. once an admin has
- * actually opened it in BoatTourForm and written a real description. This
- * used to key off `area` instead, back when BoatLocal's feed could never
- * supply real location data at all — now that `departure` often arrives
- * automatically and correctly, an `area`-based gate would incorrectly treat
- * a freshly-synced cruise as "complete" the moment it syncs, even though no
- * admin has ever written a word about it. Without this check at all, the
- * very next scheduled reconciliation after a brand-new insert (which could
- * run hours later, the same day) would immediately flip an untouched row
- * back to 'active' purely because BoatLocal still reports it active, undoing
- * the INSERT branch's whole reason for existing. `note === ""` is a safe
- * signal for "not yet completed" only because this function is the one and
- * only place that ever writes that empty-string placeholder — a real
- * admin-entered note is validated non-empty by parseBoatTourForm.
+ * off the EFFECTIVE note, NOT `area`: `status` is only driven by BoatLocal's
+ * `active` flag while the row has a real one-liner to show a guest — an
+ * admin-written note, or a BoatLocal headline standing in for one. Pending
+ * completion now means "the note this sync leaves behind would still be
+ * empty" (no admin note AND no headline), not merely `note === ""` on the
+ * way in. The gate used to key off `area` instead, back when BoatLocal's
+ * feed could never supply real location data at all — now that `departure`
+ * often arrives automatically and correctly, an `area`-based gate would
+ * incorrectly treat a freshly-synced cruise as "complete" the moment it
+ * syncs. Without this check at all, the very next scheduled reconciliation
+ * after a brand-new headline-less insert (which could run hours later, the
+ * same day) would immediately flip an untouched row back to 'active' purely
+ * because BoatLocal still reports it active, undoing the INSERT branch's
+ * whole reason for existing. An empty note is a safe signal for "not yet
+ * completed" only because this function is the one and only place that ever
+ * writes that empty-string placeholder — a real admin-entered note is
+ * validated non-empty by parseBoatTourForm.
  */
 export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<void> {
   const meta = formatCruiseMeta(cruise);
@@ -1346,21 +1385,35 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
         : fakeStore.boatTours.find((t) => t.boatlocalId === String(cruise.id));
 
     if (existing) {
-      // STICKY SAFETY NET, keyed off `note` (not `area` — see this
-      // function's own doc comment for why that changed): an empty `note` is
-      // exactly the placeholder this same function's INSERT branch writes
-      // below, and the ONLY way it stops being empty is an admin explicitly
-      // completing the tour via BoatTourForm. Without this check, the very
-      // next scheduled reconciliation after a brand-new insert would
-      // immediately flip a still-incomplete row back to 'active' off of
-      // BoatLocal's own `active: true`, undoing the one-time "pending
-      // completion" gate the INSERT branch exists to enforce.
-      const pendingCompletion = existing.note === "";
+      // NOTE OWNERSHIP (see this function's doc comment): the note is still
+      // "BoatLocal-owned" — and therefore refreshed to the latest headline —
+      // while it is empty, still equals the last headline a sync recorded
+      // into boatlocalHeadline, or equals the incoming headline itself (the
+      // one-time-backfill adoption case: note was hand-set to the headline
+      // before boatlocal_headline existed, so the stored value is null
+      // there). An admin's own note matches none of these and is never
+      // touched.
+      const noteIsBoatLocalOwned =
+        existing.note === "" ||
+        (existing.boatlocalHeadline !== null && existing.note === existing.boatlocalHeadline) ||
+        (cruise.headline !== null && existing.note === cruise.headline);
+      const note = noteIsBoatLocalOwned ? (cruise.headline ?? "") : existing.note;
+
+      // STICKY SAFETY NET, keyed off the EFFECTIVE note this sync leaves
+      // behind (not `area` — see this function's own doc comment for why
+      // that changed): the row stays parked hidden while that note is still
+      // empty, i.e. no admin note AND no headline. Without this check, the
+      // very next scheduled reconciliation after a brand-new headline-less
+      // insert would immediately flip a still-incomplete row back to
+      // 'active' off of BoatLocal's own `active: true`, undoing the
+      // "pending completion" gate the INSERT branch exists to enforce.
+      const pendingCompletion = note === "";
       const status: BoatTourStatus = pendingCompletion ? "hidden" : cruise.active ? "active" : "hidden";
 
       Object.assign(existing, {
         name: cruise.name,
         meta,
+        note,
         photos: cruise.images,
         bookingUrl: cruise.bookingUrl,
         boatlocalId: String(cruise.id),
@@ -1368,6 +1421,7 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
         slug: cruise.slug,
         cruiseType: cruise.cruiseType,
         boatlocalActive: cruise.active,
+        boatlocalHeadline: cruise.headline,
         status,
         deactivationReason: !pendingCompletion && cruise.active ? null : existing.deactivationReason,
         boatlocalUpdatedAt: cruise.updatedAt,
@@ -1402,16 +1456,21 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
       lng: cruise.departure?.lng ?? 0,
       lat: cruise.departure?.lat ?? 0,
       meta,
-      note: "",
+      // A cruise with a headline arrives guest-ready: note starts as a copy
+      // of it and status follows BoatLocal's active flag immediately. Without
+      // one, the old behavior exactly: note "" and parked hidden pending
+      // admin completion, regardless of BoatLocal's own active flag.
+      note: cruise.headline ?? "",
       bookingUrl: cruise.bookingUrl,
       photos: cruise.images,
       position: maxPosition + 1,
-      status: "hidden",
+      status: cruise.headline !== null ? (cruise.active ? "active" : "hidden") : "hidden",
       boatlocalId: String(cruise.id),
       fareharborPk: cruise.fareharborPk,
       slug: cruise.slug,
       cruiseType: cruise.cruiseType,
       boatlocalActive: cruise.active,
+      boatlocalHeadline: cruise.headline,
       deactivationReason: null,
       boatlocalUpdatedAt: cruise.updatedAt,
       locationSource: cruise.departure?.source ?? null,
@@ -1428,23 +1487,35 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
 
   const { data: existingData, error: fetchError } = await supabase
     .from("boat_tours")
-    .select("id, area, note, deactivation_reason")
+    .select("id, area, note, boatlocal_headline, deactivation_reason")
     .eq(lookupColumn, lookupValue)
     .maybeSingle();
   if (fetchError) throw fetchError;
   const existing = existingData as
-    | { id: string; area: string; note: string; deactivation_reason: string | null }
+    | {
+        id: string;
+        area: string;
+        note: string;
+        boatlocal_headline: string | null;
+        deactivation_reason: string | null;
+      }
     | null;
 
   if (existing) {
-    // See the isTestEnv branch above for why this check exists at all, and
-    // why it's keyed off `note` rather than `area`.
-    const pendingCompletion = existing.note === "";
+    // See the isTestEnv branch above for the note-ownership rule and why the
+    // completion gate is keyed off the effective note rather than `area`.
+    const noteIsBoatLocalOwned =
+      existing.note === "" ||
+      (existing.boatlocal_headline !== null && existing.note === existing.boatlocal_headline) ||
+      (cruise.headline !== null && existing.note === cruise.headline);
+    const note = noteIsBoatLocalOwned ? (cruise.headline ?? "") : existing.note;
+    const pendingCompletion = note === "";
     const status: BoatTourStatus = pendingCompletion ? "hidden" : cruise.active ? "active" : "hidden";
 
     const updates: Partial<BoatTourRow> = {
       name: cruise.name,
       meta,
+      note,
       photos: cruise.images,
       booking_url: cruise.bookingUrl,
       boatlocal_id: String(cruise.id),
@@ -1452,6 +1523,7 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
       slug: cruise.slug,
       cruise_type: cruise.cruiseType,
       active: cruise.active,
+      boatlocal_headline: cruise.headline,
       status,
       boatlocal_updated_at: cruise.updatedAt,
     };
@@ -1492,16 +1564,20 @@ export async function syncCruiseFromBoatLocal(cruise: BoatLocalCruise): Promise<
     lng: cruise.departure?.lng ?? 0,
     lat: cruise.departure?.lat ?? 0,
     meta,
-    note: "",
+    // See the isTestEnv branch above: a headline arrives guest-ready (note =
+    // headline, status follows BoatLocal's active flag); no headline keeps
+    // the old note-""/forced-hidden pending-completion behavior exactly.
+    note: cruise.headline ?? "",
     booking_url: cruise.bookingUrl,
     photos: cruise.images,
     position: maxPosition + 1,
-    status: "hidden",
+    status: cruise.headline !== null ? (cruise.active ? "active" : "hidden") : "hidden",
     boatlocal_id: String(cruise.id),
     fareharbor_pk: cruise.fareharborPk,
     slug: cruise.slug,
     cruise_type: cruise.cruiseType,
     active: cruise.active,
+    boatlocal_headline: cruise.headline,
     deactivation_reason: null,
     boatlocal_updated_at: cruise.updatedAt,
     location_source: cruise.departure?.source ?? null,
@@ -2857,6 +2933,7 @@ export async function saveBoatTour(
       boatlocalActive: null,
       deactivationReason: null,
       boatlocalUpdatedAt: null,
+      boatlocalHeadline: null,
       locationSource: null,
     };
     fakeStore.boatTours.push(record);

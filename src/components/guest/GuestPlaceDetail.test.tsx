@@ -25,6 +25,26 @@ describe("GuestPlaceDetail", () => {
     expect(container.textContent).not.toMatch(/★|rating/i);
   });
 
+  it("hides the locator row entirely when there is no locator text (no orphaned icon)", () => {
+    // Positive control: a real area renders the pin icon.
+    const { container, unmount } = render(
+      <GuestPlaceDetail item={place} saved={false} onToggleSaved={() => {}} onAction={() => {}} onClose={() => {}} />,
+    );
+    expect(container.querySelector(".lucide-map-pin")).not.toBeNull();
+    unmount();
+
+    const { container: emptyArea } = render(
+      <GuestPlaceDetail
+        item={{ ...place, area: "" }}
+        saved={false}
+        onToggleSaved={() => {}}
+        onAction={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(emptyArea.querySelector(".lucide-map-pin")).toBeNull();
+  });
+
   it("offers 'Book this tour' for a boat and 'Walking directions' for a place, at the top of the content", () => {
     const { unmount } = render(
       <GuestPlaceDetail item={boat} saved={false} onToggleSaved={() => {}} onAction={() => {}} onClose={() => {}} />,
