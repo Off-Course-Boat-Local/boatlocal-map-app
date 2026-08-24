@@ -15,7 +15,13 @@ vi.mock("next/font/google", () => {
     className: "font-test",
     style: { fontFamily: "serif" },
   });
-  return { Hanken_Grotesk: loader, Inter: loader, Playfair_Display: loader };
+  return {
+    Hanken_Grotesk: loader,
+    Inter: loader,
+    Playfair_Display: loader,
+    Outfit: loader,
+    Figtree: loader,
+  };
 });
 
 afterEach(() => {

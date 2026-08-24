@@ -12,15 +12,17 @@
 
 import { useMemo, useState } from "react";
 
-import FilterPills from "@/components/map/FilterPills";
 import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
+import { GuestScreenHeader } from "./GuestScreenHeader";
 import { useGuestFilter } from "@/lib/guestFilterContext";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import { guestPinAction } from "@/lib/guestActions";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
-import { displayFontFamily } from "@/lib/fonts";
+import { bodyFontFamily } from "@/lib/fonts";
+import { CATEGORIES } from "@/lib/categories";
+import { BORDER, MUTED } from "@/lib/guestTheme";
 import type { MapPin } from "@/lib/data";
 import type { Brand } from "@/lib/types";
 
@@ -84,35 +86,67 @@ export default function GuestListScreen({
 
   return (
     <div className="flex h-full w-full flex-col">
-      <header
-        className="shrink-0 px-4 pb-3 text-white"
-        // The brand colour fills behind the status bar in standalone mode
-        // (viewport-fit=cover), the text stays below it. env() is 0 in a
-        // normal browser tab, leaving the original 16px.
-        style={{
-          background: "var(--brand-primary)",
-          paddingTop: "calc(env(safe-area-inset-top) + 16px)",
-        }}
-      >
-        <h1 className="text-2xl leading-none" style={{ fontFamily: displayFontFamily }}>
-          {brand.appName}
-        </h1>
-        <p className="mt-1 text-xs opacity-80">
-          {allPins.length} recommendations from {guideName}
-        </p>
-      </header>
+      <GuestScreenHeader
+        eyebrow={brand.companyName}
+        title={brand.appName}
+        subtitle={`${allPins.length} recommendations from ${guideName}`}
+      />
 
-      <div className="shrink-0 border-b border-neutral-200 bg-white py-2.5">
-        <FilterPills value={filter} onChange={setFilter} />
+      {/* Category filter chips — same shared filter state as the Map screen
+          (useGuestFilter), restyled to the reference's chip row (which tucks
+          up under the gradient band with rounded top corners). Tapping the
+          active chip clears back to "All", same as FilterPills always did. */}
+      <div
+        className="-mt-3 shrink-0 rounded-t-2xl bg-white"
+        style={{ borderBottom: `1px solid ${BORDER}` }}
+      >
+        <div
+          className="no-scrollbar flex gap-2 overflow-x-auto px-5 py-3"
+          role="group"
+          aria-label="Filter places by category"
+        >
+          {[{ id: null, label: "All" }, ...CATEGORIES].map((cat) => {
+            const isActive = filter === cat.id;
+            return (
+              <button
+                key={cat.id ?? "all"}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setFilter(isActive ? null : cat.id)}
+                className="h-9 shrink-0 rounded-full px-4 text-[0.8125rem] font-semibold transition-colors"
+                style={{
+                  fontFamily: bodyFontFamily,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  WebkitTapHighlightColor: "transparent",
+                  touchAction: "manipulation",
+                  ...(isActive
+                    ? {
+                        background: "var(--brand-primary)",
+                        color: "#FFFFFF",
+                        border: "1px solid var(--brand-primary)",
+                      }
+                    : {
+                        background: "#FFFFFF",
+                        color: MUTED,
+                        border: `1px solid ${BORDER}`,
+                      }),
+                }}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white">
         {pins.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-neutral-500">
+          <p className="px-5 py-10 text-center text-sm" style={{ color: MUTED }}>
             No recommendations in this category yet.
           </p>
         ) : (
-          <ul style={{ margin: 0, padding: 0 }}>
+          <ul className="space-y-4 px-5 py-5" style={{ margin: 0 }}>
             {pins.map((item) => (
               <GuestPlaceRow
                 key={item.id}

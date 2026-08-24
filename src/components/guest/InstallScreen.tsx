@@ -9,23 +9,37 @@
 // manual steps only if the browser doesn't cooperate. See
 // src/lib/installPlatform.ts for the (UA-sniffed, deliberately-so) platform
 // detection this reads.
+//
+// VISUALS follow the reference design's install screen (nice-notice's
+// src/routes/install.tsx): gradient header band, an app-identity card, a
+// segmented iPhone/Android toggle, numbered step cards, and a full-width
+// pill CTA for the one-tap path. The toggle only OVERRIDES which step list
+// is displayed — detection still decides the default and all install/
+// analytics wiring is untouched.
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Download } from "lucide-react";
 
+import { GuestScreenHeader } from "./GuestScreenHeader";
 import { useIsDesktopPointer } from "@/hooks/useIsDesktopPointer";
 import { useIsStandalone } from "@/hooks/useIsStandalone";
 import { displayFontFamily, bodyFontFamily } from "@/lib/fonts";
 import { recordGuestEvent } from "@/lib/guestEvents";
+import {
+  BORDER,
+  BRAND_GRADIENT,
+  BRAND_SOFT,
+  INK,
+  MUTED,
+  SECONDARY,
+  SHADOW_CARD,
+} from "@/lib/guestTheme";
 import {
   detectInstallPlatform,
   installPlatformToEventPlatform,
   type InstallPlatform,
 } from "@/lib/installPlatform";
 import type { Brand } from "@/lib/types";
-
-const INK = "#17181C";
-const MUTED = "#6B7280";
-const BORDER = "#E3E4E8";
 
 /** Not in lib.dom.d.ts yet in every TS lib target we ship against. */
 interface BeforeInstallPromptEvent extends Event {
@@ -68,6 +82,8 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [justInstalled, setJustInstalled] = useState(false);
+  // The segmented toggle's manual override — null means "trust detection".
+  const [platformOverride, setPlatformOverride] = useState<"ios" | "android" | null>(null);
 
   // A genuine subscription to two external events (with cleanup) — the
   // textbook case an effect is for, unlike the platform/standalone reads
@@ -106,71 +122,132 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
     if (choice.outcome === "accepted") setJustInstalled(true);
   }
 
+  const isMobilePlatform = platform === "ios" || platform === "android";
+  const displayedPlatform: "ios" | "android" =
+    platformOverride ?? (platform === "android" ? "android" : "ios");
+
   return (
     <div
-      className="no-scrollbar flex h-full flex-col overflow-y-auto px-6 text-center"
-      style={{
-        fontFamily: bodyFontFamily,
-        color: INK,
-        paddingTop: "env(safe-area-inset-top)",
-      }}
+      className="flex h-full w-full flex-col"
+      style={{ fontFamily: bodyFontFamily, color: INK }}
     >
-      {/* `my-auto` vertically centres the block when there's room and
-          degrades to normal scrolling when there isn't — same rebalance as
-          GuestReviewScreen (the audit flagged both screens' old
-          content-in-the-top-third, dead-space-below layout). */}
-      <div className="my-auto py-8">
-        <h1
-          className="text-[26px] leading-tight"
-          style={{ fontFamily: displayFontFamily }}
-        >
-          Install {brand.appName}
-        </h1>
-        <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed" style={{ color: MUTED }}>
-          Add it to your home screen — it opens straight to the map, no app
-          store needed.
-        </p>
+      <GuestScreenHeader
+        eyebrow="Two taps"
+        title="Keep this on your phone"
+        subtitle={`${brand.appName} on your home screen — no app store, no account.`}
+      />
 
-        <div className="mx-auto mt-8 w-full max-w-xs">
-        {standalone || justInstalled ? (
-          <StatusCard tone="success">
-            {justInstalled
-              ? `You're set — ${brand.appName} is on your home screen.`
-              : `You're already using the installed app. Nicely done.`}
-          </StatusCard>
-        ) : platform === "ios" ? (
-          <IosSteps />
-        ) : platform === "android" ? (
-          <AndroidSteps
-            canOneTap={deferredPrompt !== null}
-            onInstall={handleOneTapInstall}
-          />
-        ) : isDesktop ? (
-          // Only a genuine mouse/trackpad browser gets told to scan a QR
-          // code with "your phone's camera" — that instruction assumes the
-          // reader isn't holding a phone. See isDesktopPointer's doc
-          // comment for why `platform === "other"` alone isn't a safe
-          // enough signal for that assumption (it also matches a real
-          // guest on some other/unusual mobile browser).
-          <StatusCard tone="neutral">
-            This works best on a phone. Scan the QR code in the panel beside
-            this screen with your phone&rsquo;s camera, then install it from
-            there.
-          </StatusCard>
-        ) : (
-          // A touch-primary device we couldn't specifically classify as
-          // iOS or Android — still a phone/tablet, so generic (not
-          // "scan with your phone") instructions.
-          <StatusCard tone="neutral">
-            Open your browser&rsquo;s menu and look for &ldquo;Add to Home
-            Screen&rdquo; or &ldquo;Install app&rdquo; to add {brand.appName}{" "}
-            here.
-          </StatusCard>
-        )}
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6">
+        {/* App-identity card — what lands on the home screen. */}
+        <div
+          className="flex items-center gap-4 rounded-2xl p-4"
+          style={{ border: `1px solid ${BORDER}`, boxShadow: SHADOW_CARD }}
+        >
+          <span
+            className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl text-2xl font-semibold text-white"
+            style={{ background: BRAND_GRADIENT, fontFamily: displayFontFamily }}
+            aria-hidden="true"
+          >
+            {appInitials(brand.appName)}
+          </span>
+          <div className="min-w-0">
+            <p
+              className="truncate text-base font-semibold"
+              style={{ margin: 0, fontFamily: displayFontFamily }}
+            >
+              {brand.appName}
+            </p>
+            <p className="text-[0.8125rem]" style={{ margin: 0, color: MUTED }}>
+              Local guide · full screen
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          {standalone || justInstalled ? (
+            <StatusCard tone="success">
+              {justInstalled
+                ? `You're set — ${brand.appName} is on your home screen.`
+                : `You're already using the installed app. Nicely done.`}
+            </StatusCard>
+          ) : isMobilePlatform ? (
+            <div>
+              {/* Segmented platform toggle — detection picks the default,
+                  this only switches which instructions are DISPLAYED. */}
+              <div
+                className="mb-4 inline-flex rounded-full p-1"
+                style={{ background: SECONDARY }}
+              >
+                {(["ios", "android"] as const).map((p) => {
+                  const selected = displayedPlatform === p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPlatformOverride(p)}
+                      aria-pressed={selected}
+                      className="h-9 rounded-full px-4 text-[0.8125rem] font-semibold"
+                      style={{
+                        fontFamily: bodyFontFamily,
+                        cursor: "pointer",
+                        WebkitTapHighlightColor: "transparent",
+                        touchAction: "manipulation",
+                        ...(selected
+                          ? { background: "var(--brand-primary)", color: "#FFFFFF" }
+                          : { background: "transparent", color: MUTED }),
+                      }}
+                    >
+                      {p === "ios" ? "iPhone" : "Android"}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {displayedPlatform === "ios" ? (
+                <IosSteps />
+              ) : (
+                <AndroidSteps
+                  canOneTap={deferredPrompt !== null}
+                  onInstall={handleOneTapInstall}
+                />
+              )}
+            </div>
+          ) : isDesktop ? (
+            // Only a genuine mouse/trackpad browser gets told to scan a QR
+            // code with "your phone's camera" — that instruction assumes the
+            // reader isn't holding a phone. See isDesktopPointer's doc
+            // comment for why `platform === "other"` alone isn't a safe
+            // enough signal for that assumption (it also matches a real
+            // guest on some other/unusual mobile browser).
+            <StatusCard tone="neutral">
+              This works best on a phone. Scan the QR code in the panel beside
+              this screen with your phone&rsquo;s camera, then install it from
+              there.
+            </StatusCard>
+          ) : (
+            // A touch-primary device we couldn't specifically classify as
+            // iOS or Android — still a phone/tablet, so generic (not
+            // "scan with your phone") instructions.
+            <StatusCard tone="neutral">
+              Open your browser&rsquo;s menu and look for &ldquo;Add to Home
+              Screen&rdquo; or &ldquo;Install app&rdquo; to add {brand.appName}{" "}
+              here.
+            </StatusCard>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+/** "Jan's Amsterdam" → "JA" — the home-screen tile initials. */
+function appInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
 function StatusCard({
@@ -184,7 +261,7 @@ function StatusCard({
     <div
       className="rounded-2xl px-4 py-5 text-sm leading-relaxed"
       style={{
-        background: tone === "success" ? "#F0F9F1" : "#F5F5F4",
+        background: tone === "success" ? "#F0F9F1" : SECONDARY,
         color: tone === "success" ? "#1E5636" : INK,
         border: `1px solid ${tone === "success" ? "#CDE9CF" : BORDER}`,
       }}
@@ -194,18 +271,40 @@ function StatusCard({
   );
 }
 
-function StepRow({ index, children }: { index: number; children: ReactNode }) {
+function StepRow({
+  index,
+  title,
+  children,
+}: {
+  index: number;
+  title: string;
+  children: ReactNode;
+}) {
   return (
-    <li className="flex items-start gap-3 text-left">
+    <li
+      className="flex items-start gap-3 rounded-2xl p-5 text-left"
+      style={{ border: `1px solid ${BORDER}`, boxShadow: SHADOW_CARD, background: "#FFFFFF" }}
+    >
       <span
         aria-hidden="true"
-        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-white"
-        style={{ background: "var(--brand-primary)" }}
+        className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full text-[0.8125rem] font-semibold"
+        style={{ background: BRAND_SOFT, color: "var(--brand-primary)" }}
       >
         {index}
       </span>
-      <span className="text-sm leading-relaxed" style={{ color: INK }}>
-        {children}
+      <span className="min-w-0">
+        <span
+          className="block text-[0.9375rem] font-semibold"
+          style={{ color: INK, fontFamily: displayFontFamily }}
+        >
+          {title}
+        </span>
+        <span
+          className="mt-0.5 block text-sm leading-relaxed"
+          style={{ color: MUTED, fontFamily: bodyFontFamily }}
+        >
+          {children}
+        </span>
       </span>
     </li>
   );
@@ -242,14 +341,14 @@ function ShareGlyph() {
 
 function IosSteps() {
   return (
-    <ol className="flex flex-col gap-4">
-      <StepRow index={1}>
+    <ol className="flex flex-col gap-3">
+      <StepRow index={1} title="Open the Share menu">
         Tap the Share icon <ShareGlyph /> in the browser toolbar.
       </StepRow>
-      <StepRow index={2}>
+      <StepRow index={2} title="Add to Home Screen">
         Scroll down and tap <strong>&ldquo;Add to Home Screen&rdquo;</strong>.
       </StepRow>
-      <StepRow index={3}>
+      <StepRow index={3} title="Confirm">
         Tap <strong>&ldquo;Add&rdquo;</strong> in the top right.
       </StepRow>
     </ol>
@@ -272,9 +371,16 @@ function AndroidSteps({
         <button
           type="button"
           onClick={onInstall}
-          className="h-11 w-full rounded-xl text-[15px] font-semibold text-white"
-          style={{ background: "var(--brand-primary)", fontFamily: bodyFontFamily }}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-white"
+          style={{
+            background: "var(--brand-primary)",
+            fontFamily: bodyFontFamily,
+            cursor: "pointer",
+            WebkitTapHighlightColor: "transparent",
+            touchAction: "manipulation",
+          }}
         >
+          <Download className="h-4 w-4" aria-hidden />
           Add to Home Screen
         </button>
       </div>
@@ -282,15 +388,15 @@ function AndroidSteps({
   }
 
   return (
-    <ol className="flex flex-col gap-4">
-      <StepRow index={1}>
+    <ol className="flex flex-col gap-3">
+      <StepRow index={1} title="Open the browser menu">
         Tap the <strong>⋮</strong> menu in the top right of the browser.
       </StepRow>
-      <StepRow index={2}>
+      <StepRow index={2} title="Add to Home screen">
         Tap <strong>&ldquo;Add to Home screen&rdquo;</strong> (or &ldquo;Install
         app&rdquo;).
       </StepRow>
-      <StepRow index={3}>
+      <StepRow index={3} title="Confirm">
         Confirm with <strong>&ldquo;Add&rdquo;</strong> / <strong>&ldquo;Install&rdquo;</strong>.
       </StepRow>
     </ol>

@@ -14,12 +14,14 @@ import { useMemo, useState } from "react";
 
 import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
+import { GuestScreenHeader } from "./GuestScreenHeader";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import { guestPinAction } from "@/lib/guestActions";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
 import { CATEGORIES } from "@/lib/categories";
-import { displayFontFamily } from "@/lib/fonts";
+import { bodyFontFamily } from "@/lib/fonts";
+import { BORDER, INK, MUTED } from "@/lib/guestTheme";
 import type { MapPin } from "@/lib/data";
 import type { Brand } from "@/lib/types";
 
@@ -93,56 +95,62 @@ export default function GuestSavedScreen({
 
   return (
     <div className="flex h-full w-full flex-col">
-      <header
-        className="shrink-0 px-4 pb-3 text-white"
-        // See GuestListScreen's header comment — safe-area top for
-        // standalone/notched phones, env() is 0 in a browser tab.
-        style={{
-          background: "var(--brand-primary)",
-          paddingTop: "calc(env(safe-area-inset-top) + 16px)",
-        }}
-      >
-        <h1 className="text-2xl leading-none" style={{ fontFamily: displayFontFamily }}>
-          Saved
-        </h1>
-        <p className="mt-1 text-xs opacity-80">
-          {savedPins.length === 0
+      <GuestScreenHeader
+        eyebrow="Your shortlist"
+        title="Saved"
+        subtitle={
+          savedPins.length === 0
             ? `Nothing saved yet from ${brand.appName}`
-            : `${savedPins.length} saved from ${brand.appName}`}
-        </p>
-      </header>
+            : `${savedPins.length} saved from ${brand.appName}`
+        }
+      />
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white">
         {savedPins.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
-            <p className="text-sm font-medium text-neutral-700">Nothing saved yet</p>
-            <p className="max-w-xs text-sm leading-relaxed text-neutral-500">
-              Tap the heart on a place or boat tour to keep it here.
-            </p>
+          <div className="px-5 py-10">
+            <div
+              className="rounded-2xl px-6 py-12 text-center"
+              style={{ border: `1px dashed ${BORDER}` }}
+            >
+              <p className="text-base font-medium" style={{ color: INK }}>
+                Nothing saved yet
+              </p>
+              <p
+                className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed"
+                style={{ color: MUTED, fontFamily: bodyFontFamily }}
+              >
+                Tap the heart on a place or boat tour to keep it here.
+              </p>
+            </div>
           </div>
         ) : (
-          groups.map(({ category, items }) => (
-            <section key={category.id}>
-              <h2
-                className="px-4 pb-1.5 pt-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-                style={{ fontFamily: displayFontFamily }}
-              >
-                {category.label}
-              </h2>
-              <ul style={{ margin: 0, padding: 0 }}>
-                {items.map((item) => (
-                  <GuestPlaceRow
-                    key={item.id}
-                    item={item}
-                    saved={isSaved(item.id)}
-                    onToggleSaved={() => toggle(item.id)}
-                    onAction={() => openAction(item)}
-                    onOpenDetail={() => setDetailItem(item)}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))
+          <div className="space-y-7 px-5 py-6">
+            {groups.map(({ category, items }) => (
+              <section key={category.id}>
+                <h2
+                  className="mb-3 flex items-baseline gap-2 text-[0.8125rem] font-semibold uppercase tracking-[0.14em]"
+                  style={{ color: MUTED, fontFamily: bodyFontFamily }}
+                >
+                  {category.label}
+                  <span aria-hidden="true" style={{ color: "var(--brand-primary)" }}>
+                    {items.length}
+                  </span>
+                </h2>
+                <ul className="space-y-4" style={{ margin: 0, padding: 0 }}>
+                  {items.map((item) => (
+                    <GuestPlaceRow
+                      key={item.id}
+                      item={item}
+                      saved={isSaved(item.id)}
+                      onToggleSaved={() => toggle(item.id)}
+                      onAction={() => openAction(item)}
+                      onOpenDetail={() => setDetailItem(item)}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
         )}
       </div>
 

@@ -34,7 +34,12 @@ describe("GuestSavedScreen", () => {
 
     const { container } = render(<GuestSavedScreen brand={brand} pins={ALL_PINS} />);
 
-    const headings = Array.from(container.querySelectorAll("h2")).map((h) => h.textContent);
+    // Each section heading carries a per-category count badge after the
+    // label (reference design) — strip the trailing digits, the grouping
+    // and order are what this test protects.
+    const headings = Array.from(container.querySelectorAll("h2")).map((h) =>
+      h.textContent?.replace(/\d+$/, ""),
+    );
     expect(headings).toEqual(["Boats", "Coffee", "Shop"]);
   });
 

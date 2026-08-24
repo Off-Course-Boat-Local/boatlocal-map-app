@@ -28,18 +28,24 @@ import { useSearchParams } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 import { Lock, Star } from "lucide-react";
 
+import { GuestScreenHeader } from "./GuestScreenHeader";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { recordGuestEvent, recordGuestReview } from "@/lib/guestEvents";
 import type { ReviewOption, ReviewPlatform } from "@/lib/guestReview";
 import { reviewClickEventType } from "@/lib/guestReview";
 import { guestQueryString, withGuestQuery } from "@/lib/guestLinks";
+import {
+  BORDER,
+  BRAND_TINT,
+  INK,
+  MUTED,
+  SECONDARY,
+  SHADOW_CARD,
+} from "@/lib/guestTheme";
 
-const INK = "#17181C";
-const MUTED = "#6B7280";
-const BORDER = "#E3E4E8";
-const SWATCH_BG = "#F4F5F7";
-/** Emphasis tint — derived from the company's own brand colour, never a hardcoded blue. */
-const EMPHASIS_TINT = "color-mix(in srgb, var(--brand-primary) 12%, white)";
+const SWATCH_BG = SECONDARY;
+/** Emphasis tint — derived from the company's own brand colour, never a hardcoded blue (guestTheme keeps this in lockstep with the reference's --brand-tint). */
+const EMPHASIS_TINT = BRAND_TINT;
 
 const buttonBase = {
   display: "flex",
@@ -247,36 +253,34 @@ export default function GuestReviewScreen({
   const placeholderNotice = reviewOptions.find((option) => option.isPlaceholder);
 
   return (
-    <div
-      className="no-scrollbar flex h-full flex-col overflow-y-auto px-6"
-      style={{ paddingTop: "env(safe-area-inset-top)" }}
-    >
-      {/* `my-auto` (not justify-center on the scroller) vertically centres
-          the ask when there's room, and degrades to normal top-aligned
-          scrolling when there isn't — justify-center on an overflowing flex
-          container clips its top edge unreachably. The audit flagged this
-          screen's old top-stacked layout: content in the top third, then a
-          dead two-thirds of blank white before a floating "Maybe later". */}
-      <div className="my-auto flex flex-col gap-7 py-8">
-        {/* Branded ask ------------------------------------------------ */}
-        <div className="text-center">
-          <p
-            className="text-xs font-semibold uppercase tracking-widest"
-            style={{ color: MUTED, fontFamily: bodyFontFamily }}
-          >
-            Your trip
-          </p>
-          <h1
-            className="mx-auto mt-2 max-w-sm text-[26px] leading-snug"
+    <div className="flex h-full w-full flex-col">
+      {/* Gradient header band (reference review.tsx) — replaces the old
+          centred "Your trip / Did you enjoy…" heading block. */}
+      <GuestScreenHeader
+        eyebrow="Feedback"
+        title="How was it?"
+        subtitle={`${companyName} reads every single one — it takes about 20 seconds.`}
+      />
+
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6">
+        <div className="flex flex-col gap-5">
+        {/* Star rating — emphasis + copy only, never gating (see header).
+            Wrapped in the reference's white shadow-card section. */}
+        <section
+          className="rounded-2xl p-5"
+          style={{
+            background: "#FFFFFF",
+            border: `1px solid ${BORDER}`,
+            boxShadow: SHADOW_CARD,
+          }}
+        >
+          <h2
+            className="text-center text-base font-semibold"
             style={{ color: INK, fontFamily: displayFontFamily }}
           >
-            Did you enjoy your experience with {companyName}?
-          </h1>
-        </div>
-
-        {/* Star rating — emphasis + copy only, never gating (see header). */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex justify-center gap-1.5">
+            Rate your experience
+          </h2>
+          <div className="mt-4 flex justify-center gap-1.5">
             {[1, 2, 3, 4, 5].map((n) => {
               const filled = n <= rating;
               return (
@@ -298,18 +302,21 @@ export default function GuestReviewScreen({
             })}
           </div>
           {rating > 0 && (
-            <p className="text-center text-sm" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
+            <p
+              className="mt-3 text-center text-sm"
+              style={{ color: MUTED, fontFamily: bodyFontFamily }}
+            >
               {positive
                 ? "Glad it landed well."
                 : "Sorry it fell short — tell us what happened."}
             </p>
           )}
-        </div>
+        </section>
 
         {/* Two equal, always-rendered, always-clickable options ---------- */}
         <div className="flex flex-col gap-3">
           <p
-            className="text-center text-xs font-semibold uppercase tracking-widest"
+            className="text-[0.75rem] font-semibold uppercase tracking-[0.14em]"
             style={{ color: MUTED, fontFamily: bodyFontFamily }}
           >
             {eyebrowLabel}
@@ -452,7 +459,7 @@ export default function GuestReviewScreen({
               <p
                 style={{
                   borderRadius: 12,
-                  background: "#F4F5F7",
+                  background: SECONDARY,
                   color: INK,
                   fontFamily: bodyFontFamily,
                   padding: "13px 16px",
@@ -465,11 +472,8 @@ export default function GuestReviewScreen({
           </div>
         </div>
 
-        {/* Soft skip — kept INSIDE the centred block (not a separate flex
-            child) so it sits right under the buttons as one visual group,
-            instead of the auto-margin centring leaving a second dead gap
-            between the buttons and a "Maybe later" stranded near the tab
-            bar. */}
+        {/* Soft skip — kept inside the same stack so it sits right under
+            the buttons as one visual group. */}
         <div className="text-center">
           <Link
             href={mapHref}
@@ -483,6 +487,7 @@ export default function GuestReviewScreen({
           >
             Maybe later
           </Link>
+        </div>
         </div>
       </div>
     </div>

@@ -27,7 +27,7 @@ import { Expand } from "lucide-react";
 // DELIBERATE OMISSION, same as PlaceCard/GuestPlaceRow: no star rating, no
 // review count. The guide's note is the endorsement.
 
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, Clock, MapPin as MapPinIcon, X } from "lucide-react";
 import { useState } from "react";
 
 import { guestPinActionLabel } from "@/lib/guestActions";
@@ -36,9 +36,9 @@ import type { MapPin } from "@/lib/data";
 import { PhotoGallery } from "@/components/map/PhotoGallery";
 import { SaveHeartButton } from "./SaveHeartButton";
 
-const INK = "#17181C";
-const MUTED = "#6B7280";
-const BORDER = "#E3E4E8";
+const INK = "#0B1421";
+const MUTED = "#657386";
+const BORDER = "#E1E7EE";
 
 export interface GuestPlaceDetailProps {
   item: MapPin;
@@ -176,7 +176,7 @@ export function GuestPlaceDetail({
             style={{
               width: "100%",
               height: 48,
-              borderRadius: 12,
+              borderRadius: 9999, // CTAs are fully rounded in this design language
               fontSize: 15,
               fontWeight: 600,
               fontFamily: bodyFontFamily,
@@ -196,20 +196,35 @@ export function GuestPlaceDetail({
             style={{
               margin: 0,
               fontFamily: displayFontFamily,
-              fontWeight: 700,
+              fontWeight: 600,
               fontSize: 22,
               lineHeight: "27px",
-              letterSpacing: "-0.01em",
+              letterSpacing: "-0.02em",
               color: INK,
             }}
           >
             {item.name}
           </h1>
-          <p style={{ margin: "4px 0 0", fontSize: 13, lineHeight: "18px", color: MUTED }}>
+          <p
+            style={{
+              margin: "4px 0 0",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              fontSize: 13,
+              lineHeight: "18px",
+              color: MUTED,
+            }}
+          >
+            {item.isBoat ? (
+              <Clock size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+            ) : (
+              <MapPinIcon size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+            )}
             {locator}
           </p>
 
-          <p style={{ margin: "14px 0 0", fontSize: 14.5, lineHeight: "21px", color: "#2A2A28" }}>
+          <p style={{ margin: "14px 0 0", fontSize: 14.5, lineHeight: "21px", color: "#334051" }}>
             {item.note}
           </p>
         </div>

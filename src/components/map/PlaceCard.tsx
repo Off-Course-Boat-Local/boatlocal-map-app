@@ -7,20 +7,25 @@
 // note is the endorsement — that is the product. See PRD.
 //
 // Brand colour reaches this component only through --brand-primary
-// (the "Book this tour" fill and the saved-heart fill). Nothing else here
-// changes when the skin changes.
+// (the "Book this tour" fill, the directions arrow, and the saved-heart
+// fill). Nothing else here changes when the skin changes.
 
-import { Heart, X } from "lucide-react";
+import { Clock, Heart, MapPin as MapPinIcon, Navigation, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { CategoryId } from "@/lib/types";
-import { bodyFontFamily } from "@/lib/fonts";
+import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { PhotoGallery } from "./PhotoGallery";
 
 /* Neutral chrome — never re-skins. */
-const INK = "#17181C";
-const MUTED = "#6B7280";
-const BORDER = "#E3E4E8";
+const INK = "#0B1421";
+const MUTED = "#657386";
+const BORDER = "#E1E7EE";
+
+/* Upward-projecting float shadow — the card is a bottom sheet hovering over
+   the map, so the shadow throws UP, not down. */
+const FLOAT_SHADOW =
+  "0 -1px 0 oklch(0.19 0.03 258 / 5%), 0 -14px 34px -22px oklch(0.19 0.03 258 / 30%)";
 
 /** Structurally compatible with `MapPin` from @/lib/data. */
 export interface PlaceCardItem {
@@ -139,7 +144,7 @@ export function PlaceCard({
 
   const actionBase: CSSProperties = {
     height: 44,
-    borderRadius: 12,
+    borderRadius: 9999, // pills/CTAs are fully rounded in this design language
     fontSize: 15,
     fontWeight: 600,
     fontFamily: bodyFontFamily,
@@ -160,15 +165,28 @@ export function PlaceCard({
       style={{
         ...positioning,
         background: "#FFFFFF",
-        borderRadius: 16,
-        padding: 14,
+        borderRadius: 28, // rounded-3xl — bottom-sheet corners
+        border: `1px solid ${BORDER}`,
+        padding: 20, // ~p-5
         fontFamily: bodyFontFamily,
         color: INK,
-        boxShadow:
-          "0 18px 40px -12px rgba(16, 20, 28, 0.34), 0 4px 12px -4px rgba(16, 20, 28, 0.14)",
+        boxShadow: FLOAT_SHADOW,
         ...style,
       }}
     >
+      {/* Drag-handle bar — purely decorative bottom-sheet affordance. */}
+      <span
+        aria-hidden="true"
+        style={{
+          display: "block",
+          margin: "0 auto 12px",
+          height: 4,
+          width: 40,
+          borderRadius: 9999,
+          background: BORDER,
+        }}
+      />
+
       {/* Close ------------------------------------------------------ */}
       {onClose && (
         <button
@@ -177,8 +195,8 @@ export function PlaceCard({
           aria-label={`Close ${item.name}`}
           style={{
             position: "absolute",
-            top: 2,
-            right: 2,
+            top: 6,
+            right: 6,
             width: 44,
             height: 44,
             display: "flex",
@@ -213,7 +231,7 @@ export function PlaceCard({
                 photos={item.photos}
                 alt={`${item.name} photo`}
                 aspectRatio="16 / 10"
-                radius={12}
+                radius={16}
               />
             )}
           </div>
@@ -231,13 +249,13 @@ export function PlaceCard({
             style={{
               position: "relative",
               flex: "0 0 auto",
-              width: 72,
-              height: 72,
-              borderRadius: 10,
+              width: 76,
+              height: 76,
+              borderRadius: 18, // rounded-2xl thumb, like the reference sheet
               overflow: "hidden",
               padding: 0,
               border: 0,
-              background: "#EDEEF1",
+              background: "#EDF1F5",
               cursor: "pointer",
               WebkitTapHighlightColor: "transparent",
               touchAction: "manipulation",
@@ -277,17 +295,16 @@ export function PlaceCard({
         )}
 
         <div style={{ minWidth: 0, flex: "1 1 auto", paddingRight: onClose ? 28 : 0 }}>
-          {/* Sans, not the serif: 19px is below the display face's ~22px
-              floor (src/lib/fonts.ts) — bold serif at this size was one of
-              the audit's "gappy word spacing" complaints. */}
+          {/* Display face (a geometric sans — see src/lib/fonts.ts), semibold,
+              matching the reference sheet's font-display titles. */}
           <h2
             id={titleId}
             style={{
               margin: 0,
-              fontFamily: bodyFontFamily,
-              fontWeight: 650,
-              fontSize: 17.5,
-              lineHeight: "23px",
+              fontFamily: displayFontFamily,
+              fontWeight: 600,
+              fontSize: 16,
+              lineHeight: "22px",
               letterSpacing: "-0.015em",
               color: INK,
               display: "-webkit-box",
@@ -300,7 +317,10 @@ export function PlaceCard({
           </h2>
           <p
             style={{
-              margin: "3px 0 0",
+              margin: "4px 0 0",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
               fontSize: 12,
               lineHeight: "16px",
               color: MUTED,
@@ -309,14 +329,19 @@ export function PlaceCard({
               textOverflow: "ellipsis",
             }}
           >
-            {locator}
+            {item.isBoat ? (
+              <Clock size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+            ) : (
+              <MapPinIcon size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+            )}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{locator}</span>
           </p>
           <p
             style={{
               margin: "6px 0 0",
               fontSize: 13.5,
               lineHeight: "19px",
-              color: "#2A2A28",
+              color: "#334051",
             }}
           >
             {endorsement}
@@ -363,8 +388,17 @@ export function PlaceCard({
                   color: INK,
                   border: `1px solid ${BORDER}`,
                 }),
+            gap: 8,
           }}
         >
+          {!item.isBoat && (
+            <Navigation
+              size={16}
+              strokeWidth={2}
+              color="var(--brand-primary)"
+              aria-hidden
+            />
+          )}
           {actionLabel}
         </button>
 
@@ -384,7 +418,7 @@ export function PlaceCard({
           <Heart
             size={20}
             strokeWidth={1.9}
-            color={isSaved ? "var(--brand-primary)" : "#9AA0A9"}
+            color={isSaved ? "var(--brand-primary)" : MUTED}
             fill={isSaved ? "var(--brand-primary)" : "none"}
             aria-hidden
           />

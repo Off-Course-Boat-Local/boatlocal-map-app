@@ -9,10 +9,19 @@ const place = ALL_PINS.find((p) => p.id === "cafe-de-jaren")!;
 const boat = ALL_PINS.find((p) => p.id === "sunset-canal")!;
 
 describe("GuestPlaceRow", () => {
-  it("shows name, area and meta (hours/price) as one merged locator line", () => {
+  it("shows name, area and meta (hours/price)", () => {
     render(<GuestPlaceRow item={place} saved={false} onToggleSaved={() => {}} onAction={() => {}} />);
     expect(screen.getByText(place.name)).toBeInTheDocument();
-    expect(screen.getByText(`${place.area} · ${place.meta}`)).toBeInTheDocument();
+    // Card layout splits the old merged "area · meta" locator line into a
+    // metadata row (area + hours); both facts must still be present.
+    expect(screen.getByText(place.area)).toBeInTheDocument();
+    expect(screen.getByText(place.meta)).toBeInTheDocument();
+  });
+
+  it("shows a boat's duration/price line in the card footer", () => {
+    render(<GuestPlaceRow item={boat} saved={false} onToggleSaved={() => {}} onAction={() => {}} />);
+    expect(screen.getByText(boat.meta)).toBeInTheDocument();
+    expect(screen.getByText(boat.area)).toBeInTheDocument();
   });
 
   it("never renders a star rating", () => {

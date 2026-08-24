@@ -14,8 +14,8 @@ import { bodyFontFamily } from "@/lib/fonts";
 import { CategoryGlyph } from "./Pin";
 
 /** Neutral chrome. Deliberately not brand tokens — these never re-skin. */
-const INK = "#17181C";
-const BORDER = "#E3E4E8";
+const MUTED = "#657386";
+const BORDER = "#E1E7EE";
 
 export interface FilterPillsProps {
   /** `null` means "All". */
@@ -36,38 +36,51 @@ export function FilterPills({
   className,
   style,
 }: FilterPillsProps) {
-  const pillBase: CSSProperties = {
+  // The BUTTON keeps the full 44px touch target (guests use this one-handed,
+  // walking, in the rain); the visual chip is a 36px (h-9) pill inside it,
+  // matching the reference design's chip height without shrinking the hit
+  // area.
+  const buttonBase: CSSProperties = {
     flex: "0 0 auto",
     whiteSpace: "nowrap",
     display: "inline-flex",
     alignItems: "center",
-    gap: 6,
-    height: 44, // touch target
-    padding: "0 16px",
-    borderRadius: 9999,
-    fontSize: 14,
-    lineHeight: 1,
-    fontWeight: 500,
-    fontFamily: bodyFontFamily,
+    height: 44, // touch target — never smaller, even though the chip is 36px
+    padding: 0,
+    border: 0,
+    background: "transparent",
     cursor: "pointer",
     WebkitTapHighlightColor: "transparent",
     touchAction: "manipulation",
+  };
+
+  const chipBase: CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    height: 36, // h-9, per the reference chip spec
+    padding: "0 16px",
+    borderRadius: 9999,
+    fontSize: 13, // 0.8125rem
+    lineHeight: 1,
+    fontWeight: 600,
+    fontFamily: bodyFontFamily,
     transition:
       "background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease",
   };
 
   const inactive: CSSProperties = {
     background: "#FFFFFF",
-    color: INK,
+    color: MUTED,
     border: `1px solid ${BORDER}`,
-    boxShadow: "0 1px 2px rgba(16, 20, 28, 0.06)",
+    boxShadow: "0 1px 2px oklch(0.19 0.03 258 / 6%)",
   };
 
   const active: CSSProperties = {
     background: "var(--brand-primary)",
     color: "#FFFFFF",
-    border: "1px solid transparent",
-    boxShadow: "0 2px 8px rgba(16, 20, 28, 0.16)",
+    border: "1px solid var(--brand-primary)",
+    boxShadow: "0 2px 8px oklch(0.19 0.03 258 / 16%)",
   };
 
   const allActive = value === null;
@@ -97,9 +110,11 @@ export function FilterPills({
           type="button"
           aria-pressed={allActive}
           onClick={() => onChange(null)}
-          style={{ ...pillBase, ...(allActive ? active : inactive) }}
+          style={buttonBase}
         >
-          {allLabel}
+          <span style={{ ...chipBase, ...(allActive ? active : inactive) }}>
+            {allLabel}
+          </span>
         </button>
 
         {categories.map((cat) => {
@@ -111,14 +126,16 @@ export function FilterPills({
               aria-pressed={isActive}
               // Tapping the active pill clears back to "All".
               onClick={() => onChange(isActive ? null : cat.id)}
-              style={{ ...pillBase, ...(isActive ? active : inactive) }}
+              style={buttonBase}
             >
-              <CategoryGlyph
-                category={cat.id}
-                size={14}
-                color={isActive ? "#FFFFFF" : cat.color}
-              />
-              {cat.label}
+              <span style={{ ...chipBase, ...(isActive ? active : inactive) }}>
+                <CategoryGlyph
+                  category={cat.id}
+                  size={14}
+                  color={isActive ? "#FFFFFF" : cat.color}
+                />
+                {cat.label}
+              </span>
             </button>
           );
         })}

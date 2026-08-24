@@ -1,14 +1,13 @@
 "use client";
 
 // The bottom tab bar shown on every guest page: Map · List · Saved · Review ·
-// Install. Icons are Lucide (the same stroke language as the portal
-// sidebars) — they replaced a set of hand-drawn glyphs after the founder's
-// UI audit called those out as visibly homemade. Labels are the SANS face,
-// deliberately: they used to be 11px serif, and a high-contrast display
-// serif at 11px is exactly the kind of muddy micro-typography the audit
-// flagged (see src/lib/fonts.ts's size rule). Neutral chrome everywhere
-// except the one active tab, which takes --brand-primary (never a literal
-// hex; see src/lib/brand.ts).
+// Install. Visuals are a direct port of the reference design's TabBar
+// (nice-notice's src/components/mobile-shell.tsx): a 5-column grid of Lucide
+// icons, each sitting in an h-8/w-12 pill that fills with a soft brand tint
+// when active, over an 11px medium-weight Figtree label. The bar itself is
+// translucent white with a backdrop blur and a hairline top border. The one
+// active tab takes --brand-primary (never a literal hex; see
+// src/lib/brand.ts / src/lib/guestTheme.ts).
 //
 // Query params (today's `?company=`/`?guide=` brand-resolution stand-in —
 // see src/lib/guestBrand.ts) are carried across tabs so switching screens
@@ -20,11 +19,11 @@
 // truth, so the badge can never drift from what Saved actually shows.
 
 import {
-  ArrowDownToLine,
+  Download,
   Heart,
-  List,
+  LayoutList,
   Map as MapIcon,
-  MessageSquareText,
+  MessageSquareHeart,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -33,39 +32,38 @@ import type { ReactNode } from "react";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import { bodyFontFamily } from "@/lib/fonts";
 import { withGuestQuery } from "@/lib/guestLinks";
+import { BORDER, BRAND_SOFT, MUTED } from "@/lib/guestTheme";
 
-const INACTIVE = "#8A8D95";
-const ICON_SIZE = 22;
-const ICON_STROKE = 1.9;
+const ICON_CLASS = "h-[1.15rem] w-[1.15rem]";
+const ICON_STROKE = 2;
 
 interface NavItem {
   href: string;
   label: string;
-  icon: (props: { color: string; active: boolean }) => ReactNode;
+  icon: (props: { active: boolean }) => ReactNode;
 }
 
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/map",
     label: "Map",
-    icon: ({ color }) => <MapIcon size={ICON_SIZE} strokeWidth={ICON_STROKE} color={color} aria-hidden />,
+    icon: () => <MapIcon className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />,
   },
   {
     href: "/list",
     label: "List",
-    icon: ({ color }) => <List size={ICON_SIZE} strokeWidth={ICON_STROKE} color={color} aria-hidden />,
+    icon: () => <LayoutList className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />,
   },
   {
     href: "/saved",
     label: "Saved",
     // Fills with the brand colour when active — the same one consistent
     // "saved" mark as SaveHeartButton and PlaceCard's heart.
-    icon: ({ color, active }) => (
+    icon: ({ active }) => (
       <Heart
-        size={ICON_SIZE}
+        className={ICON_CLASS}
         strokeWidth={ICON_STROKE}
-        color={color}
-        fill={active ? color : "none"}
+        fill={active ? "currentColor" : "none"}
         aria-hidden
       />
     ),
@@ -73,16 +71,14 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/review",
     label: "Review",
-    icon: ({ color }) => (
-      <MessageSquareText size={ICON_SIZE} strokeWidth={ICON_STROKE} color={color} aria-hidden />
+    icon: () => (
+      <MessageSquareHeart className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />
     ),
   },
   {
     href: "/install",
     label: "Install",
-    icon: ({ color }) => (
-      <ArrowDownToLine size={ICON_SIZE} strokeWidth={ICON_STROKE} color={color} aria-hidden />
-    ),
+    icon: () => <Download className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />,
   },
 ];
 
@@ -95,12 +91,16 @@ export default function GuestBottomNav() {
   return (
     <nav
       aria-label="Guest navigation"
-      className="flex shrink-0 border-t border-neutral-200 bg-white"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="grid shrink-0 grid-cols-5 backdrop-blur"
+      style={{
+        background: "rgba(255,255,255,0.95)",
+        borderTop: `1px solid ${BORDER}`,
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
     >
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href;
-        const color = active ? "var(--brand-primary)" : INACTIVE;
+        const color = active ? "var(--brand-primary)" : MUTED;
         const target = withGuestQuery(href, qs);
         const badgeCount = href === "/saved" ? savedCount : 0;
         return (
@@ -108,28 +108,22 @@ export default function GuestBottomNav() {
             key={href}
             href={target}
             aria-current={active ? "page" : undefined}
-            className="flex flex-1 flex-col items-center justify-center gap-1 pb-2 pt-2.5"
-            style={{ color, WebkitTapHighlightColor: "transparent", position: "relative" }}
+            className="flex flex-col items-center gap-1 px-1 pb-2 pt-2.5 transition-colors"
+            style={{ color, WebkitTapHighlightColor: "transparent" }}
           >
-            <span style={{ position: "relative", display: "inline-flex" }}>
-              <Icon color={color} active={active} />
+            <span
+              className="relative grid h-8 w-12 place-items-center rounded-full transition-colors"
+              style={{ background: active ? BRAND_SOFT : "transparent" }}
+            >
+              <Icon active={active} />
               {badgeCount > 0 ? (
                 <span
                   aria-hidden="true"
+                  className="absolute -top-0.5 right-1.5 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[0.625rem] font-semibold"
                   style={{
-                    position: "absolute",
-                    top: -4,
-                    right: -8,
-                    minWidth: 15,
-                    height: 15,
-                    padding: "0 3px",
-                    borderRadius: 9999,
                     background: "var(--brand-primary)",
                     color: "#FFFFFF",
-                    fontSize: 9,
-                    fontWeight: 700,
-                    lineHeight: "15px",
-                    textAlign: "center",
+                    fontFamily: bodyFontFamily,
                   }}
                 >
                   {badgeCount > 99 ? "99+" : badgeCount}
@@ -137,13 +131,8 @@ export default function GuestBottomNav() {
               ) : null}
             </span>
             <span
-              style={{
-                fontFamily: bodyFontFamily,
-                fontSize: 11,
-                fontWeight: active ? 600 : 500,
-                letterSpacing: "0.01em",
-                lineHeight: 1,
-              }}
+              className="text-[0.6875rem] font-medium"
+              style={{ fontFamily: bodyFontFamily, lineHeight: 1 }}
             >
               {label}
               {badgeCount > 0 ? (

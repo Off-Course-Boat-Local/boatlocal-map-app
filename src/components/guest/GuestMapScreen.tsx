@@ -71,7 +71,13 @@ import type { MapPin } from "@/lib/data";
 import { displayFontFamily } from "@/lib/fonts";
 import type { Brand, CategoryId } from "@/lib/types";
 
-const MUTED_TEXT = "#6B7280";
+/* Neutral chrome — never re-skins (brand colour only via --brand-primary). */
+const INK = "#0B1421";
+const MUTED_TEXT = "#657386";
+
+/* Downward card shadow for the floating header/chips over the map. */
+const CARD_SHADOW =
+  "0 1px 2px oklch(0.19 0.03 258 / 6%), 0 12px 28px -18px oklch(0.19 0.03 258 / 22%)";
 
 /**
  * Amsterdam's one topology trap. Everything north of the IJ is ferry-only —
@@ -155,110 +161,134 @@ export default function GuestMapScreen({
   }, [selected, guest, crossesTheIJ]);
 
   return (
-    <div className="relative flex h-full w-full flex-col">
-      {/* Header */}
-      <header
-        className="shrink-0 px-4 pb-3 text-white"
+    <div className="relative h-full w-full">
+      {/* The map fills the screen edge-to-edge; the header and filters float
+          over its top (the reference design's layout language) instead of
+          claiming their own rows above it. */}
+      {/* Phone width is ~375px, so the shared desktop zoom is far too
+          close — the canal fan is the whole visual identity and it has
+          to be legible in the first frame. */}
+      <BaseMap
+        center={AMSTERDAM_CENTER}
+        zoom={12.7}
+        className="absolute inset-0"
+        onMapReady={setMap}
+      >
+        <MapPins
+          pins={pins}
+          selectedId={selectedId}
+          onSelect={(id) => {
+            // The booking picker and the PlaceCard occupy the same corner
+            // of the screen — selecting a pin always wins so they can
+            // never render stacked on top of each other.
+            setShowBookingPicker(false);
+            setSelectedId(id);
+          }}
+        />
+        <GuestDot position={guest} />
+      </BaseMap>
+
+      <DirectionLine
+        map={map}
+        from={guest}
+        to={selected && !selected.isBoat ? selected : null}
+        color={brand.primary}
+      />
+
+      {/* Floating chrome over the map top: header pill, filter row, and the
+          contextual one-liners (location retry, boats trip details). The
+          wrapper is pointer-events-none so the map stays draggable around
+          the floating pieces. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-10"
         // See GuestListScreen's header comment — safe-area top for
         // standalone/notched phones, env() is 0 in a browser tab.
-        style={{
-          background: "var(--brand-primary)",
-          paddingTop: "calc(env(safe-area-inset-top) + 16px)",
-        }}
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
       >
-        <h1 className="text-2xl leading-none" style={{ fontFamily: displayFontFamily }}>
-          {brand.appName}
-        </h1>
-        <p className="mt-1 text-xs opacity-80">
-          {allPins.length} recommendations from {guideName}
-        </p>
-      </header>
-
-      {/* Location — denied/unavailable get one quiet line with a retry; granted
-          and loading say nothing extra here, the distance strip on the card
-          already carries that signal once a place is selected. */}
-      {(location.status === "denied" || location.status === "unavailable") && (
-        <div className="shrink-0 border-b border-neutral-200 bg-neutral-50 px-4 py-1.5 text-[11px] text-neutral-600">
-          {location.status === "denied"
-            ? "Location is off — distances are hidden."
-            : "Can't get your location right now."}
-          <button
-            type="button"
-            onClick={request}
-            className="ml-2 underline"
-            style={{ color: "var(--brand-primary)" }}
+        {/* Header pill */}
+        <div className="flex px-4">
+          <div
+            className="pointer-events-auto rounded-full bg-white/95 px-5 py-2 backdrop-blur"
+            style={{ boxShadow: CARD_SHADOW }}
           >
-            Try again
-          </button>
+            <h1
+              className="text-[15px] font-semibold leading-5"
+              style={{ fontFamily: displayFontFamily, color: INK }}
+            >
+              {brand.appName}
+            </h1>
+            <p className="text-[11px] leading-4" style={{ color: MUTED_TEXT }}>
+              {allPins.length} recommendations from {guideName}
+            </p>
+          </div>
         </div>
-      )}
 
-      {/* Filters */}
-      <div className="shrink-0 border-b border-neutral-200 bg-white py-2.5">
-        <FilterPills value={filter} onChange={handleFilterChange} />
-      </div>
-
-      {/* Boats booking details summary — only while the Boats filter is
-          active, so it never competes with the rest of the map for room. */}
-      {filter === "boats" && (
-        <div
-          className="flex shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 py-2"
-          style={{ fontSize: 12 }}
-        >
-          <span style={{ color: MUTED_TEXT }}>
-            {bookingSelection.date
-              ? `${formatBookingDateLabel(bookingSelection.date)} · ${bookingSelection.guests} guest${
-                  bookingSelection.guests === 1 ? "" : "s"
-                }`
-              : "No trip details set for booking yet"}
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowBookingPicker(true)}
-            style={{ color: "var(--brand-primary)", fontWeight: 600 }}
-          >
-            {bookingSelection.date ? "Edit" : "Add details"}
-          </button>
-        </div>
-      )}
-
-      {/* Map */}
-      <div className="relative min-h-0 flex-1">
-        {/* Phone width is ~375px, so the shared desktop zoom is far too
-            close — the canal fan is the whole visual identity and it has
-            to be legible in the first frame. */}
-        <BaseMap
-          center={AMSTERDAM_CENTER}
-          zoom={12.7}
-          className="absolute inset-0"
-          onMapReady={setMap}
-        >
-          <MapPins
-            pins={pins}
-            selectedId={selectedId}
-            onSelect={(id) => {
-              // The booking picker and the PlaceCard occupy the same corner
-              // of the screen — selecting a pin always wins so they can
-              // never render stacked on top of each other.
-              setShowBookingPicker(false);
-              setSelectedId(id);
-            }}
-          />
-          <GuestDot position={guest} />
-        </BaseMap>
-
-        <DirectionLine
-          map={map}
-          from={guest}
-          to={selected && !selected.isBoat ? selected : null}
-          color={brand.primary}
+        {/* Filters */}
+        <FilterPills
+          className="pointer-events-auto"
+          value={filter}
+          onChange={handleFilterChange}
+          style={{ padding: "8px 16px 0" }}
         />
 
+        {/* Location — denied/unavailable get one quiet line with a retry;
+            granted and loading say nothing extra here, the distance strip on
+            the card already carries that signal once a place is selected. */}
+        {(location.status === "denied" || location.status === "unavailable") && (
+          <div className="mt-2 flex px-4">
+            <div
+              className="pointer-events-auto rounded-full bg-white/95 px-3.5 py-1.5 text-[11px] backdrop-blur"
+              style={{ boxShadow: CARD_SHADOW, color: MUTED_TEXT }}
+            >
+              {location.status === "denied"
+                ? "Location is off — distances are hidden."
+                : "Can't get your location right now."}
+              <button
+                type="button"
+                onClick={request}
+                className="ml-2 font-semibold underline"
+                style={{ color: "var(--brand-primary)" }}
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Boats booking details summary — only while the Boats filter is
+            active, so it never competes with the rest of the map for room. */}
+        {filter === "boats" && (
+          <div className="mt-2 flex px-4">
+            <div
+              className="pointer-events-auto flex items-center gap-3 rounded-full bg-white/95 px-3.5 py-1.5 backdrop-blur"
+              style={{ boxShadow: CARD_SHADOW, fontSize: 12 }}
+            >
+              <span style={{ color: MUTED_TEXT }}>
+                {bookingSelection.date
+                  ? `${formatBookingDateLabel(bookingSelection.date)} · ${bookingSelection.guests} guest${
+                      bookingSelection.guests === 1 ? "" : "s"
+                    }`
+                  : "No trip details set for booking yet"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowBookingPicker(true)}
+                style={{ color: "var(--brand-primary)", fontWeight: 600 }}
+              >
+                {bookingSelection.date ? "Edit" : "Add details"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom stack */}
+      <div className="absolute inset-x-0 bottom-0">
         {/* The distance strip and the card are one stack, so the strip
             can never end up behind a card whose height depends on how
             long the guide's note is. */}
         {selected ? (
-          <div className="absolute inset-x-3 bottom-4 z-10 space-y-2">
+          <div className="absolute inset-x-4 bottom-4 z-10 space-y-2">
             <div className="pointer-events-none flex justify-center">
               <div className="rounded-full bg-white/95 px-3.5 py-1.5 shadow-sm backdrop-blur">
                 {walkLine ? (
