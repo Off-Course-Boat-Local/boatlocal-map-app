@@ -4,22 +4,26 @@
 // supported convention in this Next.js version (there is no per-route-group
 // manifest file).
 //
-// DYNAMIC BY DESIGN, WITH A KNOWN GAP: this reads the same
-// x-guest-brand-id header src/proxy.ts attaches to every guest request (see
+// DYNAMIC BY DESIGN: this reads the same x-guest-brand-id header
+// src/proxy.ts attaches to every guest request (see
 // src/lib/guestServerContext.ts), via next/headers's `headers()` — a
 // request-time API, which is what keeps this manifest per-request instead of
 // built once and cached forever (see the "Good to know" note in the docs
 // above).
 //
-// The gap: the browser's manifest fetch does not carry the guest page's own
-// `?company=`/`?guide=` query string (src/lib/guestBrand.ts's real,
-// permanent routing mechanism — see its header comment), so this always
-// resolves to DEFAULT_BRAND rather than whichever company's link the guest
-// actually opened. That's an inherent limitation of manifest fetches, not a
-// bug here, and — since there is no real subdomain routing coming to grow
-// into instead (the founder's decision: companies never get one) — there is
-// no future fix that makes this per-tenant short of Next.js someday passing
-// query params to a manifest fetch.
+// FIXED REGRESSION (2026-08-24): a browser's manifest fetch never carries
+// the ORIGINAL PAGE's `?company=`/`?guide=` query string on its own — that
+// part is a real, permanent limitation. This used to mean every guest,
+// regardless of which company/guide link they'd actually opened, installed
+// a PWA hardcoded to DEFAULT_BRAND ("Jan's Amsterdam") — a real bug for
+// every white-label client, not just the demo. The actual fix lives one
+// level up: src/app/(guest)/layout.tsx's generateMetadata() points the
+// `<link rel="manifest">` itself at
+// `/manifest.webmanifest?company=…&guide=…`, carrying the real tenant on
+// the MANIFEST request's own query string — which src/proxy.ts's matcher
+// already covers, so x-guest-brand-id below resolves correctly. This file
+// keeps reading the header (not the query string directly) so it stays
+// correct even if something other than that layout ever links to it.
 //
 // ICONS: no real per-company icon exists yet — CompanyRecord.logoUrl
 // (src/lib/data/types.ts) is the eventual, guide-uploaded source (same idea

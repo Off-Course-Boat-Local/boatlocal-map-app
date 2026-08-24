@@ -13,8 +13,23 @@
 //     as-is, not rebuilt).
 //   - the bottom nav (src/components/guest/GuestBottomNav.tsx), shown under
 //     every guest page's content.
+//   - a per-tenant `<link rel="manifest">` href (see generateMetadata below)
+//     — REGRESSION FIX, 2026-08-24: every guest, regardless of which
+//     company/guide link they actually opened, was installing a PWA named
+//     "Jan's Amsterdam". src/app/manifest.ts's own header comment used to
+//     call this an unfixable "inherent limitation" — the browser's manifest
+//     fetch doesn't carry the PAGE's query string, so it always fell back to
+//     DEFAULT_BRAND (the "coastal" demo brand, appName "Jan's Amsterdam").
+//     That reasoning missed that the *link itself* can carry query params:
+//     Next's per-route generateMetadata can point `manifest` at
+//     `/manifest.webmanifest?company=…&guide=…`, and src/proxy.ts's matcher
+//     already covers that path, so the exact same resolveGuestBrand()
+//     algorithm resolves the real tenant for the manifest fetch too. This
+//     affects every real white-label client's home-screen install, not just
+//     the demo — see manifest.ts for the other half of this fix.
 
 import { Suspense, type CSSProperties, type ReactNode } from "react";
+import type { Metadata } from "next";
 
 import PhoneFrame from "@/components/PhoneFrame";
 import ShareQr from "@/components/ShareQr";
@@ -27,6 +42,12 @@ import { getGuestContext } from "@/lib/guestServerContext";
 import { isPreviewRequest } from "@/lib/guestPreview";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { brandId, guideSlug } = await getGuestContext();
+  const params = new URLSearchParams({ company: brandId, guide: guideSlug });
+  return { manifest: `/manifest.webmanifest?${params.toString()}` };
+}
 
 export default async function GuestLayout({
   children,
