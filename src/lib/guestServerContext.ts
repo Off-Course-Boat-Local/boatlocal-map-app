@@ -57,7 +57,11 @@ const NEUTRAL_FALLBACK_BRAND: Brand = {
   primary: PORTAL_ACCENT,
   primaryDark: "#14449E",
   accent: "#FF7A45",
-  surround: "#F4F4F5",
+  // The founder-preferred warm beige — the same tone the Admin/Studio
+  // dashboards sit on, and the default the phone-frame surround falls back
+  // to (PhoneFrame's `var(--brand-surround, #E8E6DF)`). Explicitly requested
+  // over a cool gray/blue-white here.
+  surround: "#E8E6DF",
 };
 
 export interface GuestContext {
