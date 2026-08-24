@@ -9,11 +9,9 @@
 import { useActionState, useEffect, useRef } from "react";
 
 import { inviteGuideAction, type InviteGuideActionState } from "@/lib/studio/guideActions";
+import { CARD_SHADOW, PrimaryButton, inputClass } from "./primitives";
 
 const initialState: InviteGuideActionState = {};
-
-const inputClass =
-  "mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500";
 
 export default function InviteGuideForm() {
   const [state, formAction, pending] = useActionState(inviteGuideAction, initialState);
@@ -27,14 +25,18 @@ export default function InviteGuideForm() {
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className="rounded-xl border border-neutral-200 bg-white p-4">
-      <p className="mb-3 text-sm font-medium text-neutral-900">Invite a guide</p>
+    <form
+      ref={formRef}
+      action={formAction}
+      className={`rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}
+    >
+      <p className="mb-3 text-sm font-semibold text-[var(--studio-ink)]">Invite a guide</p>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="min-w-[160px] flex-1 text-sm font-medium text-neutral-700">
+        <label className="min-w-[160px] flex-1 text-sm font-medium text-[var(--studio-ink)]">
           Name
           <input name="name" required placeholder="Maria" className={inputClass} />
         </label>
-        <label className="min-w-[200px] flex-1 text-sm font-medium text-neutral-700">
+        <label className="min-w-[200px] flex-1 text-sm font-medium text-[var(--studio-ink)]">
           Email
           <input
             name="email"
@@ -44,13 +46,9 @@ export default function InviteGuideForm() {
             className={inputClass}
           />
         </label>
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-        >
+        <PrimaryButton type="submit" disabled={pending}>
           {pending ? "Inviting…" : "Invite guide"}
-        </button>
+        </PrimaryButton>
       </div>
 
       {state.error ? (
@@ -59,7 +57,7 @@ export default function InviteGuideForm() {
         </p>
       ) : null}
       {state.success ? (
-        <p className="mt-3 text-sm text-green-700">
+        <p className="mt-3 text-sm font-medium text-emerald-700">
           Invite created — find their link under &ldquo;Invite link&rdquo; in the list below.
         </p>
       ) : null}

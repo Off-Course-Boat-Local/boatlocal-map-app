@@ -16,6 +16,7 @@ import { getGuidesForCompany, getPlatformDefaultCompany, listCompanies } from "@
 import type { GuideStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
 import CompanyRowActions from "@/components/admin/CompanyRowActions";
+import { SectionHeading } from "@/components/admin/primitives";
 import StatCard from "@/components/admin/StatCard";
 import StatusBadge from "@/components/admin/StatusBadge";
 
@@ -69,10 +70,10 @@ export default async function AdminCompanyDetailPage({
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold">{company.name}</h1>
+              <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight">{company.name}</h1>
               <StatusBadge status={STATUS_LABEL[company.status]} tone={STATUS_TONE[company.status]} />
             </div>
-            <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
+            <p className="mt-1.5 text-sm text-[var(--admin-ink-soft)]">
               <span className="font-mono">{company.id}</span>
               {company.companyType ? ` · ${company.companyType}` : ""}
             </p>
@@ -88,7 +89,7 @@ export default async function AdminCompanyDetailPage({
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold text-[var(--admin-ink)]">Owner</h2>
+        <SectionHeading title="Owner" />
         {company.ownerEmail ? (
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <span className="text-sm text-[var(--admin-ink)]">{company.ownerEmail}</span>
@@ -105,10 +106,11 @@ export default async function AdminCompanyDetailPage({
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-[var(--admin-ink)]">
-          Performance <span className="text-sm font-normal text-[var(--admin-ink-soft)]">— last 30 days</span>
-        </h2>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <SectionHeading
+          title="Performance"
+          description="Last 30 days."
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="App opens" value={performance.appOpens} />
           <StatCard label="Tips saved" value={performance.tipsSaved} />
           <StatCard label="Book clicks" value={performance.bookClicks} />
@@ -116,14 +118,11 @@ export default async function AdminCompanyDetailPage({
       </section>
 
       <section>
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold text-[var(--admin-ink)]">Guides</h2>
-          <span className="text-sm text-[var(--admin-ink-soft)]">
-            {guides.length} guide{guides.length === 1 ? "" : "s"}
-          </span>
-        </div>
+        <SectionHeading
+          title="Guides"
+          description={`${guides.length} guide${guides.length === 1 ? "" : "s"}`}
+        />
         <AdminTable
-          className="mt-3"
           columns={["Name", "Email", "Slug", "Status"]}
           rows={guides.map((guide) => [
             guide.name,

@@ -31,7 +31,7 @@ export default async function AdminLoginPage({
     <div className="admin-root flex min-h-dvh items-center justify-center bg-[var(--admin-bg)] px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex justify-center text-[var(--admin-ink)]">
-          <MapAppMark iconSize={26} className="text-lg" />
+          <MapAppMark iconSize={28} className="font-display text-lg" />
         </div>
 
         <AdminLoginForm initialError={errorMessage} />

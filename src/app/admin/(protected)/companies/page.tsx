@@ -17,6 +17,7 @@ import type { CompanyStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
 import CompanyRowActions from "@/components/admin/CompanyRowActions";
 import CreateCompanyButton from "@/components/admin/CreateCompanyButton";
+import { PageHeader } from "@/components/admin/primitives";
 import StatusBadge from "@/components/admin/StatusBadge";
 
 // One width per column (see AdminTable's own doc comment) — without these
@@ -130,22 +131,14 @@ export default async function AdminCompaniesPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Companies</h1>
-          <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-            {companies.length} tenant{companies.length === 1 ? "" : "s"} on the platform.
-          </p>
-          <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
-            App opens, tips saved and book clicks are live counts from <code>events</code>, over
-            the last 30 days.
-          </p>
-        </div>
-        <CreateCompanyButton />
-      </div>
+      <PageHeader
+        title="Companies"
+        description={`${companies.length} tenant${companies.length === 1 ? "" : "s"} on the platform.`}
+        hint="App opens, tips saved and book clicks are live counts from events, over the last 30 days."
+        action={<CreateCompanyButton />}
+      />
 
       <AdminTable
-        className="mt-6"
         columns={[
           "Company",
           "ID",

@@ -27,6 +27,7 @@
 // this component needs as plain props.
 
 import { useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 
 import PortalModal from "@/components/PortalModal";
 import PortalSelect from "@/components/PortalSelect";
@@ -38,6 +39,7 @@ import {
   deleteRecommendationAction,
   setRecommendationVisibilityAction,
 } from "@/lib/studio/recommendationActions";
+import { PageHeader, PrimaryButton, TableShell } from "./primitives";
 import RecommendationForm, { type RecommendationFormProps } from "./RecommendationForm";
 
 export interface RecommendationsManagerProps {
@@ -160,23 +162,20 @@ export default function RecommendationsManager({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Recommendations</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {role === "guide"
-              ? "Your own picks, plus your company's — theirs are read-only."
-              : "The places your guests see. Anything you add here goes out under your company."}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setEditing({ mode: "new" })}
-          className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
-        >
-          Add place
-        </button>
-      </div>
+      <PageHeader
+        title="Recommendations"
+        description={
+          role === "guide"
+            ? "Your own picks, plus your company's — theirs are read-only."
+            : "The places your guests see. Anything you add here goes out under your company."
+        }
+        action={
+          <PrimaryButton onClick={() => setEditing({ mode: "new" })}>
+            <Plus className="size-4" strokeWidth={2} />
+            Add place
+          </PrimaryButton>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         {showOwnerFilter ? (
@@ -189,7 +188,7 @@ export default function RecommendationsManager({
             />
           </div>
         ) : null}
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-[var(--studio-ink-soft)]">
           {showOwnerFilter
             ? `Showing ${visibleRows.length} of ${recommendations.length}`
             : `${recommendations.length} ${recommendations.length === 1 ? "place" : "places"}`}
@@ -208,92 +207,90 @@ export default function RecommendationsManager({
         </p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-            <tr>
-              <th className="px-4 py-2 font-medium">Name</th>
-              <th className="px-4 py-2 font-medium">Category</th>
-              <th className="px-4 py-2 font-medium">Area</th>
-              <th className="px-4 py-2 font-medium">Photos</th>
-              <th className="px-4 py-2 font-medium">Live</th>
-              <th className="px-4 py-2 font-medium">Actions</th>
+      <TableShell
+        className="min-w-0"
+        head={
+          <>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Area</th>
+            <th>Photos</th>
+            <th>Live</th>
+            <th className="text-right">Actions</th>
+          </>
+        }
+      >
+        {visibleRows.map((rec) => {
+          const editable = canEdit(rec);
+          const live = isVisible(rec);
+          return (
+            <tr key={rec.id}>
+              <td className="font-medium text-[var(--studio-ink)]">
+                {rec.name}
+                {/* Stands in for the Owner column this table used to
+                    have. A guide's own rows need no label (obviously
+                    theirs); their company's base-list rows get this one
+                    badge, which already answers "can I edit this" —
+                    exactly what the removed column's badge did. */}
+                {!editable ? (
+                  <span className="ml-2 rounded bg-[var(--studio-bg)] px-1.5 py-0.5 text-[10px] text-[var(--studio-ink-soft)] uppercase">
+                    read-only
+                  </span>
+                ) : null}
+              </td>
+              <td className="text-[var(--studio-ink-soft)]">
+                {CATEGORY_MAP[rec.category]?.label ?? rec.category}
+              </td>
+              <td className="text-[var(--studio-ink-soft)]">{rec.area}</td>
+              <td className="text-[var(--studio-ink-soft)] tabular-nums">{rec.photos.length}</td>
+              <td>
+                {editable ? (
+                  <PortalToggle
+                    size="sm"
+                    checked={live}
+                    onChange={(next) => handleToggleVisible(rec, next)}
+                    ariaLabel={`${live ? "Hide" : "Show"} ${rec.name} on the guest map`}
+                  />
+                ) : (
+                  <span className="text-xs text-[var(--studio-ink-soft)]">{live ? "Yes" : "No"}</span>
+                )}
+              </td>
+              <td className="text-right">
+                {editable ? (
+                  <div className="flex justify-end gap-4 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setEditing({ mode: "edit", recommendation: rec })}
+                      className="text-[var(--studio-accent)] hover:opacity-80"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(rec)}
+                      disabled={deletingId === rec.id}
+                      className="text-red-600 hover:opacity-80 disabled:opacity-50"
+                    >
+                      {deletingId === rec.id ? "Deleting…" : "Delete"}
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-xs text-[var(--studio-ink-soft)]">—</span>
+                )}
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {visibleRows.map((rec) => {
-              const editable = canEdit(rec);
-              const live = isVisible(rec);
-              return (
-                <tr key={rec.id} className="border-b border-neutral-100 last:border-0">
-                  <td className="px-4 py-2 text-neutral-900">
-                    {rec.name}
-                    {/* Stands in for the Owner column this table used to
-                        have. A guide's own rows need no label (obviously
-                        theirs); their company's base-list rows get this one
-                        badge, which already answers "can I edit this" —
-                        exactly what the removed column's badge did. */}
-                    {!editable ? (
-                      <span className="ml-2 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase text-neutral-500">
-                        read-only
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-2 text-neutral-600">
-                    {CATEGORY_MAP[rec.category]?.label ?? rec.category}
-                  </td>
-                  <td className="px-4 py-2 text-neutral-600">{rec.area}</td>
-                  <td className="px-4 py-2 text-neutral-600">{rec.photos.length}</td>
-                  <td className="px-4 py-2">
-                    {editable ? (
-                      <PortalToggle
-                        size="sm"
-                        checked={live}
-                        onChange={(next) => handleToggleVisible(rec, next)}
-                        ariaLabel={`${live ? "Hide" : "Show"} ${rec.name} on the guest map`}
-                      />
-                    ) : (
-                      <span className="text-xs text-neutral-400">{live ? "Yes" : "No"}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2">
-                    {editable ? (
-                      <div className="flex gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setEditing({ mode: "edit", recommendation: rec })}
-                          className="text-xs font-medium text-neutral-700 underline underline-offset-2"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(rec)}
-                          disabled={deletingId === rec.id}
-                          className="text-xs font-medium text-red-600 underline underline-offset-2 disabled:opacity-50"
-                        >
-                          {deletingId === rec.id ? "Deleting…" : "Delete"}
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-neutral-400">—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {visibleRows.length === 0 ? (
-              <tr>
-                <td className="px-4 py-3 text-neutral-500" colSpan={6}>
-                  {recommendations.length === 0
-                    ? "No places yet — add your first one to put it on the guest map."
-                    : "Nothing matches this filter."}
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+          );
+        })}
+        {visibleRows.length === 0 ? (
+          <tr>
+            <td className="text-[var(--studio-ink-soft)]" colSpan={6}>
+              {recommendations.length === 0
+                ? "No places yet — add your first one to put it on the guest map."
+                : "Nothing matches this filter."}
+            </td>
+          </tr>
+        ) : null}
+      </TableShell>
 
       {/* The dialog markup that used to be inline here is now
           src/components/PortalModal.tsx — one shared dialog for both

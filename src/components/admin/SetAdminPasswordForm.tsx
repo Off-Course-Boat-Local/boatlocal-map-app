@@ -8,6 +8,7 @@
 import { useActionState } from "react";
 
 import { setAdminPasswordAction, type SetAdminPasswordState } from "@/app/admin/set-password/actions";
+import { FIELD_CLASS, FIELD_LABEL_CLASS, PRIMARY_BUTTON_CLASS } from "@/components/admin/primitives";
 
 const initialState: SetAdminPasswordState = {};
 
@@ -15,11 +16,11 @@ export default function SetAdminPasswordForm({ email }: { email: string }) {
   const [state, formAction, pending] = useActionState(setAdminPasswordAction, initialState);
 
   return (
-    <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.18)]">
-      <p className="text-xs font-semibold tracking-wide text-[var(--admin-ink-soft)] uppercase">
+    <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-8 shadow-[var(--admin-shadow-card)]">
+      <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-[var(--admin-ink-soft)] uppercase">
         Admin
       </p>
-      <h1 className="mt-1 text-xl font-semibold text-[var(--admin-ink)]">Set your password</h1>
+      <h1 className="mt-1.5 text-xl font-semibold tracking-tight text-[var(--admin-ink)]">Set your password</h1>
       <p className="mt-2 text-sm text-[var(--admin-ink-soft)]">
         Signing in as <span className="font-medium text-[var(--admin-ink)]">{email}</span>. Choose
         a password so you can sign in without a link next time.
@@ -27,7 +28,7 @@ export default function SetAdminPasswordForm({ email }: { email: string }) {
 
       <form action={formAction} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-[var(--admin-ink)]">
+          <label htmlFor="password" className={FIELD_LABEL_CLASS}>
             New password
           </label>
           <input
@@ -39,15 +40,12 @@ export default function SetAdminPasswordForm({ email }: { email: string }) {
             minLength={8}
             autoComplete="new-password"
             placeholder="At least 8 characters"
-            className="mt-1 w-full rounded-md border border-[var(--admin-border)] bg-transparent px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--admin-accent)]"
+            className={`mt-1.5 ${FIELD_CLASS}`}
           />
         </div>
 
         <div>
-          <label
-            htmlFor="confirmPassword"
-            className="block text-sm font-medium text-[var(--admin-ink)]"
-          >
+          <label htmlFor="confirmPassword" className={FIELD_LABEL_CLASS}>
             Confirm password
           </label>
           <input
@@ -57,7 +55,7 @@ export default function SetAdminPasswordForm({ email }: { email: string }) {
             required
             minLength={8}
             autoComplete="new-password"
-            className="mt-1 w-full rounded-md border border-[var(--admin-border)] bg-transparent px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--admin-accent)]"
+            className={`mt-1.5 ${FIELD_CLASS}`}
           />
         </div>
 
@@ -67,11 +65,7 @@ export default function SetAdminPasswordForm({ email }: { email: string }) {
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full rounded-md bg-[var(--admin-accent-strong)] px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending} className={`w-full ${PRIMARY_BUTTON_CLASS}`}>
           {pending ? "Saving…" : "Set password"}
         </button>
       </form>

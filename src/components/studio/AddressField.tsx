@@ -27,10 +27,7 @@ import type { Marker as MapLibreMarker } from "maplibre-gl";
 import BaseMap, { useMapInstance } from "@/components/map/BaseMap";
 import { PORTAL_ACCENT } from "@/components/MapAppMark";
 import type { GeocodeResult } from "@/lib/studio/geocode";
-
-const inputClass =
-  "mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500";
-const labelClass = "block text-sm font-medium text-neutral-700";
+import { inputClass, labelClass } from "./primitives";
 
 /** Amsterdam — the map's home city, used to bias lookups and centre an empty map. */
 const DEFAULT_CENTRE = { lng: 4.8952, lat: 52.3702 };
@@ -254,10 +251,10 @@ export default function AddressField({
         {open && (searching || visibleResults.length > 0) ? (
           <ul
             role="listbox"
-            className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg"
+            className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] py-1 shadow-lg"
           >
             {searching && visibleResults.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-neutral-500">Searching…</li>
+              <li className="px-3 py-2 text-sm text-[var(--studio-ink-soft)]">Searching…</li>
             ) : null}
             {visibleResults.map((r) => (
               <li key={r.id}>
@@ -266,13 +263,13 @@ export default function AddressField({
                   role="option"
                   aria-selected={false}
                   onClick={() => pick(r)}
-                  className="block w-full px-3 py-2 text-left hover:bg-neutral-50"
+                  className="block w-full px-3 py-2 text-left hover:bg-[var(--studio-bg)]"
                 >
-                  <span className="block truncate text-sm font-medium text-neutral-900">
+                  <span className="block truncate text-sm font-medium text-[var(--studio-ink)]">
                     {r.label}
                   </span>
                   {r.context ? (
-                    <span className="block truncate text-xs text-neutral-500">{r.context}</span>
+                    <span className="block truncate text-xs text-[var(--studio-ink-soft)]">{r.context}</span>
                   ) : null}
                 </button>
               </li>
@@ -284,21 +281,21 @@ export default function AddressField({
       {error ? <p className="text-xs text-amber-700">{error}</p> : null}
 
       {coords ? (
-        <div className="overflow-hidden rounded-lg border border-neutral-200">
+        <div className="overflow-hidden rounded-xl border border-[var(--studio-border)]">
           <BaseMap center={centre} zoom={16} className="h-56 w-full" minZoom={3} maxZoom={19}>
             <DraggablePin lng={coords.lng} lat={coords.lat} onMove={handlePinMove} />
           </BaseMap>
-          <div className="flex items-center justify-between gap-3 border-t border-neutral-200 bg-neutral-50 px-3 py-2">
-            <p className="text-xs text-neutral-600">
+          <div className="flex items-center justify-between gap-3 border-t border-[var(--studio-border)] bg-[var(--studio-bg)] px-3 py-2">
+            <p className="text-xs text-[var(--studio-ink-soft)]">
               Not quite right? Drag the pin — that&rsquo;s the exact spot guests get directions to.
             </p>
-            <span className="shrink-0 font-mono text-[11px] text-neutral-400">
+            <span className="shrink-0 font-mono text-[11px] text-[var(--studio-ink-soft)]">
               {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
             </span>
           </div>
         </div>
       ) : (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-[var(--studio-ink-soft)]">
           {touched
             ? "Pick a suggestion to drop the pin."
             : "Search above to drop a pin — no need to know coordinates."}

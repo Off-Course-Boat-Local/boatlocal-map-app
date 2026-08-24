@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
 import { listBoatTourCatalog } from "@/lib/data/source";
 import BoatToursManager from "@/components/admin/BoatToursManager";
+import { PageHeader } from "@/components/admin/primitives";
 
 export const metadata: Metadata = { title: "Boats" };
 
@@ -15,15 +16,12 @@ export default async function AdminBoatsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Boat tour catalog</h1>
-      <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-        Create, edit, reorder and hide tours here. Changes propagate instantly to every
-        company that features them.
-      </p>
+      <PageHeader
+        title="Boat tour catalog"
+        description="Create, edit, reorder and hide tours here. Changes propagate instantly to every company that features them."
+      />
 
-      <div className="mt-6">
-        <BoatToursManager initialTours={tours} />
-      </div>
+      <BoatToursManager initialTours={tours} />
     </div>
   );
 }

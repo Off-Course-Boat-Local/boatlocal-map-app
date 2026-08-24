@@ -11,6 +11,7 @@ import {
   listCompanies,
 } from "@/lib/data/source";
 import AdminTable from "@/components/admin/AdminTable";
+import { Eyebrow, Panel, PRIMARY_BUTTON_CLASS, SectionHeading } from "@/components/admin/primitives";
 import StatCard from "@/components/admin/StatCard";
 import PortalDatePicker from "@/components/PortalDatePicker";
 import PortalSelect from "@/components/PortalSelect";
@@ -96,63 +97,64 @@ export default async function AdminAnalyticsPage({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Platform analytics</h1>
-      <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
+      <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-[var(--admin-ink)]">
+        Platform analytics
+      </h1>
+      <p className="mt-1.5 text-sm text-[var(--admin-ink-soft)]">
         {totalEvents} event{totalEvents === 1 ? "" : "s"} recorded
         {selectedCompany ? ` for ${selectedCompany.name}` : " across every tenant"}
         {range ? " in the selected date range" : ""}.
       </p>
 
-      <div className="mt-6 rounded-lg border border-[var(--admin-accent)]/40 bg-[var(--admin-surface)] p-4">
-        <p className="text-sm font-semibold text-[var(--admin-ink)]">Why this page matters</p>
-        <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
+      <Panel className="mt-6 border-[var(--admin-nav-active-bg)] bg-[var(--admin-nav-active-bg)]/40">
+        <Eyebrow className="text-[var(--admin-accent)]">Why this page matters</Eyebrow>
+        <p className="mt-2 max-w-4xl text-sm leading-relaxed text-[var(--admin-ink)]">
           This is where the founder judges whether the whole product is working — not any single
           company&apos;s dashboard. If bookings and reviews aren&apos;t moving here, the platform
           isn&apos;t working yet, no matter how good one tenant looks.
         </p>
-      </div>
+      </Panel>
 
-      <form method="get" className="mt-6 flex flex-wrap items-end gap-4 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-        <div>
-          <label htmlFor="company" className="block text-xs font-medium text-[var(--admin-ink-soft)]">
-            Company
-          </label>
-          <PortalSelect
-            id="company"
-            name="company"
-            defaultValue={companyId ?? ""}
-            placeholder="All companies"
-            options={companies.map((company) => ({ value: company.id, label: company.name }))}
-            className="mt-1 w-48"
-          />
-        </div>
-        <div>
-          <label htmlFor="from" className="block text-xs font-medium text-[var(--admin-ink-soft)]">
-            From
-          </label>
-          <PortalDatePicker id="from" name="from" defaultValue={fromStr} className="mt-1" />
-        </div>
-        <div>
-          <label htmlFor="to" className="block text-xs font-medium text-[var(--admin-ink-soft)]">
-            To
-          </label>
-          <PortalDatePicker id="to" name="to" defaultValue={toStr} className="mt-1" />
-        </div>
-        <button
-          type="submit"
-          className="rounded-md bg-[var(--admin-accent-strong)] px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          Apply
-        </button>
-        {companyId || fromStr || toStr ? (
-          <a
-            href="/admin/analytics"
-            className="text-sm text-[var(--admin-ink-soft)] underline-offset-2 hover:underline"
-          >
-            Reset
-          </a>
-        ) : null}
-      </form>
+      <Panel className="mt-6">
+        <form method="get" className="flex flex-wrap items-end gap-4">
+          <div>
+            <label htmlFor="company" className="mb-1.5 block text-sm text-[var(--admin-ink-soft)]">
+              Company
+            </label>
+            <PortalSelect
+              id="company"
+              name="company"
+              defaultValue={companyId ?? ""}
+              placeholder="All companies"
+              options={companies.map((company) => ({ value: company.id, label: company.name }))}
+              className="w-48"
+            />
+          </div>
+          <div>
+            <label htmlFor="from" className="mb-1.5 block text-sm text-[var(--admin-ink-soft)]">
+              From
+            </label>
+            <PortalDatePicker id="from" name="from" defaultValue={fromStr} />
+          </div>
+          <div>
+            <label htmlFor="to" className="mb-1.5 block text-sm text-[var(--admin-ink-soft)]">
+              To
+            </label>
+            <PortalDatePicker id="to" name="to" defaultValue={toStr} />
+          </div>
+          <button type="submit" className={PRIMARY_BUTTON_CLASS}>
+            Apply
+          </button>
+          {companyId || fromStr || toStr ? (
+            <a
+              href="/admin/analytics"
+              className="text-sm text-[var(--admin-ink-soft)] underline-offset-2 hover:underline"
+            >
+              Reset
+            </a>
+          ) : null}
+        </form>
+      </Panel>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -169,42 +171,38 @@ export default async function AdminAnalyticsPage({
         />
       </div>
 
-      <section className="mt-6 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-        <h2 className="text-sm font-semibold text-[var(--admin-ink)]">
-          Effectiveness (PRD §2.3 supporting metrics)
-        </h2>
-        <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
-          Live counts aggregated from <code>events</code>, scoped to the filters above.
-        </p>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <Panel className="mt-6">
+        <SectionHeading
+          title="Effectiveness (PRD §2.3 supporting metrics)"
+          description="Live counts aggregated from events, scoped to the filters above."
+        />
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
           {effectiveness.map((metric) => (
             <div key={metric.key}>
-              <p className="text-xs font-medium tracking-wide text-[var(--admin-ink-soft)] uppercase">
-                {metric.label}
-              </p>
-              <p className="mt-1 text-xl font-semibold text-[var(--admin-ink)]">
+              <Eyebrow>{metric.label}</Eyebrow>
+              <p className="font-display mt-2 text-3xl leading-none font-semibold tracking-tight text-[var(--admin-ink)]">
                 {metric.value}
                 {metric.unit ?? ""}
               </p>
             </div>
           ))}
         </div>
-      </section>
+      </Panel>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-          <h2 className="text-sm font-semibold text-[var(--admin-ink)]">By event type</h2>
-          <div className="mt-4 space-y-3">
+        <Panel>
+          <SectionHeading title="By event type" />
+          <div className="space-y-4">
             {[...totalsByType.entries()].map(([type, count]) => (
               <div key={type}>
-                <div className="flex items-center justify-between text-xs text-[var(--admin-ink-soft)]">
-                  <span>{type}</span>
-                  <span>{count}</span>
+                <div className="flex items-baseline justify-between gap-4">
+                  <span className="font-mono text-xs text-[var(--admin-ink-soft)]">{type}</span>
+                  <span className="text-sm font-semibold tabular-nums text-[var(--admin-ink)]">{count}</span>
                 </div>
-                <div className="mt-1 h-1.5 rounded-full bg-[var(--admin-border)]">
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--admin-bg)]">
                   <div
-                    className="h-1.5 rounded-full bg-[var(--admin-accent)]"
-                    style={{ width: `${(count / maxTypeCount) * 100}%` }}
+                    className="h-full rounded-full bg-[var(--admin-accent)]"
+                    style={{ width: `${Math.max(2, (count / maxTypeCount) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -213,17 +211,20 @@ export default async function AdminAnalyticsPage({
               <p className="text-sm text-[var(--admin-ink-soft)]">No events recorded yet.</p>
             ) : null}
           </div>
-        </section>
+        </Panel>
 
-        <section className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-          <h2 className="text-sm font-semibold text-[var(--admin-ink)]">By company</h2>
+        <Panel padded={false} className="overflow-hidden">
+          <div className="p-5">
+            <SectionHeading title="By company" />
+          </div>
           <AdminTable
-            className="mt-4"
+            className="rounded-none border-0 shadow-none"
             columns={["Company", "Events"]}
+            columnWidths={[undefined, "text-right"]}
             rows={[...byCompany.values()].map((company) => [company.companyName, String(company.count)])}
             emptyMessage="No events recorded yet."
           />
-        </section>
+        </Panel>
       </div>
     </div>
   );

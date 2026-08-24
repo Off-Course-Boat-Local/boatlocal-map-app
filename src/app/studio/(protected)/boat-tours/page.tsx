@@ -5,6 +5,7 @@
 // that's Admin-only (PRD §8.2).
 
 import BoatToursManager from "@/components/studio/BoatToursManager";
+import { PageHeader } from "@/components/studio/primitives";
 import { getBoatCatalogForStudio } from "@/lib/data/source";
 import { actorFromSession, requireCompanyRole, requireDevSession } from "@/lib/studio/devAuth";
 
@@ -17,14 +18,10 @@ export default async function StudioBoatToursPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Boat tours</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Choose which of Boat Local&rsquo;s tours appear on your guide&rsquo;s
-          map, and in what order. Boats always show first on the guest map,
-          ahead of every other category.
-        </p>
-      </div>
+      <PageHeader
+        title="Boat tours"
+        description="Choose which of Boat Local's tours appear on your guide's map, and in what order. Boats always show first on the guest map, ahead of every other category."
+      />
 
       <BoatToursManager initialCatalog={catalog} />
     </div>

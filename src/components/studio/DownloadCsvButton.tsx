@@ -4,6 +4,10 @@
 // CSV string (src/lib/studio/csv.ts's toCsv) — no data-shaping happens here,
 // just handing the browser a file to save.
 
+import { Download } from "lucide-react";
+
+import { GhostButton } from "./primitives";
+
 export default function DownloadCsvButton({
   csv,
   filename,
@@ -24,12 +28,9 @@ export default function DownloadCsvButton({
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-    >
+    <GhostButton size="sm" onClick={handleClick}>
+      <Download className="size-4" strokeWidth={2} />
       Download CSV
-    </button>
+    </GhostButton>
   );
 }

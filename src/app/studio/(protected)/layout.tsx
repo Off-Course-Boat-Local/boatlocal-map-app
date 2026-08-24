@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import { bodyFontFamily } from "@/lib/fonts";
+import "../studio-theme.css";
+
 // Studio's authenticated shell: sidebar (role-gated nav) + page content,
 // plus the guest preview in whichever form the role gets — docked panel for
 // a company, sidebar-button slide-over for a guide (see
@@ -66,7 +69,10 @@ export default async function StudioLayout({ children }: { children: ReactNode }
 
   return (
     <StudioPreviewProvider initialBrand={brand} initialLogoUrl={company?.logoUrl ?? null}>
-      <div className="flex h-dvh w-full overflow-hidden bg-neutral-100 text-neutral-900">
+      <div
+        style={{ fontFamily: bodyFontFamily }}
+        className="studio-root flex h-dvh w-full overflow-hidden bg-[var(--studio-bg)] text-[var(--studio-ink)]"
+      >
         <StudioSidebar items={navItems} roleLabel={roleLabel} name={name} />
         <main className="min-w-0 flex-1 overflow-y-auto p-6 lg:p-10">{children}</main>
         {isGuide ? null : <StudioPreviewRail pins={pins} subtitle={subtitle} />}

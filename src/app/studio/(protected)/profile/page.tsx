@@ -10,6 +10,7 @@
 
 import CopyLinkButton from "@/components/studio/CopyLinkButton";
 import GuideProfileForm from "@/components/studio/GuideProfileForm";
+import { CARD_SHADOW, Eyebrow, PageHeader } from "@/components/studio/primitives";
 import ShareQr from "@/components/ShareQr";
 import { getCompanyForStudio, getGuidesForCompany } from "@/lib/data/source";
 import { actorFromSession, requireDevSession, requireGuideRole } from "@/lib/studio/devAuth";
@@ -43,12 +44,10 @@ export default async function StudioProfilePage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Profile</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Your photo and welcome message, and the link guests use to open your map.
-        </p>
-      </div>
+      <PageHeader
+        title="Profile"
+        description="Your photo and welcome message, and the link guests use to open your map."
+      />
 
       {guide ? (
         <GuideProfileForm
@@ -59,22 +58,18 @@ export default async function StudioProfilePage() {
       ) : null}
 
       {guideLink ? (
-        <div className="flex flex-wrap items-start gap-6 rounded-xl border border-neutral-200 bg-white p-4">
+        <div
+          className={`flex flex-wrap items-start gap-6 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}
+        >
           <ShareQr value={guideLink} size={140} downloadFileName={`${guide?.slug ?? "guide"}-qr`} />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-              Your link
-            </p>
-            <p className="mt-1 break-all font-mono text-sm text-neutral-900">{guideLink}</p>
-            <p className="mt-2 text-xs text-neutral-500">
+            <Eyebrow>Your link</Eyebrow>
+            <p className="mt-1 font-mono text-sm break-all text-[var(--studio-ink)]">{guideLink}</p>
+            <p className="mt-2 text-xs text-[var(--studio-ink-soft)]">
               Every guest who opens this is counted as yours — see the Dashboard
               for how it&rsquo;s performing.
             </p>
-            <CopyLinkButton
-              value={guideLink}
-              label="Copy link"
-              className="mt-3 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-            />
+            <CopyLinkButton value={guideLink} label="Copy link" className="mt-3" />
           </div>
         </div>
       ) : null}

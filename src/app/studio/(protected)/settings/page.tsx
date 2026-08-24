@@ -12,6 +12,7 @@
 import { getCompanyForStudio, getGuidesForCompany } from "@/lib/data/source";
 import { actorFromSession, requireDevSession, requireGuideRole } from "@/lib/studio/devAuth";
 import { logoutAction } from "@/lib/studio/actions";
+import { CARD_SHADOW, Eyebrow, GhostButton, PageHeader } from "@/components/studio/primitives";
 
 export const metadata = {
   title: "Settings — Map App Studio",
@@ -27,10 +28,10 @@ function Row({
   hint?: string;
 }) {
   return (
-    <div className="border-b border-neutral-100 px-4 py-3 last:border-0">
-      <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</p>
-      <p className="mt-1 text-sm text-neutral-900">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-neutral-500">{hint}</p> : null}
+    <div className="border-b border-[var(--studio-border)] px-5 py-3.5 last:border-0">
+      <Eyebrow>{label}</Eyebrow>
+      <p className="mt-1 text-sm text-[var(--studio-ink)]">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-[var(--studio-ink-soft)]">{hint}</p> : null}
     </div>
   );
 }
@@ -49,14 +50,12 @@ export default async function StudioSettingsPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Settings</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Your account. To change how you appear to guests, use Profile.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Your account. To change how you appear to guests, use Profile."
+      />
 
-      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+      <div className={`overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] ${CARD_SHADOW}`}>
         <Row
           label="Signed in as"
           value={session.email}
@@ -79,19 +78,16 @@ export default async function StudioSettingsPage() {
         />
       </div>
 
-      <div className="rounded-xl border border-neutral-200 bg-white p-4">
-        <p className="text-sm font-medium text-neutral-900">Sign out</p>
-        <p className="mt-1 text-xs text-neutral-500">
+      <div className={`rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}>
+        <p className="text-sm font-semibold text-[var(--studio-ink)]">Sign out</p>
+        <p className="mt-1 text-xs text-[var(--studio-ink-soft)]">
           Ends this session on this device. You can sign back in any time with a
           new link.
         </p>
         <form action={logoutAction} className="mt-3">
-          <button
-            type="submit"
-            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-          >
+          <GhostButton size="sm" type="submit">
             Sign out
-          </button>
+          </GhostButton>
         </form>
       </div>
     </div>

@@ -12,6 +12,7 @@ import { useActionState, useState, type ChangeEvent } from "react";
 
 import { updateGuideProfileAction, type UpdateGuideProfileActionState } from "@/lib/studio/guideActions";
 import { GUIDE_WELCOME_MAX_LENGTH } from "@/lib/studio/guideProfile";
+import { CARD_SHADOW, PrimaryButton } from "./primitives";
 
 const initialState: UpdateGuideProfileActionState = {};
 
@@ -43,11 +44,14 @@ export default function GuideProfileForm({
   };
 
   return (
-    <form action={formAction} className="space-y-4 rounded-xl border border-neutral-200 bg-white p-4">
-      <p className="text-sm font-medium text-neutral-900">Profile</p>
+    <form
+      action={formAction}
+      className={`space-y-4 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}
+    >
+      <p className="text-sm font-semibold text-[var(--studio-ink)]">Profile</p>
 
       <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-lg font-semibold text-neutral-700">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--studio-bg)] text-lg font-semibold text-[var(--studio-ink-soft)]">
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={preview} alt="Your photo" className="h-full w-full object-cover" />
@@ -55,19 +59,19 @@ export default function GuideProfileForm({
             <span>{avatarInitial}</span>
           )}
         </div>
-        <label className="text-sm font-medium text-neutral-700">
+        <label className="text-sm font-medium text-[var(--studio-ink)]">
           Photo
           <input
             type="file"
             name="photo"
             accept="image/*"
             onChange={onPhotoChange}
-            className="mt-1 block text-xs text-neutral-500 file:mr-2 file:rounded-md file:border file:border-neutral-300 file:bg-white file:px-2 file:py-1 file:text-xs"
+            className="mt-1 block text-xs text-[var(--studio-ink-soft)] file:mr-2 file:rounded-lg file:border file:border-[var(--studio-border)] file:bg-[var(--studio-surface)] file:px-2 file:py-1 file:text-xs"
           />
         </label>
       </div>
 
-      <label className="block text-sm font-medium text-neutral-700">
+      <label className="block text-sm font-medium text-[var(--studio-ink)]">
         Welcome message
         <textarea
           name="welcomeMessage"
@@ -76,27 +80,23 @@ export default function GuideProfileForm({
           maxLength={GUIDE_WELCOME_MAX_LENGTH}
           rows={3}
           placeholder="Welcome! I've collected my favourite spots in the city, just for you."
-          className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500"
+          className="mt-1 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3.5 py-2.5 text-sm text-[var(--studio-ink)] outline-none transition-colors focus:border-[var(--studio-accent)] focus:ring-2 focus:ring-[var(--studio-accent)]/15"
         />
       </label>
-      <p className={`text-xs ${nearLimit ? "text-amber-600" : "text-neutral-500"}`}>
+      <p className={`text-xs ${nearLimit ? "text-amber-600" : "text-[var(--studio-ink-soft)]"}`}>
         {remaining} character{remaining === 1 ? "" : "s"} left
       </p>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-      >
+      <PrimaryButton type="submit" disabled={pending}>
         {pending ? "Saving…" : "Save profile"}
-      </button>
+      </PrimaryButton>
 
       {state.error ? (
         <p role="alert" className="text-sm text-red-600">
           {state.error}
         </p>
       ) : null}
-      {state.success ? <p className="text-sm text-green-700">Saved.</p> : null}
+      {state.success ? <p className="text-sm font-medium text-emerald-700">Saved.</p> : null}
     </form>
   );
 }

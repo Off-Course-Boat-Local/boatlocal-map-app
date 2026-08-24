@@ -7,9 +7,11 @@
 // docs/admin-create-company-modal-handover.md. That handover note left this
 // exact wiring as the one remaining step; this is it.
 
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import PortalModal from "@/components/PortalModal";
+import { PRIMARY_BUTTON_CLASS } from "@/components/admin/primitives";
 import CreateCompanyForm from "./CreateCompanyForm";
 
 export default function CreateCompanyButton() {
@@ -17,11 +19,8 @@ export default function CreateCompanyButton() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-md bg-[var(--admin-accent-strong)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-      >
+      <button type="button" onClick={() => setOpen(true)} className={PRIMARY_BUTTON_CLASS}>
+        <Plus className="size-4" strokeWidth={2} />
         Create company
       </button>
 

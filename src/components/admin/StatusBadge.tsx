@@ -11,9 +11,16 @@ export interface StatusBadgeProps {
   tone?: StatusTone;
 }
 
+// Pill shape/sizing matches the reference design's StatusPill
+// (nice-notice/src/components/admin/primitives.tsx) — rounded-full,
+// smaller/tighter text, semibold — while keeping this app's own three-tone
+// color mapping (positive/neutral/warning) exactly as callers already pass
+// it in.
 export default function StatusBadge({ status, tone = "neutral" }: StatusBadgeProps) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${TONE_CLASSES[tone]}`}>
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[0.6875rem] font-semibold ${TONE_CLASSES[tone]}`}
+    >
       {status}
     </span>
   );

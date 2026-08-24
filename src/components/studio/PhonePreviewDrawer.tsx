@@ -50,7 +50,7 @@ export default function PhonePreviewDrawer({ pins, subtitle }: PhonePreviewDrawe
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="flex w-full items-center gap-2.5 rounded-[10px] border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+        className="flex w-full items-center gap-2.5 rounded-[10px] border border-[var(--studio-border)] px-3 py-2 text-sm font-semibold text-[var(--studio-ink-soft)] transition-colors hover:bg-[var(--studio-bg)] hover:text-[var(--studio-ink)]"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <rect
@@ -76,16 +76,16 @@ export default function PhonePreviewDrawer({ pins, subtitle }: PhonePreviewDrawe
             className="absolute inset-0 h-full w-full cursor-default bg-black/40"
           />
 
-          <div className="relative flex h-full w-[380px] max-w-[90vw] flex-col gap-3 overflow-y-auto border-l border-neutral-200 bg-neutral-50 p-6 shadow-2xl">
+          <div className="relative flex h-full w-[380px] max-w-[90vw] flex-col gap-3 overflow-y-auto border-l border-[var(--studio-border)] bg-[var(--studio-bg)] p-6 shadow-2xl">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
+              <p className="text-[0.6875rem] font-semibold tracking-[0.16em] text-[var(--studio-ink-soft)] uppercase">
                 Guest preview
               </p>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close preview"
-                className="-mr-1 rounded p-1 text-neutral-400 hover:text-neutral-700"
+                className="-mr-1 rounded p-1 text-[var(--studio-ink-soft)] hover:text-[var(--studio-ink)]"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path
@@ -100,7 +100,7 @@ export default function PhonePreviewDrawer({ pins, subtitle }: PhonePreviewDrawe
 
             <PhonePreview pins={pins} subtitle={subtitle} />
 
-            <p className="mx-auto max-w-[260px] text-center text-[11px] leading-relaxed text-neutral-500">
+            <p className="mx-auto max-w-[260px] text-center text-[11px] leading-relaxed text-[var(--studio-ink-soft)]">
               How your link looks to a guest. Your company sets the colours and
               app name; your picks and welcome message are yours.
             </p>

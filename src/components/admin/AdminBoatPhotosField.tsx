@@ -100,8 +100,8 @@ export default function AdminBoatPhotosField({
         role="status"
         className={
           showNudge
-            ? "rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-400"
-            : "rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+            ? "rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400"
+            : "rounded-xl bg-emerald-500/10 px-3 py-2.5 text-xs font-medium text-emerald-700 dark:text-emerald-400"
         }
       >
         {showNudge
@@ -142,7 +142,7 @@ export default function AdminBoatPhotosField({
         accept="image/*"
         multiple
         onChange={(e) => void handleFiles(e.target.files)}
-        className="block w-full text-xs text-[var(--admin-ink-soft)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--admin-accent-strong)] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white"
+        className="block w-full text-xs text-[var(--admin-ink-soft)] file:mr-3 file:rounded-xl file:border-0 file:bg-[var(--admin-accent)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
       />
       {notice ? (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">

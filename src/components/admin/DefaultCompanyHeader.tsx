@@ -14,6 +14,7 @@ import { useState, useTransition } from "react";
 import { unsetPlatformDefaultCompanyAction } from "@/lib/admin/defaultCompanyActions";
 import type { CompanyRecord } from "@/lib/data/types";
 
+import { Eyebrow, GHOST_BUTTON_CLASS } from "./primitives";
 import DefaultCompanyPicker from "./DefaultCompanyPicker";
 
 export interface DefaultCompanyHeaderProps {
@@ -29,21 +30,17 @@ export default function DefaultCompanyHeader({ company, otherCompanies }: Defaul
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+    <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-5 shadow-[var(--admin-shadow-card)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold tracking-widest text-[var(--admin-ink-soft)] uppercase">
-            Currently the default
+          <Eyebrow>Currently the default</Eyebrow>
+          <p className="font-display mt-2 text-xl font-semibold tracking-tight text-[var(--admin-ink)]">
+            {company.name}
           </p>
-          <p className="mt-1 text-lg font-semibold text-[var(--admin-ink)]">{company.name}</p>
-          <p className="font-mono text-xs text-[var(--admin-ink-soft)]">{company.id}</p>
+          <p className="mt-1 font-mono text-xs text-[var(--admin-ink-soft)]">{company.id}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setSwitching((s) => !s)}
-            className="rounded-md border border-[var(--admin-border)] px-3 py-1.5 text-sm font-medium text-[var(--admin-ink)] hover:bg-[var(--admin-bg)]"
-          >
+          <button type="button" onClick={() => setSwitching((s) => !s)} className={GHOST_BUTTON_CLASS}>
             {switching ? "Cancel" : "Switch"}
           </button>
           <button
@@ -60,7 +57,7 @@ export default function DefaultCompanyHeader({ company, otherCompanies }: Defaul
                 router.refresh();
               });
             }}
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-xl px-3.5 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
           >
             {isPending ? "Working…" : "Stop being the default"}
           </button>

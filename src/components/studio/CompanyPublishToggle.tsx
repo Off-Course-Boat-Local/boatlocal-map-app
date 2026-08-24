@@ -13,6 +13,7 @@ import { useState, useTransition } from "react";
 import PortalToggle from "@/components/PortalToggle";
 import { setCompanyPublishedAction } from "@/lib/studio/publishActions";
 import type { CompanyStatus } from "@/lib/data/types";
+import { CARD_SHADOW } from "./primitives";
 
 export interface CompanyPublishToggleProps {
   companyId: string;
@@ -26,7 +27,7 @@ export default function CompanyPublishToggle({ companyId, status }: CompanyPubli
 
   if (current === "suspended") {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <div className={`rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm text-amber-900 ${CARD_SHADOW}`}>
         This company has been suspended by Boat Local staff — your guest link is offline until
         they reactivate it. Contact support if you believe this is a mistake.
       </div>
@@ -36,7 +37,9 @@ export default function CompanyPublishToggle({ companyId, status }: CompanyPubli
   const published = current === "active";
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
+    <div
+      className={`rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-5 py-4 ${CARD_SHADOW}`}
+    >
       <PortalToggle
         checked={published}
         disabled={isPending}

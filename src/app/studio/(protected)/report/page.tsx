@@ -3,6 +3,7 @@
 // scoped to just their own numbers.
 
 import DownloadCsvButton from "@/components/studio/DownloadCsvButton";
+import { PageHeader, SectionHeading, TableShell } from "@/components/studio/primitives";
 import { getCompanyAnalyticsSummary } from "@/lib/data/source";
 import { toCsv } from "@/lib/studio/csv";
 import { actorFromSession, requireCompanyRole, requireDevSession } from "@/lib/studio/devAuth";
@@ -47,88 +48,74 @@ export default async function StudioReportPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Report</h1>
-        <p className="mt-1 text-sm text-neutral-500">Last 30 days vs. the 30 days before that.</p>
-      </div>
+      <PageHeader title="Report" description="Last 30 days vs. the 30 days before that." />
 
       <section>
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
-            Performance summary
-          </h2>
-          <DownloadCsvButton csv={csv} filename="boatlocal-report.csv" />
-        </div>
-        <p className="mt-1 text-sm text-neutral-500">
-          Placeholder figures until there is enough real event volume to compare period over
-          period — see the comment on <code>PLACEHOLDER_PERIOD_ROWS</code> in this page for the
-          swap-in.
-        </p>
+        <SectionHeading
+          title="Performance summary"
+          description={
+            <>
+              Placeholder figures until there is enough real event volume to compare period over
+              period — see the comment on <code>PLACEHOLDER_PERIOD_ROWS</code> in this page for the
+              swap-in.
+            </>
+          }
+          action={<DownloadCsvButton csv={csv} filename="boatlocal-report.csv" />}
+        />
 
-        <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-              <tr>
-                <th className="px-4 py-2 font-medium">Metric</th>
-                <th className="px-4 py-2 font-medium">This period</th>
-                <th className="px-4 py-2 font-medium">Previous period</th>
-                <th className="px-4 py-2 font-medium">Change</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PLACEHOLDER_PERIOD_ROWS.map((row) => (
-                <tr key={row.metric} className="border-b border-neutral-100 last:border-0">
-                  <td className="px-4 py-2 text-neutral-900">{row.metric}</td>
-                  <td className="px-4 py-2 text-neutral-600">{row.current}</td>
-                  <td className="px-4 py-2 text-neutral-600">{row.previous}</td>
-                  <td className="px-4 py-2 text-neutral-600">
-                    {percentChange(row.current, row.previous)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <TableShell
+          head={
+            <>
+              <th>Metric</th>
+              <th>This period</th>
+              <th>Previous period</th>
+              <th>Change</th>
+            </>
+          }
+        >
+          {PLACEHOLDER_PERIOD_ROWS.map((row) => (
+            <tr key={row.metric}>
+              <td className="font-medium text-[var(--studio-ink)]">{row.metric}</td>
+              <td className="tabular-nums text-[var(--studio-ink-soft)]">{row.current}</td>
+              <td className="tabular-nums text-[var(--studio-ink-soft)]">{row.previous}</td>
+              <td className="tabular-nums text-[var(--studio-ink-soft)]">
+                {percentChange(row.current, row.previous)}
+              </td>
+            </tr>
+          ))}
+        </TableShell>
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
-          Raw event counts (real data)
-        </h2>
-        <p className="mt-1 text-sm text-neutral-500">
-          {total} event{total === 1 ? "" : "s"} recorded across every guide, unfiltered.
-        </p>
+        <SectionHeading
+          title="Raw event counts (real data)"
+          description={`${total} event${total === 1 ? "" : "s"} recorded across every guide, unfiltered.`}
+        />
 
-        <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-              <tr>
-                <th className="px-4 py-2 font-medium">Event</th>
-                <th className="px-4 py-2 font-medium">Guide</th>
-                <th className="px-4 py-2 font-medium">Count</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={`${row.eventType}::${row.guideId ?? ""}`}
-                  className="border-b border-neutral-100 last:border-0"
-                >
-                  <td className="px-4 py-2 text-neutral-900">{row.eventType}</td>
-                  <td className="px-4 py-2 text-neutral-600">{row.guideId ?? "—"}</td>
-                  <td className="px-4 py-2 text-neutral-600">{row.count}</td>
-                </tr>
-              ))}
-              {rows.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-3 text-neutral-500" colSpan={3}>
-                    No events recorded yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <TableShell
+          head={
+            <>
+              <th>Event</th>
+              <th>Guide</th>
+              <th>Count</th>
+            </>
+          }
+        >
+          {rows.map((row) => (
+            <tr key={`${row.eventType}::${row.guideId ?? ""}`}>
+              <td className="font-medium text-[var(--studio-ink)]">{row.eventType}</td>
+              <td className="text-[var(--studio-ink-soft)]">{row.guideId ?? "—"}</td>
+              <td className="tabular-nums text-[var(--studio-ink-soft)]">{row.count}</td>
+            </tr>
+          ))}
+          {rows.length === 0 ? (
+            <tr>
+              <td className="text-[var(--studio-ink-soft)]" colSpan={3}>
+                No events recorded yet.
+              </td>
+            </tr>
+          ) : null}
+        </TableShell>
       </section>
     </div>
   );

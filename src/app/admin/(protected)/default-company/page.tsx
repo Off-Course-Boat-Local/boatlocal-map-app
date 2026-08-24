@@ -45,7 +45,9 @@ export default async function AdminDefaultCompanyPage() {
     const companies = await listCompanies(ADMIN_ACTOR);
     return (
       <div className="max-w-xl">
-        <h1 className="text-2xl font-semibold">Default company</h1>
+        <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-[var(--admin-ink)]">
+          Default company
+        </h1>
         <p className="mt-2 text-sm text-[var(--admin-ink-soft)]">
           Shown to a guest who opens the app with no <code>?company=</code> link at all — e.g. the
           bare map.boatlocal.nl root. Nothing is flagged yet, so those guests currently see a
@@ -94,8 +96,10 @@ export default async function AdminDefaultCompanyPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Default company</h1>
-        <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
+        <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-[var(--admin-ink)]">
+          Default company
+        </h1>
+        <p className="mt-1.5 text-sm text-[var(--admin-ink-soft)]">
           Shown to a guest who opens the app with no <code>?company=</code> link at all.
         </p>
       </div>

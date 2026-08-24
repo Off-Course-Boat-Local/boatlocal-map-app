@@ -32,6 +32,7 @@ import { fileToDataUrl, InvalidLogoFileError } from "@/lib/studio/fileToDataUrl"
 import { getWelcomeCopyDraft, setWelcomeCopyDraft } from "@/lib/studio/welcomeCopyDraft";
 import type { Brand } from "@/lib/types";
 
+import { CARD_SHADOW, GhostButton, PageHeader, PrimaryButton, inputClass, labelClass } from "./primitives";
 import { useStudioPreview } from "./StudioPreviewContext";
 
 export interface BrandingFormProps {
@@ -87,7 +88,7 @@ function ColorField({
 
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-neutral-700">
+      <label htmlFor={id} className={labelClass}>
         {label}
       </label>
       <div className="mt-1 flex items-center gap-2">
@@ -98,7 +99,7 @@ function ColorField({
           // black rather than crashing on a mid-edit or invalid hex string.
           value={valid ? value : "#000000"}
           onChange={(e) => onChange(e.target.value)}
-          className="h-9 w-9 shrink-0 cursor-pointer rounded border border-neutral-300 bg-white p-0.5"
+          className="h-9 w-9 shrink-0 cursor-pointer rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface)] p-0.5"
         />
         <input
           id={id}
@@ -107,9 +108,9 @@ function ColorField({
           onChange={(e) => onChange(e.target.value)}
           placeholder="#2B4FE0"
           spellCheck={false}
-          className={`w-32 rounded-lg border px-3 py-2 font-mono text-sm outline-none ${
+          className={`w-32 rounded-xl border px-3 py-2 font-mono text-sm outline-none transition-colors ${
             valid
-              ? "border-neutral-300 text-neutral-900 focus:border-neutral-500"
+              ? "border-[var(--studio-border)] text-[var(--studio-ink)] focus:border-[var(--studio-accent)] focus:ring-2 focus:ring-[var(--studio-accent)]/15"
               : "border-red-400 text-red-700 focus:border-red-500"
           }`}
         />
@@ -128,8 +129,8 @@ function ColorField({
             aria-label={`Use ${preset.name}'s ${label.toLowerCase()} (${preset.hex})`}
             className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
               value.toLowerCase() === preset.hex.toLowerCase()
-                ? "border-neutral-900"
-                : "border-white ring-1 ring-neutral-200"
+                ? "border-[var(--studio-ink)]"
+                : "border-[var(--studio-surface)] ring-1 ring-[var(--studio-border)]"
             }`}
             style={{ background: preset.hex }}
           />
@@ -290,16 +291,13 @@ export default function BrandingForm({
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Branding</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Changes are live in the preview immediately. Nothing is saved until you press Save —
-          this goes live for every one of this company&apos;s guides.
-        </p>
-      </div>
+      <PageHeader
+        title="Branding"
+        description="Changes are live in the preview immediately. Nothing is saved until you press Save — this goes live for every one of this company's guides."
+      />
 
-      <section className="space-y-2 rounded-xl border border-neutral-200 bg-white p-4">
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="branding-app-name">
+      <section className={`space-y-2 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}>
+        <label className={labelClass} htmlFor="branding-app-name">
           App name
         </label>
         <input
@@ -308,36 +306,32 @@ export default function BrandingForm({
           value={appName}
           onChange={(e) => handleAppNameChange(e.target.value)}
           placeholder="Jan's Amsterdam"
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500"
+          className={inputClass}
         />
-        <p className="text-xs text-neutral-500">Shown in the guest app header.</p>
+        <p className="text-xs text-[var(--studio-ink-soft)]">Shown in the guest app header.</p>
       </section>
 
-      <section className="space-y-3 rounded-xl border border-neutral-200 bg-white p-4">
-        <p className="text-sm font-medium text-neutral-700">Logo</p>
+      <section className={`space-y-3 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}>
+        <p className={labelClass}>Logo</p>
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-bg)]">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- data URL upload preview, same pattern as ShareQr/PlaceCard/PhotoGallery.
               <img src={logoUrl} alt="Company logo preview" className="h-full w-full object-contain p-1" />
             ) : (
-              <span className="text-[10px] uppercase tracking-wide text-neutral-400">No logo</span>
+              <span className="text-[10px] tracking-wide text-[var(--studio-ink-soft)] uppercase">No logo</span>
             )}
           </div>
           <div className="space-y-1">
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-              >
+              <GhostButton size="sm" onClick={() => fileInputRef.current?.click()}>
                 {logoUrl ? "Replace logo" : "Upload logo"}
-              </button>
+              </GhostButton>
               {logoUrl ? (
                 <button
                   type="button"
                   onClick={handleRemoveLogo}
-                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900"
+                  className="rounded-xl px-3 py-1.5 text-sm font-medium text-[var(--studio-ink-soft)] transition-colors hover:bg-[var(--studio-bg)] hover:text-[var(--studio-ink)]"
                 >
                   Remove
                 </button>
@@ -351,7 +345,7 @@ export default function BrandingForm({
               className="sr-only"
               aria-label="Upload logo"
             />
-            <p className="text-xs text-neutral-500">PNG or SVG, up to 2MB.</p>
+            <p className="text-xs text-[var(--studio-ink-soft)]">PNG or SVG, up to 2MB.</p>
             {logoError ? (
               <p role="alert" className="text-xs text-red-600">
                 {logoError}
@@ -361,7 +355,7 @@ export default function BrandingForm({
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 rounded-xl border border-neutral-200 bg-white p-4 sm:grid-cols-2">
+      <section className={`grid grid-cols-1 gap-6 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 sm:grid-cols-2 ${CARD_SHADOW}`}>
         <ColorField
           id="branding-primary-color"
           label="Primary colour"
@@ -378,14 +372,14 @@ export default function BrandingForm({
         />
       </section>
 
-      <p className="-mt-3 text-xs text-neutral-500">
+      <p className="-mt-3 text-xs text-[var(--studio-ink-soft)]">
         A darker shade for hover states (
         <span className="font-mono">{primaryDark}</span>) is generated automatically from the
         primary colour.
       </p>
 
-      <section className="space-y-2 rounded-xl border border-neutral-200 bg-white p-4">
-        <label className="block text-sm font-medium text-neutral-700" htmlFor="branding-welcome-copy">
+      <section className={`space-y-2 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}>
+        <label className={labelClass} htmlFor="branding-welcome-copy">
           Welcome copy
         </label>
         <textarea
@@ -395,39 +389,29 @@ export default function BrandingForm({
           onChange={handleWelcomeCopyChange}
           rows={3}
           placeholder="A short hello shown to guests when they first open the app."
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500"
+          className={inputClass}
         />
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-[var(--studio-ink-soft)]">
           Saved to this browser only for now — there is no database column for it yet, so it
           doesn&apos;t sync anywhere else.
         </p>
       </section>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saveState === "saving"}
-          className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-        >
+        <PrimaryButton onClick={handleSave} disabled={saveState === "saving"}>
           {saveState === "saving" ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
-          onClick={handleDiscard}
-          disabled={saveState === "saving"}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 disabled:opacity-50"
-        >
+        </PrimaryButton>
+        <GhostButton onClick={handleDiscard} disabled={saveState === "saving"}>
           Discard changes
-        </button>
+        </GhostButton>
 
         {saveState === "saved" ? (
-          <p role="status" className="text-sm text-emerald-700">
+          <p role="status" className="text-sm font-medium text-emerald-700">
             Saved.
           </p>
         ) : null}
         {saveState === "error" && saveError ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm font-medium text-red-600">
             {saveError}
           </p>
         ) : null}

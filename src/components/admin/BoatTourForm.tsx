@@ -23,6 +23,7 @@ import {
   type BoatTourFormState,
 } from "@/lib/admin/boatTourActions";
 import { NOTE_MAX_LENGTH } from "@/lib/admin/boatTourForm";
+import { FIELD_CLASS, FIELD_LABEL_CLASS, GHOST_BUTTON_CLASS, PRIMARY_BUTTON_CLASS } from "./primitives";
 import AdminBoatPhotosField from "./AdminBoatPhotosField";
 
 const STATUS_OPTIONS = [
@@ -32,9 +33,8 @@ const STATUS_OPTIONS = [
 
 const initialState: BoatTourFormState = {};
 
-const inputClass =
-  "mt-1 w-full rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--admin-accent)]";
-const labelClass = "block text-sm font-medium text-[var(--admin-ink)]";
+const inputClass = `mt-1.5 ${FIELD_CLASS}`;
+const labelClass = FIELD_LABEL_CLASS;
 
 export interface BoatTourFormProps {
   /** Omit (or pass null) to add a new tour. */
@@ -219,18 +219,10 @@ export default function BoatTourForm({
       ) : null}
 
       <div className="flex justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-[var(--admin-ink-soft)] hover:text-[var(--admin-ink)]"
-        >
+        <button type="button" onClick={onCancel} className={GHOST_BUTTON_CLASS}>
           Cancel
         </button>
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-[var(--admin-accent-strong)] px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending} className={PRIMARY_BUTTON_CLASS}>
           {pending ? "Saving…" : "Save"}
         </button>
       </div>

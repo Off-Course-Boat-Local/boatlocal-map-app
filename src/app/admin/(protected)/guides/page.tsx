@@ -4,6 +4,7 @@ import { ADMIN_ACTOR } from "@/lib/admin/actor";
 import { guidePerformance } from "@/lib/admin/analytics";
 import { getGuidesForCompany, listCompanies } from "@/lib/data/source";
 import AdminTable from "@/components/admin/AdminTable";
+import { PageHeader } from "@/components/admin/primitives";
 import StatusBadge from "@/components/admin/StatusBadge";
 
 export const metadata: Metadata = { title: "Guides" };
@@ -28,7 +29,9 @@ export default async function AdminGuidesPage() {
       // Real aggregation over `events` (src/lib/admin/analytics.ts).
       const performance = await guidePerformance(guide.id);
       return [
-        guide.name,
+        <span key="name" className="font-medium whitespace-nowrap">
+          {guide.name}
+        </span>,
         guide.email,
         guide.slug,
         company.name,
@@ -47,18 +50,13 @@ export default async function AdminGuidesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Guides</h1>
-      <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-        {totalGuides} guide{totalGuides === 1 ? "" : "s"} across {companies.length}{" "}
-        compan{companies.length === 1 ? "y" : "ies"}.
-      </p>
-      <p className="mt-1 text-xs text-[var(--admin-ink-soft)]">
-        App opens, tips saved and book clicks are live counts from <code>events</code>, over the
-        last 30 days.
-      </p>
+      <PageHeader
+        title="Guides"
+        description={`${totalGuides} guide${totalGuides === 1 ? "" : "s"} across ${companies.length} compan${companies.length === 1 ? "y" : "ies"}.`}
+        hint="App opens, tips saved and book clicks are live counts from events, over the last 30 days."
+      />
 
       <AdminTable
-        className="mt-6"
         columns={[
           "Guide",
           "Email",

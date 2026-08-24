@@ -28,14 +28,11 @@ import {
   type RecommendationFormState,
 } from "@/lib/studio/recommendationActions";
 import { NOTE_MAX_LENGTH, RECOMMENDATION_CATEGORIES } from "@/lib/studio/recommendationForm";
+import { GhostButton, PrimaryButton, inputClass, labelClass } from "./primitives";
 import AddressField from "./AddressField";
 import RecommendationPhotosField from "./RecommendationPhotosField";
 
 const initialState: RecommendationFormState = {};
-
-const inputClass =
-  "mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500";
-const labelClass = "block text-sm font-medium text-neutral-700";
 
 export interface RecommendationFormProps {
   /** Omit (or pass null) to add a new place. */
@@ -77,7 +74,7 @@ export default function RecommendationForm({
     <form action={formAction} className="space-y-4">
       {recommendation ? <input type="hidden" name="id" value={recommendation.id} /> : null}
 
-      <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+      <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-bg)] px-3.5 py-3">
         <PortalToggle
           name="visible"
           checked={visible}
@@ -144,7 +141,7 @@ export default function RecommendationForm({
           placeholder="Tue–Sun 11:00–18:00, closed Mondays"
           className={inputClass}
         />
-        <span className="mt-1 block text-xs text-neutral-500">
+        <span className="mt-1 block text-xs text-[var(--studio-ink-soft)]">
           Free text — whatever you&apos;d tell a guest.
         </span>
       </label>
@@ -161,7 +158,7 @@ export default function RecommendationForm({
           placeholder="Why you'd send a guest here — this is the whole endorsement, not a rating."
           className={inputClass}
         />
-        <span className="mt-1 block text-right text-xs text-neutral-400">
+        <span className="mt-1 block text-right text-xs text-[var(--studio-ink-soft)]">
           {noteLength}/{NOTE_MAX_LENGTH}
         </span>
       </label>
@@ -175,20 +172,10 @@ export default function RecommendationForm({
       ) : null}
 
       <div className="flex justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-        >
+        <GhostButton onClick={onCancel}>Cancel</GhostButton>
+        <PrimaryButton type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save"}
-        </button>
+        </PrimaryButton>
       </div>
     </form>
   );

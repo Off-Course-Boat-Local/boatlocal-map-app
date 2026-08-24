@@ -4,28 +4,37 @@
 // today it comes from src/lib/studio/dashboardAnalytics.ts's
 // guideTipsLeaderboard, a real sum over the company's events.
 
+import { displayFontFamily } from "@/lib/fonts";
+import { CARD_SHADOW } from "../primitives";
 import type { LeaderboardRow } from "./types";
 
 export default function GuideLeaderboard({ rows }: { rows: LeaderboardRow[] }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-      <p className="border-b border-neutral-200 px-4 py-3 text-sm font-semibold text-neutral-900">
+    <div
+      className={`overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] ${CARD_SHADOW}`}
+    >
+      <p
+        style={{ fontFamily: displayFontFamily }}
+        className="border-b border-[var(--studio-border)] px-5 py-3.5 text-sm font-semibold tracking-[-0.01em] text-[var(--studio-ink)]"
+      >
         Guide leaderboard
       </p>
-      <ol className="divide-y divide-neutral-100">
+      <ol className="divide-y divide-[var(--studio-border)]">
         {rows.map((row, i) => (
-          <li key={row.guideId} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+          <li key={row.guideId} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
             <span className="flex min-w-0 items-center gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-medium text-neutral-500">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--studio-bg)] text-xs font-semibold text-[var(--studio-ink-soft)]">
                 {i + 1}
               </span>
-              <span className="min-w-0 truncate text-neutral-900">{row.name}</span>
+              <span className="min-w-0 truncate font-medium text-[var(--studio-ink)]">{row.name}</span>
             </span>
-            <span className="shrink-0 text-neutral-600">{row.tipsSaved} saved</span>
+            <span className="shrink-0 tabular-nums text-[var(--studio-ink-soft)]">
+              {row.tipsSaved} saved
+            </span>
           </li>
         ))}
         {rows.length === 0 ? (
-          <li className="px-4 py-3 text-sm text-neutral-500">No guides yet.</li>
+          <li className="px-5 py-4 text-sm text-[var(--studio-ink-soft)]">No guides yet.</li>
         ) : null}
       </ol>
     </div>

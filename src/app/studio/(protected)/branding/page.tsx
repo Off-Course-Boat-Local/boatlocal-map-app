@@ -15,7 +15,7 @@ export default async function StudioBrandingPage() {
   const company = await getCompanyForStudio(actor, session.companyId);
 
   if (!company) {
-    return <p className="text-sm text-red-600">Company record not found.</p>;
+    return <p className="text-sm font-medium text-red-600">Company record not found.</p>;
   }
 
   const initialBrand: Brand = {

@@ -32,6 +32,41 @@
   --admin-sidebar-ink-dim: #8b8f99;
   --admin-accent: #1b5fe3;
   --admin-accent-strong: #1b5fe3;
+  /* Hover-only shade of the shared accent — derived, not a second brand
+     colour, so PORTAL_ACCENT (MapAppMark.tsx) stays the single source of
+     truth for "the" blue. Same color-mix technique src/lib/guestTheme.ts
+     already uses for its own derived tints. */
+  --admin-accent-hover: color-mix(in srgb, var(--admin-accent) 82%, black);
   --admin-nav-active-bg: #e8effc;
+
+  /* Card/table shadow pair, ported from the reference design system
+     (nice-notice's src/styles.css --shadow-card/--shadow-float, itself
+     oklch(0.19 0.03 258) at low alpha) — swapped to rgba on this app's own
+     --admin-ink hex so the shadow tint matches Admin's own ink colour
+     exactly instead of introducing a second near-black. Verified against
+     the #F6F6F3 canvas (not the reference's pure-white one): a white
+     --admin-surface card still reads with clear separation from the warm
+     grey page background, so the same soft/low-opacity shadow works
+     unchanged rather than needing to be darkened for contrast. */
+  --admin-shadow-card: 0 1px 2px rgba(26, 28, 34, 0.06), 0 12px 28px -18px rgba(26, 28, 34, 0.22);
+  --admin-shadow-float: 0 -1px 0 rgba(26, 28, 34, 0.05), 0 -14px 34px -22px rgba(26, 28, 34, 0.3);
+
+  /* Typography, matching the guest app's rebrand (src/lib/fonts.ts):
+     Outfit for headings/titles/stat numbers, Figtree for everything else.
+     Both faces are already loaded app-wide via `fontVariables` on <html>
+     (src/app/layout.tsx) — this just opts Admin's own subtree into them
+     instead of the guest app's Hanken Grotesk body default
+     (src/app/globals.css, not ours to edit). Scoped to `.admin-root` only,
+     same reasoning as every other token in this file. */
+  font-family: var(--font-body), "Figtree", ui-sans-serif, system-ui, sans-serif;
   color-scheme: light;
+}
+
+.admin-root h1,
+.admin-root h2,
+.admin-root h3,
+.admin-root h4,
+.admin-root .font-display {
+  font-family: var(--font-display), "Outfit", ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.02em;
 }

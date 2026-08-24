@@ -4,14 +4,16 @@
 // is one app for both roles (see src/lib/studio/nav.ts), not two separate
 // sidebars. Shares its visual design with Admin's sidebar
 // (src/components/admin/AdminSidebar.tsx) — same wordmark, same nav-pill
-// treatment, same icon style — per the founder's decision that Admin and
-// Studio ("Partner Studio" in the original prototype) are one shared
-// portal design, just different pages depending on role.
+// treatment, same icon style, same `--studio-*`/`--admin-*` CSS-variable
+// pattern (src/app/studio/studio-theme.css mirrors admin-theme.css
+// value-for-value) — per the founder's decision that Admin and Studio
+// ("Partner Studio" in the original prototype) are one shared portal
+// design, just different pages depending on role.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import MapAppMark, { PORTAL_NAV_ACTIVE_BG } from "@/components/MapAppMark";
+import MapAppMark from "@/components/MapAppMark";
 import {
   AnchorIcon,
   GearIcon,
@@ -52,23 +54,34 @@ export interface StudioSidebarProps {
   name: string;
 }
 
+function navLinkClass(active: boolean): string {
+  return [
+    "flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-sm font-semibold transition-colors",
+    active
+      ? "text-[var(--studio-sidebar-ink)]"
+      : "text-[var(--studio-sidebar-ink-dim)] hover:bg-[var(--studio-bg)] hover:text-[var(--studio-sidebar-ink)]",
+  ].join(" ");
+}
+
 export default function StudioSidebar({ items, roleLabel, name }: StudioSidebarProps) {
   const pathname = usePathname();
   const previewActive = pathname.startsWith(PREVIEW_HREF);
 
   return (
-    <nav
-      className="flex w-60 shrink-0 flex-col justify-between border-r border-neutral-200 bg-white p-4"
+    <aside
+      className="flex w-64 shrink-0 flex-col justify-between border-r border-[var(--studio-sidebar-border)] bg-[var(--studio-sidebar-bg)] px-4 py-6 text-[var(--studio-sidebar-ink)]"
       aria-label="Studio navigation"
     >
       <div>
         <div className="px-2">
-          <MapAppMark iconSize={24} className="text-neutral-900" />
+          <MapAppMark iconSize={24} className="text-[var(--studio-sidebar-ink)]" />
         </div>
 
         <div className="mt-6 mb-6 px-2">
-          <p className="truncate text-sm font-semibold text-neutral-900">{name}</p>
-          <p className="text-xs text-neutral-500">{roleLabel}</p>
+          <p className="truncate text-sm font-semibold text-[var(--studio-sidebar-ink)]">{name}</p>
+          <p className="mt-0.5 text-[0.6875rem] font-semibold tracking-[0.14em] text-[var(--studio-sidebar-ink-dim)] uppercase">
+            {roleLabel}
+          </p>
         </div>
 
         <ul className="space-y-1">
@@ -81,10 +94,8 @@ export default function StudioSidebar({ items, roleLabel, name }: StudioSidebarP
                 <Link
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  style={active ? { background: PORTAL_NAV_ACTIVE_BG } : undefined}
-                  className={`flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-semibold transition-colors ${
-                    active ? "text-neutral-900" : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
-                  }`}
+                  style={active ? { background: "var(--studio-nav-active-bg)" } : undefined}
+                  className={navLinkClass(active)}
                 >
                   <Icon />
                   {item.label}
@@ -101,31 +112,24 @@ export default function StudioSidebar({ items, roleLabel, name }: StudioSidebarP
           app. Same reason it's a link to a real page now instead of the
           docked panel/drawer it used to be: previewing is something you go
           and do, not something that occupies width on every screen. */}
-      <div className="space-y-1">
+      <div className="space-y-1 border-t border-[var(--studio-sidebar-border)] pt-4">
         <Link
           href={PREVIEW_HREF}
           aria-current={previewActive ? "page" : undefined}
-          style={previewActive ? { background: PORTAL_NAV_ACTIVE_BG } : undefined}
-          className={`flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-semibold transition-colors ${
-            previewActive
-              ? "text-neutral-900"
-              : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
-          }`}
+          style={previewActive ? { background: "var(--studio-nav-active-bg)" } : undefined}
+          className={navLinkClass(previewActive)}
         >
           <PhoneIcon />
           Preview
         </Link>
 
         <form action={logoutAction}>
-          <button
-            type="submit"
-            className="flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-sm font-semibold text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-          >
+          <button type="submit" className={`w-full text-left ${navLinkClass(false)}`}>
             <LogoutIcon />
             Log out
           </button>
         </form>
       </div>
-    </nav>
+    </aside>
   );
 }

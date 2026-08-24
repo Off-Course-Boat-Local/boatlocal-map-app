@@ -26,6 +26,8 @@ import PortalSelect from "@/components/PortalSelect";
 import { setPlatformDefaultCompanyAction } from "@/lib/admin/defaultCompanyActions";
 import type { CompanyRecord } from "@/lib/data/types";
 
+import { PRIMARY_BUTTON_CLASS } from "./primitives";
+
 export interface DefaultCompanyPickerProps {
   companies: CompanyRecord[];
   /** "Set as default" for the first-run empty state, "Switch" when replacing an existing default. */
@@ -67,7 +69,7 @@ export default function DefaultCompanyPicker({
             router.refresh();
           });
         }}
-        className="rounded-md bg-[var(--admin-accent-strong)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        className={PRIMARY_BUTTON_CLASS}
       >
         {isPending ? "Saving…" : submitLabel}
       </button>

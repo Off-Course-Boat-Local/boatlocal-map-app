@@ -20,15 +20,17 @@ import {
   ChartIcon,
   GridIcon,
   LogoutIcon,
+  PersonIcon,
   StarIcon,
   UsersIcon,
 } from "@/components/PortalIcons";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Overview", icon: GridIcon },
+  { href: "/admin/users", label: "Users", icon: UsersIcon },
   { href: "/admin/boats", label: "Boats", icon: AnchorIcon },
   { href: "/admin/companies", label: "Companies", icon: BuildingIcon },
-  { href: "/admin/guides", label: "Guides", icon: UsersIcon },
+  { href: "/admin/guides", label: "Guides", icon: PersonIcon },
   { href: "/admin/analytics", label: "Platform analytics", icon: ChartIcon },
   // The platform-default company (src/lib/data/source.ts's
   // getPlatformDefaultCompany) — what a guest sees with no `?company=` at
@@ -48,16 +50,19 @@ export default function AdminSidebar({ email, onLogoutAction }: AdminSidebarProp
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col justify-between border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-bg)] px-4 py-6 text-[var(--admin-sidebar-ink)]">
+    <aside className="flex w-64 shrink-0 flex-col justify-between gap-6 border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-bg)] p-5 text-[var(--admin-sidebar-ink)]">
       <div>
-        <div className="px-2">
-          <MapAppMark iconSize={24} className="text-[var(--admin-sidebar-ink)]" />
-          <p className="mt-2 text-xs font-semibold tracking-widest text-[var(--admin-sidebar-ink-dim)] uppercase">
+        <div className="px-1">
+          <MapAppMark
+            iconSize={26}
+            className="font-display text-[var(--admin-sidebar-ink)]"
+          />
+          <p className="mt-4 text-[0.6875rem] font-semibold tracking-[0.16em] text-[var(--admin-sidebar-ink-dim)] uppercase">
             Admin
           </p>
         </div>
 
-        <nav className="mt-8 flex flex-col gap-1">
+        <nav className="mt-6 flex flex-col gap-1">
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href;
             const Icon = item.icon;
@@ -68,26 +73,26 @@ export default function AdminSidebar({ email, onLogoutAction }: AdminSidebarProp
                 aria-current={active ? "page" : undefined}
                 style={active ? { background: "var(--admin-nav-active-bg)" } : undefined}
                 className={[
-                  "flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-semibold transition-colors",
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
                   active
-                    ? "text-[var(--admin-sidebar-ink)]"
+                    ? "font-semibold text-[var(--admin-sidebar-ink)]"
                     : "text-[var(--admin-sidebar-ink-dim)] hover:bg-[var(--admin-bg)] hover:text-[var(--admin-sidebar-ink)]",
                 ].join(" ")}
               >
-                <Icon />
-                {item.label}
+                <Icon className="shrink-0" />
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
         </nav>
       </div>
 
-      <div className="border-t border-[var(--admin-sidebar-border)] px-2 pt-4">
-        <div className="flex items-center gap-2.5 px-1 py-1">
+      <div className="space-y-3 border-t border-[var(--admin-sidebar-border)] pt-4">
+        <div className="flex items-center gap-2.5 px-1">
           <span
             aria-hidden="true"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-            style={{ background: "var(--admin-accent-strong)" }}
+            style={{ background: "var(--admin-accent)" }}
           >
             {email.charAt(0).toUpperCase()}
           </span>
@@ -95,10 +100,10 @@ export default function AdminSidebar({ email, onLogoutAction }: AdminSidebarProp
             {email}
           </p>
         </div>
-        <form action={onLogoutAction} className="mt-1">
+        <form action={onLogoutAction}>
           <button
             type="submit"
-            className="flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-sm font-semibold text-[var(--admin-sidebar-ink-dim)] transition-colors hover:bg-[var(--admin-bg)] hover:text-[var(--admin-sidebar-ink)]"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-[var(--admin-sidebar-ink-dim)] transition-colors hover:bg-[var(--admin-bg)] hover:text-[var(--admin-sidebar-ink)]"
           >
             <LogoutIcon />
             Sign out

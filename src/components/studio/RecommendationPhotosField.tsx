@@ -79,10 +79,10 @@ export default function RecommendationPhotosField({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <label htmlFor={inputId} className="text-sm font-medium text-neutral-700">
+        <label htmlFor={inputId} className="text-sm font-medium text-[var(--studio-ink)]">
           Photos
         </label>
-        <span className="text-xs text-neutral-500">
+        <span className="text-xs text-[var(--studio-ink-soft)]">
           {photos.length}/{MAX_PHOTOS}
         </span>
       </div>
@@ -116,13 +116,13 @@ export default function RecommendationPhotosField({
                 <img
                   src={src}
                   alt={`Photo ${i + 1} of ${photos.length}`}
-                  className="h-14 w-14 rounded-md border border-neutral-200 object-cover"
+                  className="h-14 w-14 rounded-lg border border-[var(--studio-border)] object-cover"
                 />
                 <button
                   type="button"
                   onClick={() => removeAt(i)}
                   aria-label={`Remove photo ${i + 1}`}
-                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 text-[10px] font-bold leading-none text-white"
+                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--studio-ink)] text-[10px] leading-none font-bold text-white"
                 >
                   &times;
                 </button>
@@ -139,7 +139,7 @@ export default function RecommendationPhotosField({
         accept="image/*"
         multiple
         onChange={(e) => void handleFiles(e.target.files)}
-        className="block w-full text-xs text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white"
+        className="block w-full text-xs text-[var(--studio-ink-soft)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--studio-accent)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
       />
       {notice ? (
         <p role="alert" className="text-xs text-red-600">

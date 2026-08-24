@@ -249,7 +249,7 @@ export default function CompanyRowActions({
               autoFocus
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              className="mt-1 w-full rounded-md border border-[var(--admin-border)] bg-transparent px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--admin-accent)]"
+              className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] px-3.5 py-2.5 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--admin-accent)] focus:ring-2 focus:ring-[var(--admin-accent)]/15"
             />
           </label>
 
@@ -264,7 +264,7 @@ export default function CompanyRowActions({
               type="button"
               onClick={() => setConfirmOpen(false)}
               disabled={isPending}
-              className="rounded-md px-3 py-2 text-sm font-medium text-[var(--admin-ink-soft)] hover:text-[var(--admin-ink)] disabled:opacity-50"
+              className="rounded-xl px-3.5 py-2.5 text-sm font-medium text-[var(--admin-ink-soft)] hover:text-[var(--admin-ink)] disabled:opacity-50"
             >
               Cancel
             </button>
@@ -282,7 +282,7 @@ export default function CompanyRowActions({
                   router.refresh();
                 });
               }}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[var(--admin-shadow-card)] transition-colors hover:bg-red-700 disabled:opacity-50"
             >
               {isPending ? "Deleting…" : "Delete company"}
             </button>

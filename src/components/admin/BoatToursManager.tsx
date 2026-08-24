@@ -14,6 +14,7 @@
 // modal and rely on revalidatePath (from the Server Action) + router.refresh
 // for the resulting list update.
 
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -22,6 +23,7 @@ import {
   deleteBoatTourAction,
   moveBoatTourAction,
 } from "@/lib/admin/boatTourActions";
+import { PRIMARY_BUTTON_CLASS } from "./primitives";
 import AdminTable from "./AdminTable";
 import StatusBadge from "./StatusBadge";
 import BoatTourForm from "./BoatTourForm";
@@ -98,11 +100,8 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
           {tours.length} tour{tours.length === 1 ? "" : "s"} in the catalog — admin-owned;
           each company chooses which to feature and in what order from Studio.
         </p>
-        <button
-          type="button"
-          onClick={() => setEditing({ mode: "new" })}
-          className="rounded-lg bg-[var(--admin-accent-strong)] px-4 py-2 text-sm font-medium text-white"
-        >
+        <button type="button" onClick={() => setEditing({ mode: "new" })} className={PRIMARY_BUTTON_CLASS}>
+          <Plus className="size-4" strokeWidth={2} />
           Add tour
         </button>
       </div>
@@ -119,14 +118,14 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
           const rowPending = isPending && pendingId === tour.id;
           return [
             <div key="order" className="flex items-center gap-2">
-              <span className="text-[var(--admin-ink-soft)]">{tour.position}</span>
-              <div className="flex flex-col">
+              <span className="w-5 text-sm tabular-nums text-[var(--admin-ink-soft)]">{tour.position}</span>
+              <div className="flex flex-col overflow-hidden rounded-lg border border-[var(--admin-border)]">
                 <button
                   type="button"
                   aria-label={`Move ${tour.name} up`}
                   disabled={index === 0 || isPending}
                   onClick={() => handleMove(tour.id, "up")}
-                  className="rounded border border-[var(--admin-border)] px-1 text-xs leading-none disabled:opacity-30"
+                  className="grid h-6 w-6 place-items-center text-[var(--admin-ink-soft)] transition-colors hover:bg-[var(--admin-nav-active-bg)] hover:text-[var(--admin-accent)] disabled:opacity-30"
                 >
                   &uarr;
                 </button>
@@ -135,13 +134,15 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
                   aria-label={`Move ${tour.name} down`}
                   disabled={index === ordered.length - 1 || isPending}
                   onClick={() => handleMove(tour.id, "down")}
-                  className="mt-0.5 rounded border border-[var(--admin-border)] px-1 text-xs leading-none disabled:opacity-30"
+                  className="grid h-6 w-6 place-items-center border-t border-[var(--admin-border)] text-[var(--admin-ink-soft)] transition-colors hover:bg-[var(--admin-nav-active-bg)] hover:text-[var(--admin-accent)] disabled:opacity-30"
                 >
                   &darr;
                 </button>
               </div>
             </div>,
-            tour.name,
+            <span key="name" className="font-medium">
+              {tour.name}
+            </span>,
             tour.area,
             tour.meta,
             String(tour.photos.length),
@@ -150,11 +151,11 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
               status={tour.status}
               tone={tour.status === "active" ? "positive" : "neutral"}
             />,
-            <div key="actions" className="flex gap-3">
+            <div key="actions" className="flex justify-end gap-3 text-sm font-medium">
               <button
                 type="button"
                 onClick={() => setEditing({ mode: "edit", tour })}
-                className="text-xs font-medium text-[var(--admin-ink)] underline underline-offset-2"
+                className="text-[var(--admin-accent)] hover:text-[var(--admin-accent-hover)]"
               >
                 Edit
               </button>
@@ -162,7 +163,7 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
                 type="button"
                 onClick={() => handleDelete(tour)}
                 disabled={rowPending}
-                className="text-xs font-medium text-red-600 underline underline-offset-2 disabled:opacity-50 dark:text-red-400"
+                className="text-red-600 hover:opacity-80 disabled:opacity-50"
               >
                 {rowPending ? "…" : "Delete"}
               </button>
@@ -173,10 +174,10 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
       />
 
       {editing ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10 sm:pt-16">
-          <div className="w-full max-w-lg rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--admin-ink)]/30 p-4 pt-10 backdrop-blur-[2px] sm:pt-16">
+          <div className="w-full max-w-lg rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-6 shadow-[var(--admin-shadow-float)]">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-[var(--admin-ink)]">
+              <h2 className="text-lg font-semibold tracking-tight text-[var(--admin-ink)]">
                 {editing.mode === "new" ? "Add a boat tour" : `Edit ${editing.tour.name}`}
               </h2>
               <button

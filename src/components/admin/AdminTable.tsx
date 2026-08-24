@@ -16,6 +16,12 @@ export interface AdminTableProps {
   columnWidths?: Array<string | undefined>;
 }
 
+// Card-shaped table matching the reference design's TableShell
+// (nice-notice/src/components/admin/primitives.tsx): rounded-2xl + shadow
+// container (rather than a flat border box), a tinted header row, uppercase
+// tracked column labels, and roomier cell padding. Structure/props are
+// unchanged — every existing caller keeps its columns/rows/emptyMessage
+// exactly as before.
 export default function AdminTable({
   columns,
   rows,
@@ -26,53 +32,58 @@ export default function AdminTable({
   return (
     <div
       className={[
-        "overflow-x-auto rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)]",
+        "overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-[var(--admin-shadow-card)]",
         className ?? "",
       ].join(" ")}
     >
-      <table className="w-full min-w-[480px] border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-[var(--admin-border)] text-left">
-            {columns.map((column, columnIndex) => (
-              <th
-                key={column}
-                scope="col"
-                className={[
-                  "px-4 py-3 text-xs font-semibold tracking-wide text-[var(--admin-ink-soft)] uppercase",
-                  columnWidths?.[columnIndex] ?? "",
-                ].join(" ")}
-              >
-                {column}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length} className="px-4 py-6 text-center text-[var(--admin-ink-soft)]">
-                {emptyMessage}
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[480px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-[var(--admin-border)] bg-[var(--admin-bg)]/60 text-left">
+              {columns.map((column, columnIndex) => (
+                <th
+                  key={column}
+                  scope="col"
+                  className={[
+                    "px-5 py-3 text-[0.6875rem] font-semibold tracking-[0.14em] text-[var(--admin-ink-soft)] uppercase whitespace-nowrap",
+                    columnWidths?.[columnIndex] ?? "",
+                  ].join(" ")}
+                >
+                  {column}
+                </th>
+              ))}
             </tr>
-          ) : (
-            rows.map((row, rowIndex) => (
-              <tr key={rowIndex} className="border-b border-[var(--admin-border)] last:border-0">
-                {row.map((cell, cellIndex) => (
-                  <td
-                    key={cellIndex}
-                    className={[
-                      "px-4 py-3 align-top text-[var(--admin-ink)]",
-                      columnWidths?.[cellIndex] ?? "",
-                    ].join(" ")}
-                  >
-                    {cell}
-                  </td>
-                ))}
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-5 py-10 text-center text-[var(--admin-ink-soft)]">
+                  {emptyMessage}
+                </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              rows.map((row, rowIndex) => (
+                <tr
+                  key={rowIndex}
+                  className="border-b border-[var(--admin-border)]/70 transition-colors last:border-0 hover:bg-[var(--admin-bg)]/40"
+                >
+                  {row.map((cell, cellIndex) => (
+                    <td
+                      key={cellIndex}
+                      className={[
+                        "px-5 py-4 align-middle text-[var(--admin-ink)]",
+                        columnWidths?.[cellIndex] ?? "",
+                      ].join(" ")}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

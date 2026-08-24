@@ -9,6 +9,7 @@ import { useActionState, useEffect, useState, useSyncExternalStore } from "react
 
 import { saveCampaignParamsAction, type SaveCampaignActionState } from "@/lib/studio/campaignActions";
 import { previewCampaignBookingUrl } from "@/lib/studio/campaignParams";
+import { Eyebrow, PrimaryButton, inputClass, labelClass } from "./primitives";
 
 const initialState: SaveCampaignActionState = {};
 
@@ -99,7 +100,7 @@ function CampaignFields({
 
   return (
     <form action={formAction} className="space-y-4">
-      <label className="block text-sm font-medium text-neutral-700">
+      <label className={labelClass}>
         Campaign link or tracking parameters
         <input
           name="campaignParams"
@@ -107,11 +108,11 @@ function CampaignFields({
           onChange={(e) => handleChange(e.target.value)}
           placeholder="utm_source=hotel-lobby&utm_campaign=summer2026"
           spellCheck={false}
-          className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 font-mono text-sm text-neutral-900 outline-none focus:border-neutral-500"
+          className={`${inputClass} font-mono`}
         />
       </label>
 
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-[var(--studio-ink-soft)]">
         Paste this once — it auto-propagates onto every &ldquo;Book this tour&rdquo; link your
         guests tap, for every boat, with no need to touch each tour individually. Pasting a full
         tracking URL also works; only its query parameters are kept.
@@ -123,19 +124,13 @@ function CampaignFields({
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-      >
+      <PrimaryButton type="submit" disabled={pending}>
         {pending ? "Saving…" : "Save"}
-      </button>
+      </PrimaryButton>
 
-      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-          Preview — example booking link
-        </p>
-        <p className="mt-1 break-all font-mono text-xs text-neutral-700">
+      <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-bg)] p-4">
+        <Eyebrow>Preview — example booking link</Eyebrow>
+        <p className="mt-1 font-mono text-xs break-all text-[var(--studio-ink)]">
           {previewCampaignBookingUrl(value)}
         </p>
       </div>

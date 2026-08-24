@@ -1,0 +1,51 @@
+/* Studio chrome palette.
+ *
+ * Mirrors src/app/admin/admin-theme.css value-for-value — Admin and Studio
+ * are one shared "portal" design system (see the header comment on
+ * src/components/MapAppMark.tsx), so their chrome must read as the same
+ * product. This is a SEPARATE file (not a shared import) only because of
+ * this restyle's file-ownership split between the Admin and Studio agents
+ * working from the same brief at the same time, not because the values are
+ * meant to diverge — if you're tempted to change a value here, change the
+ * Admin one too (or ask first).
+ *
+ * Scoped to `.studio-root` (not `:root`) for the same reason Admin's is
+ * scoped to `.admin-root`: these are portal-chrome variables, never a
+ * tenant's own guest-brand colours (see StudioBrandScope.tsx), so the two
+ * can never collide or leak into each other.
+ *
+ * No dark-mode variant, deliberately — Studio (like Admin) is one shared
+ * light portal design regardless of OS/browser colour-scheme preference.
+ */
+
+.studio-root {
+  --studio-bg: #f6f6f3;
+  --studio-surface: #ffffff;
+  --studio-border: #ececE6;
+  --studio-ink: #1a1c22;
+  --studio-ink-soft: #6b7280;
+  --studio-sidebar-bg: #ffffff;
+  --studio-sidebar-border: #ececE6;
+  --studio-sidebar-ink: #1a1c22;
+  --studio-sidebar-ink-dim: #8b8f99;
+  --studio-accent: #1b5fe3;
+  --studio-accent-strong: #1b5fe3;
+  /* Hover-only shade of the shared accent — derived, not a second brand
+     colour, so PORTAL_ACCENT (MapAppMark.tsx) stays the single source of
+     truth for "the" blue. Mirrors the Admin agent's identical token in
+     admin-theme.css (--admin-accent-hover), same color-mix technique
+     src/lib/guestTheme.ts already uses for its own derived tints. */
+  --studio-accent-hover: color-mix(in srgb, var(--studio-accent) 82%, black);
+  --studio-nav-active-bg: #e8effc;
+
+  /* Card/table shadow pair — same values as Admin's
+     --admin-shadow-card/--admin-shadow-float (admin-theme.css), which were
+     themselves ported from the reference design system's --shadow-card/
+     --shadow-float and verified against this exact #F6F6F3 canvas. Kept in
+     sync value-for-value so a card looks identical whether it's rendered by
+     Admin or Studio. */
+  --studio-shadow-card: 0 1px 2px rgba(26, 28, 34, 0.06), 0 12px 28px -18px rgba(26, 28, 34, 0.22);
+  --studio-shadow-float: 0 -1px 0 rgba(26, 28, 34, 0.05), 0 -14px 34px -22px rgba(26, 28, 34, 0.3);
+
+  color-scheme: light;
+}

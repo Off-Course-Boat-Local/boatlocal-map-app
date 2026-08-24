@@ -25,8 +25,10 @@
 // chrome around it rather than two nested phone frames.
 
 import { useRef, useState } from "react";
+import { ExternalLink, RotateCw } from "lucide-react";
 
 import PortalSelect from "@/components/PortalSelect";
+import { GhostButton } from "./primitives";
 
 export interface PreviewTarget {
   /** Stable key for the <select>. */
@@ -55,7 +57,7 @@ export default function GuestPreviewFrame({ targets }: GuestPreviewFrameProps) {
 
   if (!target) {
     return (
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-[var(--studio-ink-soft)]">
         There is nothing to preview yet — this company has no live link.
       </p>
     );
@@ -75,26 +77,24 @@ export default function GuestPreviewFrame({ targets }: GuestPreviewFrameProps) {
           </div>
         ) : null}
 
-        <button
-          type="button"
-          onClick={reload}
-          className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-        >
+        <GhostButton size="sm" onClick={reload}>
+          <RotateCw className="size-3.5" strokeWidth={2} />
           Reload
-        </button>
+        </GhostButton>
 
         <a
           href={target.url}
           target="_blank"
           rel="noreferrer"
-          className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--studio-ink)] transition-colors hover:bg-[var(--studio-bg)]"
         >
+          <ExternalLink className="size-3.5" strokeWidth={2} />
           Open in a new tab
         </a>
       </div>
 
-      <div className="flex justify-center rounded-2xl border border-neutral-200 bg-neutral-50 p-6">
-        <div className="relative h-[780px] w-[390px] shrink-0 overflow-hidden rounded-[2.25rem] bg-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.35)] ring-[10px] ring-neutral-900">
+      <div className="flex justify-center rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-bg)] p-6">
+        <div className="relative h-[780px] w-[390px] shrink-0 overflow-hidden rounded-[2.25rem] bg-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.35)] ring-[10px] ring-[var(--studio-ink)]">
           <iframe
             ref={frameRef}
             key={target.value}

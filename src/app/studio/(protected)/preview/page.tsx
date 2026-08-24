@@ -23,6 +23,7 @@
 // scoped to themselves.
 
 import GuestPreviewFrame, { type PreviewTarget } from "@/components/studio/GuestPreviewFrame";
+import { PageHeader } from "@/components/studio/primitives";
 import { getCompanyForStudio, getGuidesForCompany } from "@/lib/data/source";
 import { actorFromSession, requireDevSession } from "@/lib/studio/devAuth";
 import { currentOrigin } from "@/lib/studio/requestOrigin";
@@ -81,15 +82,10 @@ export default async function StudioPreviewPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Preview</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-500">
-          The real guest app, exactly as someone opening your link sees it.
-          Click through it as much as you like — nothing in here is counted as
-          a visit, a tap or a booking click, and none of it reaches your
-          statistics.
-        </p>
-      </div>
+      <PageHeader
+        title="Preview"
+        description="The real guest app, exactly as someone opening your link sees it. Click through it as much as you like — nothing in here is counted as a visit, a tap or a booking click, and none of it reaches your statistics."
+      />
 
       <GuestPreviewFrame targets={targets} />
     </div>

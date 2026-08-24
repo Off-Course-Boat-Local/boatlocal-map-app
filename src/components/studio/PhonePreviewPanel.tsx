@@ -28,16 +28,16 @@ export interface PhonePreviewPanelProps {
 export default function PhonePreviewPanel({ pins, subtitle }: PhonePreviewPanelProps) {
   return (
     <aside
-      className="hidden shrink-0 flex-col gap-3 overflow-y-auto border-l border-neutral-200 bg-neutral-50 p-6 xl:flex xl:w-[460px]"
+      className="hidden shrink-0 flex-col gap-3 overflow-y-auto border-l border-[var(--studio-border)] bg-[var(--studio-bg)] p-6 xl:flex xl:w-[460px]"
       aria-label="Live guest app preview"
     >
-      <p className="text-center text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
+      <p className="text-center text-[0.6875rem] font-semibold tracking-[0.16em] text-[var(--studio-ink-soft)] uppercase">
         Live preview
       </p>
 
       <PhonePreview pins={pins} subtitle={subtitle} />
 
-      <p className="mx-auto max-w-[260px] text-center text-[11px] leading-relaxed text-neutral-500">
+      <p className="mx-auto max-w-[260px] text-center text-[11px] leading-relaxed text-[var(--studio-ink-soft)]">
         Mirrors what a guest sees right now. Updates live as branding is edited.
       </p>
     </aside>

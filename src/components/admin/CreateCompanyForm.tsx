@@ -12,6 +12,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 
+import { FIELD_CLASS, FIELD_LABEL_CLASS, PRIMARY_BUTTON_CLASS } from "@/components/admin/primitives";
 import { createCompanyAction, type CreateCompanyActionState } from "@/lib/admin/companyActions";
 
 const initialState: CreateCompanyActionState = {};
@@ -28,9 +29,8 @@ export interface CreateCompanyFormProps {
   onDone?: () => void;
 }
 
-const inputClass =
-  "mt-1 w-full rounded-md border border-[var(--admin-border)] bg-transparent px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--admin-accent)]";
-const labelClass = "block text-sm font-medium text-[var(--admin-ink)]";
+const inputClass = `mt-1.5 ${FIELD_CLASS}`;
+const labelClass = FIELD_LABEL_CLASS;
 
 export default function CreateCompanyForm({ onDone }: CreateCompanyFormProps) {
   const [state, formAction, pending] = useActionState(createCompanyAction, initialState);
@@ -88,11 +88,7 @@ export default function CreateCompanyForm({ onDone }: CreateCompanyFormProps) {
       </div>
 
       <div className="mt-4 flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-[var(--admin-accent-strong)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending} className={PRIMARY_BUTTON_CLASS}>
           {pending ? "Creating…" : "Create company"}
         </button>
 
@@ -115,7 +111,7 @@ export default function CreateCompanyForm({ onDone }: CreateCompanyFormProps) {
       {state.success && state.inviteWarning ? (
         <p
           role="status"
-          className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
         >
           {state.inviteWarning}
         </p>

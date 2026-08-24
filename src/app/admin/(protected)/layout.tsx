@@ -20,7 +20,9 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
   return (
     <div className="admin-root flex min-h-dvh bg-[var(--admin-bg)] text-[var(--admin-ink)]">
       <AdminSidebar email={session.email} onLogoutAction={logout} />
-      <main className="flex-1 overflow-y-auto p-6 md:p-10">{children}</main>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[1400px] px-6 py-8 md:px-10 md:py-10">{children}</div>
+      </main>
     </div>
   );
 }

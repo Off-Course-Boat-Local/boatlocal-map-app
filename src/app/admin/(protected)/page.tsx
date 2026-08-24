@@ -11,6 +11,7 @@ import {
 } from "@/lib/data/source";
 import type { CompanyStatus } from "@/lib/data/types";
 import AdminTable from "@/components/admin/AdminTable";
+import { Panel, PageHeader, PRIMARY_BUTTON_CLASS, SectionHeading, Eyebrow } from "@/components/admin/primitives";
 import StatCard from "@/components/admin/StatCard";
 import StatusBadge from "@/components/admin/StatusBadge";
 
@@ -72,13 +73,11 @@ export default async function AdminOverviewPage() {
   const hiddenCompanyCount = companies.length - companyPreview.length;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Overview</h1>
-        <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-          Platform-wide snapshot across every tenant — PRD §8.1.
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        title="Overview"
+        description="Platform-wide snapshot across every tenant — PRD §8.1."
+      />
 
       <section>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -99,20 +98,20 @@ export default async function AdminOverviewPage() {
         </div>
       </section>
 
-      <section>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold text-[var(--admin-ink)]">
-            Effectiveness (PRD §2.3)
-          </h2>
-        </div>
-        <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-          How well the app drives bookings and reviews across the whole platform. See{" "}
-          <Link href="/admin/analytics" className="underline-offset-2 hover:underline">
-            Platform analytics
-          </Link>{" "}
-          for the filterable, per-company / date-range breakdown.
-        </p>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="mt-10">
+        <SectionHeading
+          title="Effectiveness (PRD §2.3)"
+          description={
+            <>
+              How well the app drives bookings and reviews across the whole platform. See{" "}
+              <Link href="/admin/analytics" className="font-medium text-[var(--admin-accent)] underline-offset-2 hover:underline">
+                Platform analytics
+              </Link>{" "}
+              for the filterable, per-company / date-range breakdown.
+            </>
+          }
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {effectiveness.map((metric) => (
             <StatCard
               key={metric.key}
@@ -123,29 +122,26 @@ export default async function AdminOverviewPage() {
         </div>
       </section>
 
-      <section>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--admin-ink)]">Companies</h2>
-            <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
-              {companies.length} tenant{companies.length === 1 ? "" : "s"} — {liveCompanies} live,{" "}
-              {setupCompanies} in setup
-              {suspendedCompanies ? `, ${suspendedCompanies} suspended` : ""}.
-            </p>
-          </div>
-          <Link
-            href="/admin/companies"
-            className="text-sm font-medium text-[var(--admin-accent-strong)] underline-offset-2 hover:underline"
-          >
-            View all companies →
-          </Link>
-        </div>
+      <section className="mt-10">
+        <SectionHeading
+          title="Companies"
+          description={`${companies.length} tenant${companies.length === 1 ? "" : "s"} — ${liveCompanies} live, ${setupCompanies} in setup${suspendedCompanies ? `, ${suspendedCompanies} suspended` : ""}.`}
+          action={
+            <Link
+              href="/admin/companies"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--admin-accent)] hover:text-[var(--admin-accent-hover)]"
+            >
+              View all companies →
+            </Link>
+          }
+        />
 
         <AdminTable
-          className="mt-4"
           columns={["Company", "ID", "Type", "Status"]}
           rows={companyPreview.map((company) => [
-            company.name,
+            <span key="name" className="font-medium whitespace-nowrap">
+              {company.name}
+            </span>,
             <span key="id" className="font-mono text-xs">
               {company.id}
             </span>,
@@ -169,10 +165,13 @@ export default async function AdminOverviewPage() {
         ) : null}
       </section>
 
-      <section className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--admin-ink)]">Onboard a company</h2>
-          <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
+      <Panel className="mt-8 flex flex-wrap items-center justify-between gap-5">
+        <div className="max-w-2xl">
+          <Eyebrow>Get started</Eyebrow>
+          <h2 className="font-display mt-2 text-lg font-semibold tracking-tight text-[var(--admin-ink)]">
+            Onboard a company
+          </h2>
+          <p className="mt-1.5 text-sm text-[var(--admin-ink-soft)]">
             Creates a new tenant, identified by its own id (PRD §8.1) — nothing to assign by
             hand. New companies start in &ldquo;Setup&rdquo; status until an admin takes them
             live.
@@ -183,13 +182,10 @@ export default async function AdminOverviewPage() {
             actions (Go live / Suspend / Reactivate) a company needs right
             after being created — this is the entry point PRD §8.1 asks
             Overview to provide, not a second copy of the form. */}
-        <Link
-          href="/admin/companies"
-          className="shrink-0 rounded-md bg-[var(--admin-accent-strong)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
+        <Link href="/admin/companies" className={PRIMARY_BUTTON_CLASS}>
           Onboard a company →
         </Link>
-      </section>
+      </Panel>
     </div>
   );
 }

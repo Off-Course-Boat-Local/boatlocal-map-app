@@ -13,11 +13,12 @@ import { useState } from "react";
 export interface CopyLinkButtonProps {
   value: string;
   label?: string;
+  /** Appended to (not replacing) the default button look — e.g. spacing (`mt-2`), sizing overrides. */
   className?: string;
 }
 
 const DEFAULT_CLASS =
-  "rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50";
+  "rounded-lg border border-[var(--studio-border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--studio-ink)] transition-colors hover:bg-[var(--studio-bg)]";
 
 export default function CopyLinkButton({ value, label = "Copy link", className }: CopyLinkButtonProps) {
   const [copied, setCopied] = useState(false);
@@ -35,7 +36,7 @@ export default function CopyLinkButton({ value, label = "Copy link", className }
   };
 
   return (
-    <button type="button" onClick={copy} className={className ?? DEFAULT_CLASS}>
+    <button type="button" onClick={copy} className={className ? `${DEFAULT_CLASS} ${className}` : DEFAULT_CLASS}>
       {copied ? "Copied!" : label}
     </button>
   );

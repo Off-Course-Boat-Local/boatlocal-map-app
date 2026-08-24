@@ -10,11 +10,18 @@
 // COLOUR NOTE: the fill is the *category* colour from @/lib/categories, not a
 // brand colour. Categories must read the same across every white-label skin —
 // a guest needs to see "that's food, that's a boat" at a glance. The only
-// brand-coloured chrome on the map is the filter pills.
+// other brand-coloured chrome on the map is the filter pills — and, here,
+// the selection halo/pulse below: "you tapped this one" is an app-level
+// interaction signal, not a category signal, so it takes `--brand-primary`
+// the same way the guest location dot's ping does (see
+// src/app/spike/location/page.tsx and GuestDot.tsx).
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { CATEGORY_MAP, categoryColor } from "@/lib/categories";
 import type { CategoryId } from "@/lib/types";
+
+/** The selection halo/pulse colour — brand identity, not category colour. */
+const SELECTION_ACCENT = "var(--brand-primary)";
 
 /* ------------------------------------------------------------------ */
 /* Geometry                                                            */
@@ -126,46 +133,76 @@ export function Pin({
   const glowSize = size * 1.35;
   const ringSize = size * 1.95;
 
+  // Hover/press are local UI feedback, not selection — mirrors the
+  // reference guide's `group-hover:-translate-y-0.5` / `active:scale-95`,
+  // but expressed as scale-from-the-tip (see TIP_ORIGIN below) rather than
+  // a translate, so a hover or a press never nudges the visual tip off the
+  // coordinate it marks.
+  const [hovered, setHovered] = useState(false);
+  const [pressed, setPressed] = useState(false);
+
+  const liftScale = selected ? 1.14 : hovered ? 1.04 : 1;
+  const pressScale = pressed ? 0.95 : 1;
+  const bodyScale = liftScale * pressScale;
+
   const rootStyle: CSSProperties = {
     width,
     height,
     ...style,
   };
 
+  const handlePointerEnter = (e: ReactPointerEvent<HTMLElement>) => {
+    if (e.pointerType === "mouse") setHovered(true);
+  };
+  const handlePointerLeave = () => {
+    setHovered(false);
+    setPressed(false);
+  };
+  const handlePointerDown = () => setPressed(true);
+  const handlePointerUp = () => setPressed(false);
+
   const body = (
     <>
-      {/* Everything that scales together on selection, pivoting on the tip so
-          the point never leaves the coordinate it marks. */}
+      {/* Everything that scales together on selection/hover/press, pivoting
+          on the tip so the point never leaves the coordinate it marks. */}
       <span
         aria-hidden="true"
         style={{
           position: "absolute",
           inset: 0,
           transformOrigin: TIP_ORIGIN,
-          transform: selected ? "scale(1.14)" : "scale(1)",
-          transition: "transform 260ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transform: `scale(${bodyScale})`,
+          transition: pressed
+            ? "transform 120ms ease-out"
+            : "transform 260ms cubic-bezier(0.22, 1, 0.36, 1)",
           willChange: "transform",
         }}
       >
-        {/* Outer ring — the faint outer edge of the glow. */}
-        <span
-          style={{
-            position: "absolute",
-            left: `${HEAD_CX_PCT}%`,
-            top: `${HEAD_CY_PCT}%`,
-            width: ringSize,
-            height: ringSize,
-            marginLeft: -ringSize / 2,
-            marginTop: -ringSize / 2,
-            borderRadius: "50%",
-            background: color,
-            opacity: selected ? 0.13 : 0,
-            transform: selected ? "scale(1)" : "scale(0.45)",
-            transition:
-              "opacity 260ms ease-out, transform 320ms cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
-        />
-        {/* Inner glow. */}
+        {/* Pulsing selection ring — brand-coloured (not category-coloured):
+            "you selected this pin" is an app-identity signal, same role as
+            the `animate-ping` dot on the guest's own location marker (see
+            src/app/spike/location/page.tsx). Mounted only while selected,
+            same as the reference guide's `{active && (...)}`. */}
+        {selected ? (
+          <span
+            aria-hidden="true"
+            className="animate-ping"
+            style={{
+              position: "absolute",
+              left: `${HEAD_CX_PCT}%`,
+              top: `${HEAD_CY_PCT}%`,
+              width: ringSize,
+              height: ringSize,
+              marginLeft: -ringSize / 2,
+              marginTop: -ringSize / 2,
+              borderRadius: "50%",
+              background: SELECTION_ACCENT,
+              opacity: 0.3,
+            }}
+          />
+        ) : null}
+        {/* Inner glow — soft, static halo that appears the instant a pin is
+            selected (the ping ring above handles the looping pulse). */}
         <span
           style={{
             position: "absolute",
@@ -176,7 +213,7 @@ export function Pin({
             marginLeft: -glowSize / 2,
             marginTop: -glowSize / 2,
             borderRadius: "50%",
-            background: color,
+            background: SELECTION_ACCENT,
             opacity: selected ? 0.26 : 0,
             transform: selected ? "scale(1)" : "scale(0.55)",
             transition:
@@ -267,6 +304,11 @@ export function Pin({
     <button
       type="button"
       onClick={onClick}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       aria-pressed={selected}
       aria-label={label ?? CATEGORY_MAP[category]?.label}
       className={className}

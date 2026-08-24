@@ -25,6 +25,7 @@
 import CompanyPublishToggle from "@/components/studio/CompanyPublishToggle";
 import GuideLeaderboard from "@/components/studio/dashboard/GuideLeaderboard";
 import KpiRow from "@/components/studio/dashboard/KpiRow";
+import { PageHeader, TableShell } from "@/components/studio/primitives";
 import {
   getCompanyAnalyticsSummary,
   getCompanyForStudio,
@@ -58,10 +59,7 @@ export default async function StudioDashboardPage() {
 
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-neutral-500">{session.companyName}</p>
-        </div>
+        <PageHeader title="Dashboard" description={session.companyName} />
 
         {company ? (
           <CompanyPublishToggle companyId={company.id} status={company.status} />
@@ -72,7 +70,7 @@ export default async function StudioDashboardPage() {
           <GuideLeaderboard rows={leaderboard} />
         </div>
 
-        <p className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-sm text-neutral-500">
+        <p className="rounded-2xl border border-dashed border-[var(--studio-border)] bg-[var(--studio-surface)]/60 p-4 text-sm text-[var(--studio-ink-soft)]">
           Day-by-day guest activity and a most-saved-tips ranking
           aren&rsquo;t available yet — the totals above are real, but there
           isn&rsquo;t a day-level or per-tip breakdown in the data layer
@@ -92,16 +90,18 @@ export default async function StudioDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          {session.guideName} &middot; {session.companyName}
-        </p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description={
+          <>
+            {session.guideName} &middot; {session.companyName}
+          </>
+        }
+      />
 
       <KpiRow items={kpis} />
 
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-[var(--studio-ink-soft)]">
         {ownRecommendations.length} of your own picks, plus the base list
         (read-only to you). See Recommendations for the full list, and
         Profile for your own share link.
@@ -112,35 +112,34 @@ export default async function StudioDashboardPage() {
           numbers as the KPI cards above down by every event type your link
           records, not just app opens and book-clicks. */}
       <div>
-        <h2 className="text-sm font-semibold text-neutral-900">Your stats</h2>
-        <p className="mt-0.5 text-xs text-neutral-500">
+        <h2 className="text-sm font-semibold text-[var(--studio-ink)]">Your stats</h2>
+        <p className="mt-0.5 text-xs text-[var(--studio-ink-soft)]">
           Real event counts from your own link, broken down by type.
         </p>
-        <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-              <tr>
-                <th className="px-4 py-2 font-medium">Event</th>
-                <th className="px-4 py-2 font-medium">Count</th>
+        <div className="mt-3">
+          <TableShell
+            head={
+              <>
+                <th>Event</th>
+                <th>Count</th>
+              </>
+            }
+          >
+            {analytics.map((row) => (
+              <tr key={row.eventType}>
+                <td className="text-[var(--studio-ink)]">{row.eventType}</td>
+                <td className="tabular-nums text-[var(--studio-ink-soft)]">{row.count}</td>
               </tr>
-            </thead>
-            <tbody>
-              {analytics.map((row) => (
-                <tr key={row.eventType} className="border-b border-neutral-100 last:border-0">
-                  <td className="px-4 py-2 text-neutral-900">{row.eventType}</td>
-                  <td className="px-4 py-2 text-neutral-600">{row.count}</td>
-                </tr>
-              ))}
-              {analytics.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-3 text-neutral-500" colSpan={2}>
-                    No events recorded yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-          <p className="border-t border-neutral-200 px-4 py-2 text-xs text-neutral-500">
+            ))}
+            {analytics.length === 0 ? (
+              <tr>
+                <td className="text-[var(--studio-ink-soft)]" colSpan={2}>
+                  No events recorded yet.
+                </td>
+              </tr>
+            ) : null}
+          </TableShell>
+          <p className="mt-2 text-xs text-[var(--studio-ink-soft)]">
             {totalEvents} event{totalEvents === 1 ? "" : "s"} total.
           </p>
         </div>
