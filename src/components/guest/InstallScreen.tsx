@@ -18,7 +18,7 @@
 // analytics wiring is untouched.
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Download } from "lucide-react";
+import { Download, QrCode } from "lucide-react";
 
 import { GuestScreenHeader } from "./GuestScreenHeader";
 import { useIsDesktopPointer } from "@/hooks/useIsDesktopPointer";
@@ -219,11 +219,7 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
             // comment for why `platform === "other"` alone isn't a safe
             // enough signal for that assumption (it also matches a real
             // guest on some other/unusual mobile browser).
-            <StatusCard tone="neutral">
-              This works best on a phone. Scan the QR code in the panel beside
-              this screen with your phone&rsquo;s camera, then install it from
-              there.
-            </StatusCard>
+            <DesktopScanCard />
           ) : (
             // A touch-primary device we couldn't specifically classify as
             // iOS or Android — still a phone/tablet, so generic (not
@@ -268,6 +264,86 @@ function StatusCard({
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * The desktop branch's "scan the QR code" moment — a proper SHADOW_CARD
+ * card (soft-circle QrCode badge, Outfit mini-heading, micro-steps) rather
+ * than a flat info box, echoing the visual language of the phone StepRows.
+ */
+function DesktopScanCard() {
+  return (
+    <div
+      className="rounded-2xl p-5"
+      style={{
+        background: "#FFFFFF",
+        border: `1px solid ${BORDER}`,
+        boxShadow: SHADOW_CARD,
+      }}
+    >
+      <div className="flex items-start gap-4">
+        <span
+          aria-hidden="true"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full"
+          style={{ background: BRAND_SOFT }}
+        >
+          <QrCode
+            className="h-5 w-5"
+            strokeWidth={1.75}
+            style={{ color: "var(--brand-primary)" }}
+          />
+        </span>
+        <div className="min-w-0">
+          <p
+            className="text-[0.9375rem] font-semibold"
+            style={{ margin: 0, color: INK, fontFamily: displayFontFamily }}
+          >
+            Scan to install
+          </p>
+          <p
+            className="mt-1 text-sm leading-relaxed"
+            style={{ margin: 0, marginTop: 4, color: MUTED, fontFamily: bodyFontFamily }}
+          >
+            This lives on a phone, not a desktop. Your QR code is in the panel
+            beside this screen.
+          </p>
+        </div>
+      </div>
+
+      {/* Micro-steps — same numbered-circle language as the phone StepRows,
+          scaled down to fit inside one card. */}
+      <ol
+        className="mt-4 flex flex-col gap-2.5 border-t pt-4"
+        style={{ borderColor: BORDER, margin: 0, marginTop: 16, padding: 0, paddingTop: 16 }}
+      >
+        <MicroStep index={1}>
+          Point your phone&rsquo;s camera at the QR code in the side panel.
+        </MicroStep>
+        <MicroStep index={2}>Tap the link that pops up on your phone.</MicroStep>
+        <MicroStep index={3}>Follow the install steps from there.</MicroStep>
+      </ol>
+    </div>
+  );
+}
+
+function MicroStep({ index, children }: { index: number; children: ReactNode }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span
+        aria-hidden="true"
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[0.6875rem] font-semibold"
+        style={{ background: BRAND_SOFT, color: "var(--brand-primary)" }}
+      >
+        {index}
+      </span>
+      <span
+        className="min-w-0 pt-0.5 text-sm leading-relaxed"
+        style={{ color: MUTED, fontFamily: bodyFontFamily }}
+      >
+        {children}
+      </span>
+    </li>
   );
 }
 

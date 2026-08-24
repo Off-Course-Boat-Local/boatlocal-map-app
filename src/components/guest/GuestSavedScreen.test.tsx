@@ -10,6 +10,13 @@ import { BRANDS } from "@/lib/brand";
 
 vi.mock("@/lib/guestEvents", () => ({ recordGuestEvent: vi.fn().mockResolvedValue(undefined) }));
 
+// The empty state's CTAs must carry the `?company=`/`?guide=` tenant
+// stand-in across to the List/Map tabs (same pattern as GuestReviewScreen's
+// mapHref), so give useSearchParams a realistic preview query to preserve.
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams("company=coastal&guide=jan"),
+}));
+
 const brand = BRANDS.coastal;
 
 const boat = ALL_PINS.find((p) => p.isBoat)!;
@@ -25,6 +32,16 @@ describe("GuestSavedScreen", () => {
   it("shows an empty state when nothing is saved", () => {
     render(<GuestSavedScreen brand={brand} pins={ALL_PINS} />);
     expect(screen.getAllByText(/nothing saved yet/i).length).toBeGreaterThan(0);
+  });
+
+  it("empty-state CTAs link to the List and Map tabs preserving the guest query string", () => {
+    render(<GuestSavedScreen brand={brand} pins={ALL_PINS} />);
+
+    const listLink = screen.getByRole("link", { name: /browse the list/i });
+    expect(listLink).toHaveAttribute("href", "/list?company=coastal&guide=jan");
+
+    const mapLink = screen.getByRole("link", { name: /explore the map/i });
+    expect(mapLink).toHaveAttribute("href", "/map?company=coastal&guide=jan");
   });
 
   it("groups saved items by category, with Boats first", () => {

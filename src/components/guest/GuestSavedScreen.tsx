@@ -11,6 +11,9 @@
 // useSavedPlaces() hook this screen uses, so the two can never disagree.
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Heart } from "lucide-react";
 
 import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
@@ -20,8 +23,9 @@ import { guestPinAction } from "@/lib/guestActions";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
 import { CATEGORIES } from "@/lib/categories";
-import { bodyFontFamily } from "@/lib/fonts";
-import { BORDER, INK, MUTED } from "@/lib/guestTheme";
+import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
+import { guestQueryString, withGuestQuery } from "@/lib/guestLinks";
+import { BORDER, BRAND_SOFT, INK, MUTED } from "@/lib/guestTheme";
 import type { MapPin } from "@/lib/data";
 import type { Brand } from "@/lib/types";
 
@@ -46,6 +50,14 @@ export default function GuestSavedScreen({
 }: GuestSavedScreenProps) {
   const { savedIds, isSaved, toggle } = useSavedPlaces();
   const [detailItem, setDetailItem] = useState<MapPin | null>(null);
+
+  // Same cross-tab link pattern as GuestReviewScreen's `mapHref` — carries
+  // the `?company=`/`?guide=` tenant stand-in across to the other guest
+  // tabs so the empty-state CTAs never drop the tenant being previewed.
+  const searchParams = useSearchParams();
+  const qs = guestQueryString(searchParams);
+  const listHref = withGuestQuery("/list", qs);
+  const mapHref = withGuestQuery("/map", qs);
 
   const savedPins = useMemo(() => {
     const savedSet = new Set(savedIds);
@@ -107,20 +119,58 @@ export default function GuestSavedScreen({
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white">
         {savedPins.length === 0 ? (
-          <div className="px-5 py-10">
-            <div
-              className="rounded-2xl px-6 py-12 text-center"
-              style={{ border: `1px dashed ${BORDER}` }}
+          // Empty state — open, centered composition (no card chrome): a
+          // soft brand-tint heart badge, display-face headline, and a real
+          // pair of CTAs into the List/Map tabs instead of a dead end.
+          <div className="flex flex-col items-center px-6 pb-16 pt-14 text-center">
+            <span
+              aria-hidden="true"
+              className="grid h-20 w-20 place-items-center rounded-full"
+              style={{ background: BRAND_SOFT }}
             >
-              <p className="text-base font-medium" style={{ color: INK }}>
-                Nothing saved yet
-              </p>
-              <p
-                className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed"
-                style={{ color: MUTED, fontFamily: bodyFontFamily }}
+              {/* Outline heart, deliberately not filled — filled means "saved". */}
+              <Heart
+                className="h-8 w-8"
+                strokeWidth={1.75}
+                style={{ color: "var(--brand-primary)" }}
+              />
+            </span>
+            <h2
+              className="mt-6 text-xl font-semibold"
+              style={{ color: INK, fontFamily: displayFontFamily }}
+            >
+              Nothing saved yet
+            </h2>
+            <p
+              className="mx-auto mt-2 max-w-[17rem] text-sm leading-relaxed"
+              style={{ color: MUTED, fontFamily: bodyFontFamily }}
+            >
+              Tap the heart on any place or boat tour and it lands here — your
+              shortlist for the day.
+            </p>
+            <div className="mt-8 flex w-full max-w-[17rem] flex-col gap-2.5">
+              <Link
+                href={listHref}
+                className="inline-flex h-12 w-full items-center justify-center rounded-full px-5 text-sm font-semibold text-white"
+                style={{
+                  background: "var(--brand-primary)",
+                  fontFamily: bodyFontFamily,
+                }}
               >
-                Tap the heart on a place or boat tour to keep it here.
-              </p>
+                Browse the list
+              </Link>
+              <Link
+                href={mapHref}
+                className="inline-flex h-12 w-full items-center justify-center rounded-full px-5 text-sm font-semibold"
+                style={{
+                  background: "#FFFFFF",
+                  border: `1px solid ${BORDER}`,
+                  color: INK,
+                  fontFamily: bodyFontFamily,
+                }}
+              >
+                Explore the map
+              </Link>
             </div>
           </div>
         ) : (
