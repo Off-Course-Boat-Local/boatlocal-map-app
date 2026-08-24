@@ -25,6 +25,8 @@ import { brandCssVars } from "@/lib/brand";
 import { GuestFilterProvider } from "@/lib/guestFilterContext";
 import { getGuestContext } from "@/lib/guestServerContext";
 import { isPreviewRequest } from "@/lib/guestPreview";
+import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
 
 export default async function GuestLayout({
   children,
@@ -33,9 +35,17 @@ export default async function GuestLayout({
 }) {
   const { brand, companyId, guide } = await getGuestContext();
   const isPreview = await isPreviewRequest();
+  // Locale = the guest's map_app_lang cookie if set, otherwise their
+  // browser's Accept-Language, otherwise English — see src/lib/i18n.
+  // Guest app only: Studio/Admin never touch this.
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
 
   return (
-    <main style={brandCssVars(brand) as CSSProperties}>
+    // `lang` on the guest shell (the root <html> is shared with
+    // Studio/Admin, which stay English — so the attribute lives here, on
+    // the outermost element this layout owns).
+    <main lang={locale} style={brandCssVars(brand) as CSSProperties}>
       {/* public/sw.js — see that file's header comment for exactly what it
           caches (the app shell + the last-loaded guide tip data) and what it
           deliberately doesn't. Guest routes only: never mounted under
@@ -67,13 +77,19 @@ export default async function GuestLayout({
               {brand.appName}
             </h1>
             <p className="text-sm leading-relaxed text-neutral-600">
-              Scan to open this on your phone — that&rsquo;s where you&rsquo;ll
-              want it.
+              {dict.common.scanAside}
             </p>
             <ShareQr />
           </div>
         }
       >
+        {/* Locale context for every guest client component (useI18n).
+            Only the locale STRING crosses the RSC boundary — the provider
+            picks its own dictionary (see LocaleProvider's header comment).
+            The LanguageSwitcher writes the cookie + router.refresh(), which
+            re-runs this layout and re-mounts the provider with the new
+            locale. */}
+        <LocaleProvider locale={locale}>
         {/* Shared across every guest route (Map, List, ...) for as long as
             this layout instance stays mounted, i.e. across client-side
             navigation between them — see src/lib/guestFilterContext.tsx for
@@ -90,6 +106,7 @@ export default async function GuestLayout({
             </Suspense>
           </div>
         </GuestFilterProvider>
+        </LocaleProvider>
       </PhoneFrame>
     </main>
   );

@@ -15,6 +15,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { CategoryId } from "@/lib/types";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { PhotoGallery } from "./PhotoGallery";
 
 /* Neutral chrome — never re-skins. */
@@ -77,6 +78,8 @@ export function PlaceCard({
   style,
 }: PlaceCardProps) {
   const titleId = useId();
+  // Defaults to English when no LocaleProvider is mounted (tests, /spike).
+  const { t } = useI18n();
 
   const [savedInner, setSavedInner] = useState(false);
   const isSaved = saved ?? savedInner;
@@ -118,7 +121,7 @@ export function PlaceCard({
   // truncatable.
   const locator = item.isBoat ? item.meta : item.area;
   const endorsement = item.isBoat ? item.note : item.note;
-  const actionLabel = item.isBoat ? "Book this tour" : "Walking directions";
+  const actionLabel = item.isBoat ? t.common.bookTour : t.common.walkingDirections;
 
   const toggleSaved = () => {
     const next = !isSaved;
@@ -192,7 +195,7 @@ export function PlaceCard({
         <button
           type="button"
           onClick={onClose}
-          aria-label={`Close ${item.name}`}
+          aria-label={t.placeDetail.closeItem(item.name)}
           style={{
             position: "absolute",
             top: 6,
@@ -229,7 +232,7 @@ export function PlaceCard({
             {galleryMounted && (
               <PhotoGallery
                 photos={item.photos}
-                alt={`${item.name} photo`}
+                alt={t.placeDetail.photoAlt(item.name)}
                 aspectRatio="16 / 10"
                 radius={16}
               />
@@ -245,7 +248,7 @@ export function PlaceCard({
             type="button"
             onClick={toggleGallery}
             aria-expanded={isGalleryOpen}
-            aria-label={`Show ${item.photos.length} photos of ${item.name}`}
+            aria-label={t.placeDetail.showPhotos(item.photos.length, item.name)}
             style={{
               position: "relative",
               flex: "0 0 auto",
@@ -368,7 +371,7 @@ export function PlaceCard({
                 textUnderlineOffset: 2,
               }}
             >
-              Hide photos
+              {t.placeDetail.hidePhotos}
             </button>
           )}
         </div>
@@ -411,7 +414,9 @@ export function PlaceCard({
           type="button"
           onClick={toggleSaved}
           aria-pressed={isSaved}
-          aria-label={isSaved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
+          aria-label={
+            isSaved ? t.common.removeSaved(item.name) : t.common.savePlace(item.name)
+          }
           style={{
             ...actionBase,
             flex: "0 0 auto",

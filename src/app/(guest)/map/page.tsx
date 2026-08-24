@@ -10,15 +10,19 @@
 import GuestMapScreen from "@/components/guest/GuestMapScreen";
 import { getMapPins } from "@/lib/data/source";
 import { getGuestContext } from "@/lib/guestServerContext";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
 
 export default async function MapPage() {
   const { brand, companyId, guide, guideSlug } = await getGuestContext();
   const pins = companyId ? await getMapPins(companyId) : [];
+  // Only the guide-less FALLBACK ("your guide") is app-authored copy; a
+  // real guide's name passes through verbatim, never translated.
+  const dict = getDictionary(await getLocale());
 
   return (
     <GuestMapScreen
       brand={brand}
-      guideName={guide?.name ?? "your guide"}
+      guideName={guide?.name ?? dict.common.yourGuide}
       guideSlug={guide ? guideSlug : null}
       guideId={guide?.id ?? null}
       companyId={companyId}

@@ -28,6 +28,7 @@ import type { MapPin } from "@/lib/data";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { guestPinAction } from "@/lib/guestActions";
 import { withGuestQuery } from "@/lib/guestLinks";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import type { Brand } from "@/lib/types";
 
 /* Neutral chrome — never re-skins. Matches PlaceCard's palette. */
@@ -145,6 +146,7 @@ function readInstallBannerDismissed(): boolean {
  * two surfaces can never disagree about when installing makes sense.
  */
 function InstallBanner({ qs }: { qs: string }) {
+  const { t } = useI18n();
   // localStorage doesn't exist during server rendering, so the "was this
   // already dismissed?" read has to resolve differently there than on the
   // client. useSyncExternalStore (rather than an effect + setState, which
@@ -180,19 +182,19 @@ function InstallBanner({ qs }: { qs: string }) {
     >
       <InstallGlyph />
       <p className="min-w-0 flex-1 text-[12.5px] leading-tight" style={{ color: INK }}>
-        Add this to your home screen for one-tap access next time.
+        {t.welcome.installBanner}
       </p>
       <Link
         href={withGuestQuery("/install", qs)}
         className="shrink-0 text-[12.5px] font-semibold"
         style={{ color: "var(--brand-primary)" }}
       >
-        Install
+        {t.welcome.installCta}
       </Link>
       <button
         type="button"
         onClick={dismiss}
-        aria-label="Dismiss"
+        aria-label={t.welcome.dismiss}
         className="flex h-6 w-6 shrink-0 items-center justify-center"
         style={{ color: MUTED }}
       >
@@ -212,6 +214,7 @@ function InstallBanner({ qs }: { qs: string }) {
 
 /** Collapsible "share with a travel companion" — QR (ShareQr, reused as-is) + copy-link. */
 function ShareSection() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -240,7 +243,7 @@ function ShareSection() {
           className="text-[14.5px] font-semibold"
           style={{ fontFamily: bodyFontFamily, color: INK }}
         >
-          Share with a travel companion
+          {t.welcome.shareTitle}
         </span>
         <ChevronGlyph open={open} />
       </button>
@@ -270,7 +273,7 @@ function ShareSection() {
                 touchAction: "manipulation",
               }}
             >
-              {copied ? "Link copied" : "Copy link"}
+              {copied ? t.welcome.linkCopied : t.welcome.copyLink}
             </button>
           </div>
         </div>
@@ -293,6 +296,7 @@ export default function GuestWelcomeScreen({
   // (eventually) the Saved screen read, so saving the top pick here actually
   // shows up there too, rather than a Welcome-only ephemeral toggle.
   const { isSaved, toggle } = useSavedPlaces();
+  const { t } = useI18n();
 
   return (
     <div className="no-scrollbar flex h-full w-full flex-col overflow-y-auto bg-white">
@@ -335,7 +339,7 @@ export default function GuestWelcomeScreen({
             className="flex h-12 w-full items-center justify-center rounded-xl text-[15px] font-semibold text-white"
             style={{ background: "var(--brand-primary)", fontFamily: bodyFontFamily }}
           >
-            Open the map
+            {t.welcome.openMap}
           </Link>
           <Link
             href={withGuestQuery("/list", qs)}
@@ -346,11 +350,11 @@ export default function GuestWelcomeScreen({
               fontFamily: bodyFontFamily,
             }}
           >
-            Browse the list
+            {t.welcome.browseList}
           </Link>
           {placeCount > 0 ? (
             <p className="mt-2.5 text-center text-[12px]" style={{ color: MUTED }}>
-              {placeCount} hand-picked spots from {guideName}, plus boat tours to book.
+              {t.welcome.spotsFrom(placeCount, guideName)}
             </p>
           ) : null}
         </div>
@@ -362,7 +366,7 @@ export default function GuestWelcomeScreen({
               className="mb-2 text-[11px] font-semibold uppercase tracking-widest"
               style={{ color: MUTED }}
             >
-              {guideName}&rsquo;s top pick
+              {t.welcome.topPick(guideName)}
             </p>
             <PlaceCard
               item={topPick}

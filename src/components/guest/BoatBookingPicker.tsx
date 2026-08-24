@@ -19,6 +19,7 @@
 import { useId, useState, type CSSProperties } from "react";
 
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { formatBookingDate, type BoatBookingSelection } from "@/lib/boatBookingHandoff";
 import { DatePickerField } from "./DatePickerField";
 
@@ -55,6 +56,7 @@ export function BoatBookingPicker({
   minGuests = 1,
   maxGuests = 12,
 }: BoatBookingPickerProps) {
+  const { t } = useI18n();
   const dateInputId = useId();
   const [date, setDate] = useState<string>(
     value.date ? formatBookingDate(value.date) : "",
@@ -79,7 +81,7 @@ export function BoatBookingPicker({
     <section
       role="dialog"
       aria-modal="true"
-      aria-label="Trip details for booking a boat"
+      aria-label={t.booking.dialogLabel}
       style={{
         position: "absolute",
         left: 12,
@@ -104,12 +106,12 @@ export function BoatBookingPicker({
             fontWeight: 700,
           }}
         >
-          Planning a boat trip?
+          {t.booking.title}
         </h2>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t.common.close}
           style={{
             border: 0,
             background: "transparent",
@@ -131,15 +133,14 @@ export function BoatBookingPicker({
         </button>
       </div>
       <p style={{ margin: "4px 0 14px", fontSize: 13, color: MUTED }}>
-        Add a date and party size so it&rsquo;s ready to go when you find a
-        tour you like — or skip this and set it later.
+        {t.booking.body}
       </p>
 
       <label
         htmlFor={dateInputId}
         style={{ display: "block", fontSize: 12, fontWeight: 600, color: MUTED, marginBottom: 4 }}
       >
-        Date
+        {t.booking.dateLabel}
       </label>
       <div style={{ marginBottom: 14 }}>
         <DatePickerField
@@ -151,13 +152,13 @@ export function BoatBookingPicker({
       </div>
 
       <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: MUTED, marginBottom: 4 }}>
-        Guests
+        {t.booking.guestsLabel}
       </span>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
         <button
           type="button"
           onClick={() => setGuests((g) => Math.max(minGuests, g - 1))}
-          aria-label="Fewer guests"
+          aria-label={t.booking.fewerGuests}
           disabled={guests <= minGuests}
           style={{ ...stepperButtonStyle, opacity: guests <= minGuests ? 0.4 : 1 }}
         >
@@ -169,7 +170,7 @@ export function BoatBookingPicker({
         <button
           type="button"
           onClick={() => setGuests((g) => Math.min(maxGuests, g + 1))}
-          aria-label="More guests"
+          aria-label={t.booking.moreGuests}
           disabled={guests >= maxGuests}
           style={{ ...stepperButtonStyle, opacity: guests >= maxGuests ? 0.4 : 1 }}
         >
@@ -195,7 +196,7 @@ export function BoatBookingPicker({
           touchAction: "manipulation",
         }}
       >
-        Save trip details
+        {t.booking.save}
       </button>
     </section>
   );

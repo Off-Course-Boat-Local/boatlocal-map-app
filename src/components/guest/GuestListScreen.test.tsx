@@ -10,6 +10,14 @@ import { BRANDS } from "@/lib/brand";
 
 vi.mock("@/lib/guestEvents", () => ({ recordGuestEvent: vi.fn().mockResolvedValue(undefined) }));
 
+// The header's LanguageSwitcher calls useRouter() (for router.refresh() on a
+// language change) — jsdom has no app router mounted, so stub it. Every
+// string assertion below stays English: with no LocaleProvider the i18n
+// context defaults to "en".
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+
 const brand = BRANDS.coastal;
 const boat = ALL_PINS.find((p) => p.isBoat)!;
 

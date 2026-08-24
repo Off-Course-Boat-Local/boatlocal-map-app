@@ -25,8 +25,8 @@ import { Clock, MapPin as MapPinIcon } from "lucide-react";
 
 import { CategoryGlyph } from "@/components/map/Pin";
 import { categoryColor } from "@/lib/categories";
-import { guestPinActionLabel } from "@/lib/guestActions";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { BORDER, BRAND_TINT, INK, MUTED, SHADOW_CARD } from "@/lib/guestTheme";
 import type { MapPin } from "@/lib/data";
 import { SaveHeartButton } from "./SaveHeartButton";
@@ -54,14 +54,15 @@ export function GuestPlaceRow({
   onAction,
   onOpenDetail,
 }: GuestPlaceRowProps) {
-  const actionLabel = guestPinActionLabel(item);
+  const { t } = useI18n();
+  const actionLabel = item.isBoat ? t.common.bookTour : t.common.walkingDirections;
   const photo = item.photos[0];
 
   return (
     <li
       onClick={onOpenDetail}
       role={onOpenDetail ? "button" : undefined}
-      aria-label={onOpenDetail ? `View details for ${item.name}` : undefined}
+      aria-label={onOpenDetail ? t.list.viewDetails(item.name) : undefined}
       tabIndex={onOpenDetail ? 0 : undefined}
       onKeyDown={
         onOpenDetail
@@ -113,7 +114,7 @@ export function GuestPlaceRow({
           <SaveHeartButton
             floating
             saved={saved}
-            label={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
+            label={saved ? t.common.removeSaved(item.name) : t.common.savePlace(item.name)}
             onClick={onToggleSaved}
           />
         </span>

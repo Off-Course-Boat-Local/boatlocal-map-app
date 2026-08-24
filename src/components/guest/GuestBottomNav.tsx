@@ -33,30 +33,32 @@ import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import { bodyFontFamily } from "@/lib/fonts";
 import { withGuestQuery } from "@/lib/guestLinks";
 import { BORDER, BRAND_SOFT, MUTED } from "@/lib/guestTheme";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 
 const ICON_CLASS = "h-[1.15rem] w-[1.15rem]";
 const ICON_STROKE = 2;
 
 interface NavItem {
   href: string;
-  label: string;
+  /** Dictionary key under `nav` — the LABEL is looked up per locale at render. */
+  labelKey: "map" | "list" | "saved" | "review" | "install";
   icon: (props: { active: boolean }) => ReactNode;
 }
 
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/map",
-    label: "Map",
+    labelKey: "map",
     icon: () => <MapIcon className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />,
   },
   {
     href: "/list",
-    label: "List",
+    labelKey: "list",
     icon: () => <LayoutList className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />,
   },
   {
     href: "/saved",
-    label: "Saved",
+    labelKey: "saved",
     // Fills with the brand colour when active — the same one consistent
     // "saved" mark as SaveHeartButton and PlaceCard's heart.
     icon: ({ active }) => (
@@ -70,14 +72,14 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/review",
-    label: "Review",
+    labelKey: "review",
     icon: () => (
       <MessageSquareHeart className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />
     ),
   },
   {
     href: "/install",
-    label: "Install",
+    labelKey: "install",
     icon: () => <Download className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />,
   },
 ];
@@ -87,10 +89,11 @@ export default function GuestBottomNav() {
   const searchParams = useSearchParams();
   const qs = searchParams.toString();
   const { count: savedCount } = useSavedPlaces();
+  const { t } = useI18n();
 
   return (
     <nav
-      aria-label="Guest navigation"
+      aria-label={t.nav.ariaLabel}
       className="grid shrink-0 grid-cols-5 backdrop-blur"
       style={{
         background: "rgba(255,255,255,0.95)",
@@ -98,7 +101,8 @@ export default function GuestBottomNav() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+      {NAV_ITEMS.map(({ href, labelKey, icon: Icon }) => {
+        const label = t.nav[labelKey];
         const active = pathname === href;
         const color = active ? "var(--brand-primary)" : MUTED;
         const target = withGuestQuery(href, qs);
@@ -136,7 +140,7 @@ export default function GuestBottomNav() {
             >
               {label}
               {badgeCount > 0 ? (
-                <span className="sr-only">{` (${badgeCount} saved)`}</span>
+                <span className="sr-only">{t.nav.savedBadge(badgeCount)}</span>
               ) : null}
             </span>
           </Link>

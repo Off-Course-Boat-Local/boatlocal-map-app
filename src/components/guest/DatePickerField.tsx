@@ -19,6 +19,8 @@ import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { BORDER, BRAND_TINT, INK, MUTED, SECONDARY, SHADOW_CARD } from "@/lib/guestTheme";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export interface DatePickerFieldProps {
   /** Selected date as `YYYY-MM-DD` (the exact shape BoatBookingPicker
@@ -36,34 +38,13 @@ export interface DatePickerFieldProps {
 /** How far ahead the calendar can navigate, in months from today. */
 const MAX_MONTHS_AHEAD = 18;
 
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-] as const;
-
-/** Indexed by Date#getDay() (Sunday-first, as the platform defines it). */
-const WEEKDAY_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-] as const;
-
-/** Header row — Monday-first, matching Dutch/European convention. */
-const WEEKDAY_HEADER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+/**
+ * Month/weekday names come from the guest's dictionary (useI18n's
+ * `datePicker` group) — the tables that used to be hardcoded here in
+ * English. Only the DISPLAY changes with locale: the `YYYY-MM-DD` value
+ * contract below is byte-identical in every language.
+ */
+type DatePickerStrings = Dictionary["datePicker"];
 
 /** Local-time `YYYY-MM-DD` — kept in lockstep with
  * boatBookingHandoff.ts's formatBookingDate. */
@@ -86,17 +67,18 @@ function monthIndex(year: number, month: number): number {
   return year * 12 + month;
 }
 
-/** Trigger label, e.g. "Sun 30 Aug 2026". Hand-built (not toLocaleDateString)
- * so it can't vary with device locale or ICU version. */
-function formatTriggerLabel(date: Date): string {
-  return `${WEEKDAY_NAMES[date.getDay()].slice(0, 3)} ${date.getDate()} ${MONTH_NAMES[
-    date.getMonth()
-  ].slice(0, 3)} ${date.getFullYear()}`;
+/** Trigger label, e.g. "Sun 30 Aug 2026". Hand-built from the dictionary's
+ * own tables (not toLocaleDateString) so it can't vary with device locale
+ * or ICU version — only with the app's own selected locale. */
+function formatTriggerLabel(date: Date, dp: DatePickerStrings): string {
+  return `${dp.weekdayNamesShort[date.getDay()]} ${date.getDate()} ${
+    dp.monthNamesShort[date.getMonth()]
+  } ${date.getFullYear()}`;
 }
 
 /** Full accessible name, e.g. "Sunday 30 August 2026". */
-function formatDayAriaLabel(date: Date): string {
-  return `${WEEKDAY_NAMES[date.getDay()]} ${date.getDate()} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
+function formatDayAriaLabel(date: Date, dp: DatePickerStrings): string {
+  return `${dp.weekdayNames[date.getDay()]} ${date.getDate()} ${dp.monthNames[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 const navButtonStyle: CSSProperties = {
@@ -116,6 +98,8 @@ const navButtonStyle: CSSProperties = {
 
 export function DatePickerField({ value, onChange, min, id }: DatePickerFieldProps) {
   const panelId = useId();
+  const { t } = useI18n();
+  const dp = t.datePicker;
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -195,7 +179,7 @@ export function DatePickerField({ value, onChange, min, id }: DatePickerFieldPro
           touchAction: "manipulation",
         }}
       >
-        <span>{selected ? formatTriggerLabel(selected) : "Pick a date"}</span>
+        <span>{selected ? formatTriggerLabel(selected, dp) : dp.pickDate}</span>
         <CalendarDays size={17} color={MUTED} aria-hidden="true" />
       </button>
 
@@ -223,7 +207,7 @@ export function DatePickerField({ value, onChange, min, id }: DatePickerFieldPro
               type="button"
               onClick={() => moveMonth(-1)}
               disabled={!canGoPrev}
-              aria-label="Previous month"
+              aria-label={dp.prevMonth}
               style={{ ...navButtonStyle, opacity: canGoPrev ? 1 : 0.4 }}
             >
               <ChevronLeft size={17} aria-hidden="true" />
@@ -236,13 +220,13 @@ export function DatePickerField({ value, onChange, min, id }: DatePickerFieldPro
                 color: INK,
               }}
             >
-              {MONTH_NAMES[view.month]} {view.year}
+              {dp.monthNames[view.month]} {view.year}
             </span>
             <button
               type="button"
               onClick={() => moveMonth(1)}
               disabled={!canGoNext}
-              aria-label="Next month"
+              aria-label={dp.nextMonth}
               style={{ ...navButtonStyle, opacity: canGoNext ? 1 : 0.4 }}
             >
               <ChevronRight size={17} aria-hidden="true" />
@@ -257,7 +241,7 @@ export function DatePickerField({ value, onChange, min, id }: DatePickerFieldPro
               marginBottom: 4,
             }}
           >
-            {WEEKDAY_HEADER.map((day) => (
+            {dp.weekdayHeader.map((day) => (
               <span
                 key={day}
                 style={{
@@ -295,7 +279,7 @@ export function DatePickerField({ value, onChange, min, id }: DatePickerFieldPro
                   key={iso}
                   type="button"
                   disabled={isDisabled}
-                  aria-label={formatDayAriaLabel(date)}
+                  aria-label={formatDayAriaLabel(date, dp)}
                   aria-pressed={isSelected}
                   aria-current={isToday ? "date" : undefined}
                   onClick={() => {

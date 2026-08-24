@@ -15,7 +15,9 @@ import { useMemo, useState } from "react";
 import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
 import { GuestScreenHeader } from "./GuestScreenHeader";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useGuestFilter } from "@/lib/guestFilterContext";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import { guestPinAction } from "@/lib/guestActions";
 import { recordGuestEvent } from "@/lib/guestEvents";
@@ -48,6 +50,7 @@ export default function GuestListScreen({
 }: GuestListScreenProps) {
   const { filter, setFilter } = useGuestFilter();
   const { isSaved, toggle } = useSavedPlaces();
+  const { t } = useI18n();
   const [detailItem, setDetailItem] = useState<MapPin | null>(null);
 
   const pins = useMemo(
@@ -89,7 +92,8 @@ export default function GuestListScreen({
       <GuestScreenHeader
         eyebrow={brand.companyName}
         title={brand.appName}
-        subtitle={`${allPins.length} recommendations from ${guideName}`}
+        subtitle={t.list.recommendationsFrom(allPins.length, guideName)}
+        action={<LanguageSwitcher tone="header" />}
       />
 
       {/* Category filter chips — same shared filter state as the Map screen
@@ -103,9 +107,13 @@ export default function GuestListScreen({
         <div
           className="no-scrollbar flex gap-2 overflow-x-auto px-5 py-3"
           role="group"
-          aria-label="Filter places by category"
+          aria-label={t.list.filterAriaLabel}
         >
-          {[{ id: null, label: "All" }, ...CATEGORIES].map((cat) => {
+          {[
+            { id: null, label: t.common.all },
+            // Labels come from the dictionary; ids never translate.
+            ...CATEGORIES.map((cat) => ({ id: cat.id, label: t.categories[cat.id] })),
+          ].map((cat) => {
             const isActive = filter === cat.id;
             return (
               <button
@@ -143,7 +151,7 @@ export default function GuestListScreen({
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white">
         {pins.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm" style={{ color: MUTED }}>
-            No recommendations in this category yet.
+            {t.list.emptyCategory}
           </p>
         ) : (
           <ul className="space-y-4 px-5 py-5" style={{ margin: 0 }}>

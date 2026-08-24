@@ -22,10 +22,22 @@ export interface GuestScreenHeaderProps {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  /**
+   * Optional top-right slot — e.g. the LanguageSwitcher on the List screen
+   * (per the founder's annotation). A slot rather than a hardcoded switcher
+   * so the header stays a dumb presentational band.
+   */
+  action?: ReactNode;
   children?: ReactNode;
 }
 
-export function GuestScreenHeader({ eyebrow, title, subtitle, children }: GuestScreenHeaderProps) {
+export function GuestScreenHeader({
+  eyebrow,
+  title,
+  subtitle,
+  action,
+  children,
+}: GuestScreenHeaderProps) {
   return (
     <header
       className="shrink-0 px-5 pb-6 text-white"
@@ -34,28 +46,33 @@ export function GuestScreenHeader({ eyebrow, title, subtitle, children }: GuestS
         paddingTop: "calc(env(safe-area-inset-top) + 1.75rem)",
       }}
     >
-      {eyebrow && (
-        <p
-          className="text-[0.6875rem] font-semibold uppercase tracking-[0.18em] opacity-75"
-          style={{ fontFamily: bodyFontFamily }}
-        >
-          {eyebrow}
-        </p>
-      )}
-      <h1
-        className="mt-1.5 text-[1.75rem] font-semibold leading-tight"
-        style={{ fontFamily: displayFontFamily, letterSpacing: "-0.02em" }}
-      >
-        {title}
-      </h1>
-      {subtitle && (
-        <p
-          className="mt-1.5 text-sm leading-snug opacity-85"
-          style={{ fontFamily: bodyFontFamily }}
-        >
-          {subtitle}
-        </p>
-      )}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {eyebrow && (
+            <p
+              className="text-[0.6875rem] font-semibold uppercase tracking-[0.18em] opacity-75"
+              style={{ fontFamily: bodyFontFamily }}
+            >
+              {eyebrow}
+            </p>
+          )}
+          <h1
+            className="mt-1.5 text-[1.75rem] font-semibold leading-tight"
+            style={{ fontFamily: displayFontFamily, letterSpacing: "-0.02em" }}
+          >
+            {title}
+          </h1>
+          {subtitle && (
+            <p
+              className="mt-1.5 text-sm leading-snug opacity-85"
+              style={{ fontFamily: bodyFontFamily }}
+            >
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
       {children}
     </header>
   );

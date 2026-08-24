@@ -24,6 +24,7 @@ import { recordGuestEvent } from "@/lib/guestEvents";
 import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
 import { CATEGORIES } from "@/lib/categories";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { guestQueryString, withGuestQuery } from "@/lib/guestLinks";
 import { BORDER, BRAND_SOFT, INK, MUTED } from "@/lib/guestTheme";
 import type { MapPin } from "@/lib/data";
@@ -49,6 +50,7 @@ export default function GuestSavedScreen({
   pins,
 }: GuestSavedScreenProps) {
   const { savedIds, isSaved, toggle } = useSavedPlaces();
+  const { t } = useI18n();
   const [detailItem, setDetailItem] = useState<MapPin | null>(null);
 
   // Same cross-tab link pattern as GuestReviewScreen's `mapHref` — carries
@@ -108,12 +110,12 @@ export default function GuestSavedScreen({
   return (
     <div className="flex h-full w-full flex-col">
       <GuestScreenHeader
-        eyebrow="Your shortlist"
-        title="Saved"
+        eyebrow={t.saved.eyebrow}
+        title={t.saved.title}
         subtitle={
           savedPins.length === 0
-            ? `Nothing saved yet from ${brand.appName}`
-            : `${savedPins.length} saved from ${brand.appName}`
+            ? t.saved.emptySubtitle(brand.appName)
+            : t.saved.countSubtitle(savedPins.length, brand.appName)
         }
       />
 
@@ -139,14 +141,13 @@ export default function GuestSavedScreen({
               className="mt-6 text-xl font-semibold"
               style={{ color: INK, fontFamily: displayFontFamily }}
             >
-              Nothing saved yet
+              {t.saved.emptyTitle}
             </h2>
             <p
               className="mx-auto mt-2 max-w-[17rem] text-sm leading-relaxed"
               style={{ color: MUTED, fontFamily: bodyFontFamily }}
             >
-              Tap the heart on any place or boat tour and it lands here — your
-              shortlist for the day.
+              {t.saved.emptyBody}
             </p>
             <div className="mt-8 flex w-full max-w-[17rem] flex-col gap-2.5">
               <Link
@@ -157,7 +158,7 @@ export default function GuestSavedScreen({
                   fontFamily: bodyFontFamily,
                 }}
               >
-                Browse the list
+                {t.saved.browseList}
               </Link>
               <Link
                 href={mapHref}
@@ -169,7 +170,7 @@ export default function GuestSavedScreen({
                   fontFamily: bodyFontFamily,
                 }}
               >
-                Explore the map
+                {t.saved.exploreMap}
               </Link>
             </div>
           </div>
@@ -181,7 +182,7 @@ export default function GuestSavedScreen({
                   className="mb-3 flex items-baseline gap-2 text-[0.8125rem] font-semibold uppercase tracking-[0.14em]"
                   style={{ color: MUTED, fontFamily: bodyFontFamily }}
                 >
-                  {category.label}
+                  {t.categories[category.id]}
                   <span aria-hidden="true" style={{ color: "var(--brand-primary)" }}>
                     {items.length}
                   </span>

@@ -48,15 +48,16 @@ import FilterPills from "@/components/map/FilterPills";
 import { PlaceCard } from "@/components/map/PlaceCard";
 import GuestDot from "@/components/map/GuestDot";
 import BoatBookingPicker from "@/components/guest/BoatBookingPicker";
+import { LanguageSwitcher } from "@/components/guest/LanguageSwitcher";
 
 import { useGuestLocation, guestPoint } from "@/hooks/useGuestLocation";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import {
   LONG_WALK_METERS,
-  formatWalk,
-  walkCaveatFor,
+  walkEstimateParts,
   walkingDistanceMeters,
 } from "@/lib/distance";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { guestPinAction } from "@/lib/guestActions";
 import {
   DEFAULT_BOAT_BOOKING_SELECTION,
@@ -66,6 +67,7 @@ import {
 import { recordGuestEvent } from "@/lib/guestEvents";
 import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
 import { useGuestFilter } from "@/lib/guestFilterContext";
+import { CATEGORIES } from "@/lib/categories";
 import { AMSTERDAM_CENTER } from "@/lib/data";
 import type { MapPin } from "@/lib/data";
 import { displayFontFamily } from "@/lib/fonts";
@@ -107,9 +109,17 @@ export default function GuestMapScreen({
   pins: allPins,
 }: GuestMapScreenProps) {
   const { filter, setFilter } = useGuestFilter();
+  const { t } = useI18n();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const { isSaved, toggle: toggleSaved } = useSavedPlaces();
+
+  // Same category set, LABELS swapped for the guest's language — ids and
+  // colours never change (see src/lib/categories.ts).
+  const localizedCategories = useMemo(
+    () => CATEGORIES.map((cat) => ({ ...cat, label: t.categories[cat.id] })),
+    [t],
+  );
 
   // Boats booking details (PRD §5.5) — a one-off date + guest-count picker
   // surfaced the first time the guest picks the Boats filter, editable again
@@ -144,21 +154,31 @@ export default function GuestMapScreen({
 
   const walkLine = useMemo(() => {
     if (!selected || !guest) return null;
-    if (crossesTheIJ) return "Ferry from Centraal, then a short walk";
-    return formatWalk(guest, selected);
-  }, [selected, guest, crossesTheIJ]);
+    if (crossesTheIJ) return t.map.ferryLine;
+    // Same banding/rounding as distance.ts's formatWalk — only the wording
+    // is assembled here, per locale.
+    const parts = walkEstimateParts(walkingDistanceMeters(guest, selected));
+    if (parts.kind === "rightHere") {
+      return parts.metersLabel
+        ? `${t.map.rightHere} · ${parts.metersLabel}`
+        : t.map.rightHere;
+    }
+    return t.map.walkLine(parts.minutes, parts.distanceLabel);
+  }, [selected, guest, crossesTheIJ, t]);
 
   // The caveat earns its place only when the estimate could actually mislead:
   // a long walk, or the IJ crossing. Printing "canals may add a detour" under
   // every 300 m hop is noise, and noise trains people to stop reading.
   const caveat = useMemo(() => {
     if (!selected || !guest) return null;
-    if (crossesTheIJ) return "The IJ has no bridge — take the free ferry.";
+    if (crossesTheIJ) return t.map.ferryCaveat;
     if (walkingDistanceMeters(guest, selected) >= LONG_WALK_METERS) {
-      return walkCaveatFor(guest, selected);
+      // At or past LONG_WALK_METERS this is always the long-walk caveat —
+      // same rule distance.ts's walkCaveat encodes.
+      return t.map.longWalkCaveat;
     }
     return null;
-  }, [selected, guest, crossesTheIJ]);
+  }, [selected, guest, crossesTheIJ, t]);
 
   return (
     <div className="relative h-full w-full">
@@ -205,8 +225,10 @@ export default function GuestMapScreen({
         // standalone/notched phones, env() is 0 in a browser tab.
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
       >
-        {/* Header pill */}
-        <div className="flex px-4">
+        {/* Header pill — with the language switcher floating top-right
+            beside it (founder's annotation), in the same white/95
+            backdrop-blur pill language as the header pill itself. */}
+        <div className="flex items-start justify-between gap-2 px-4">
           <div
             className="pointer-events-auto rounded-full bg-white/95 px-5 py-2 backdrop-blur"
             style={{ boxShadow: CARD_SHADOW }}
@@ -218,8 +240,11 @@ export default function GuestMapScreen({
               {brand.appName}
             </h1>
             <p className="text-[11px] leading-4" style={{ color: MUTED_TEXT }}>
-              {allPins.length} recommendations from {guideName}
+              {t.list.recommendationsFrom(allPins.length, guideName)}
             </p>
+          </div>
+          <div className="pointer-events-auto shrink-0">
+            <LanguageSwitcher tone="floating" />
           </div>
         </div>
 
@@ -228,6 +253,9 @@ export default function GuestMapScreen({
           className="pointer-events-auto"
           value={filter}
           onChange={handleFilterChange}
+          categories={localizedCategories}
+          allLabel={t.common.all}
+          ariaLabel={t.list.filterAriaLabel}
           style={{ padding: "8px 16px 0" }}
         />
 
@@ -241,15 +269,15 @@ export default function GuestMapScreen({
               style={{ boxShadow: CARD_SHADOW, color: MUTED_TEXT }}
             >
               {location.status === "denied"
-                ? "Location is off — distances are hidden."
-                : "Can't get your location right now."}
+                ? t.map.locationOff
+                : t.map.locationUnavailable}
               <button
                 type="button"
                 onClick={request}
                 className="ml-2 font-semibold underline"
                 style={{ color: "var(--brand-primary)" }}
               >
-                Try again
+                {t.map.tryAgain}
               </button>
             </div>
           </div>
@@ -265,17 +293,18 @@ export default function GuestMapScreen({
             >
               <span style={{ color: MUTED_TEXT }}>
                 {bookingSelection.date
-                  ? `${formatBookingDateLabel(bookingSelection.date)} · ${bookingSelection.guests} guest${
-                      bookingSelection.guests === 1 ? "" : "s"
-                    }`
-                  : "No trip details set for booking yet"}
+                  ? t.map.tripSummary(
+                      formatBookingDateLabel(bookingSelection.date),
+                      bookingSelection.guests,
+                    )
+                  : t.map.noTripDetails}
               </span>
               <button
                 type="button"
                 onClick={() => setShowBookingPicker(true)}
                 style={{ color: "var(--brand-primary)", fontWeight: 600 }}
               >
-                {bookingSelection.date ? "Edit" : "Add details"}
+                {bookingSelection.date ? t.map.edit : t.map.addDetails}
               </button>
             </div>
           </div>
@@ -302,7 +331,7 @@ export default function GuestMapScreen({
                   </>
                 ) : (
                   <span className="text-[13px] text-neutral-500">
-                    Turn on location to see how far this is
+                    {t.map.turnOnLocation}
                   </span>
                 )}
               </div>

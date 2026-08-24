@@ -114,26 +114,45 @@ export function roundMeters(meters: number): number {
  * @example formatWalkFromMeters(40)   // "Right here · 50 m"
  */
 export function formatWalkFromMeters(meters: number): string {
+  const parts = walkEstimateParts(meters);
+  if (parts.kind === "rightHere") {
+    return parts.metersLabel ? `Right here · ${parts.metersLabel}` : "Right here";
+  }
+  return `~${parts.minutes} min walk · ${parts.distanceLabel}`;
+}
+
+/**
+ * The structured pieces behind {@link formatWalkFromMeters} — same banding,
+ * rounding and unit rules, but with the English wording left OUT, so the
+ * guest UI can assemble the sentence per locale (src/lib/i18n) while the
+ * numbers stay in exactly one place. formatWalkFromMeters is implemented on
+ * top of this, so the two can never drift.
+ */
+export type WalkEstimateParts =
+  | {
+      kind: "rightHere";
+      /** e.g. "50 m" — null under ~25 m, where quoting any number invents precision. */
+      metersLabel: string | null;
+    }
+  | { kind: "walk"; minutes: number; distanceLabel: string };
+
+export function walkEstimateParts(meters: number): WalkEstimateParts {
   if (meters < RIGHT_HERE_METERS) {
     // Below ~25 m we are inside GPS noise. Quoting any number would be
     // inventing precision we do not have.
-    if (meters < 25) return "Right here";
+    if (meters < 25) return { kind: "rightHere", metersLabel: null };
     // Inside the rest of the band a 50 m step would round 79 m up to 100 m,
     // which contradicts the band it is in. Use a 25 m step, capped at 75.
     const close = Math.min(75, Math.round(meters / 25) * 25);
-    return `Right here · ${close} m`;
+    return { kind: "rightHere", metersLabel: `${close} m` };
   }
 
   const rounded = roundMeters(meters);
-
   const minutes = walkingMinutes(rounded);
 
-  if (rounded < 1000) {
-    return `~${minutes} min walk · ${rounded} m`;
-  }
-
-  const km = (rounded / 1000).toFixed(1);
-  return `~${minutes} min walk · ${km} km`;
+  const distanceLabel =
+    rounded < 1000 ? `${rounded} m` : `${(rounded / 1000).toFixed(1)} km`;
+  return { kind: "walk", minutes, distanceLabel };
 }
 
 /**

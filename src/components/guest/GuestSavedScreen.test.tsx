@@ -7,6 +7,7 @@ import GuestSavedScreen from "./GuestSavedScreen";
 import { addSavedPlace, SAVED_PLACES_STORAGE_KEY } from "@/lib/savedPlaces";
 import { ALL_PINS } from "@/lib/data";
 import { BRANDS } from "@/lib/brand";
+import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
 vi.mock("@/lib/guestEvents", () => ({ recordGuestEvent: vi.fn().mockResolvedValue(undefined) }));
 
@@ -84,6 +85,22 @@ describe("GuestSavedScreen", () => {
     expect(screen.queryByText(coffee.name)).toBeNull();
     expect(screen.getAllByText(/nothing saved yet/i).length).toBeGreaterThan(0);
     expect(JSON.parse(window.localStorage.getItem(SAVED_PLACES_STORAGE_KEY) ?? "[]")).toEqual([]);
+  });
+
+  it("renders the empty state in Dutch when the LocaleProvider is given nl", () => {
+    render(
+      <LocaleProvider locale="nl">
+        <GuestSavedScreen brand={brand} pins={ALL_PINS} />
+      </LocaleProvider>,
+    );
+
+    // Header title + empty-state headline and CTAs, all from the nl dictionary.
+    expect(screen.getAllByText("Bewaard").length).toBeGreaterThan(0);
+    expect(screen.getByText("Nog niets bewaard")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Bekijk de lijst" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ontdek de kaart" })).toBeInTheDocument();
+    // And no stray English copy from the default dictionary.
+    expect(screen.queryByText(/nothing saved yet/i)).toBeNull();
   });
 
   it("never renders a star rating anywhere on the screen", () => {

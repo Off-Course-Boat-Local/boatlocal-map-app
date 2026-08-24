@@ -30,8 +30,8 @@ import { Expand } from "lucide-react";
 import { ArrowLeft, Clock, MapPin as MapPinIcon, X } from "lucide-react";
 import { useState } from "react";
 
-import { guestPinActionLabel } from "@/lib/guestActions";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import type { MapPin } from "@/lib/data";
 import { PhotoGallery } from "@/components/map/PhotoGallery";
 import { SaveHeartButton } from "./SaveHeartButton";
@@ -55,9 +55,10 @@ export function GuestPlaceDetail({
   onAction,
   onClose,
 }: GuestPlaceDetailProps) {
+  const { t } = useI18n();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [heroIndex, setHeroIndex] = useState(0);
-  const actionLabel = guestPinActionLabel(item);
+  const actionLabel = item.isBoat ? t.common.bookTour : t.common.walkingDirections;
   const locator = item.isBoat ? item.meta : item.area;
 
   return (
@@ -93,7 +94,7 @@ export function GuestPlaceDetail({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Back"
+          aria-label={t.common.back}
           style={{
             width: 44,
             height: 44,
@@ -112,7 +113,7 @@ export function GuestPlaceDetail({
         </button>
         <SaveHeartButton
           saved={saved}
-          label={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
+          label={saved ? t.common.removeSaved(item.name) : t.common.savePlace(item.name)}
           onClick={onToggleSaved}
         />
       </div>
@@ -133,7 +134,7 @@ export function GuestPlaceDetail({
           <div style={{ position: "relative" }}>
             <PhotoGallery
               photos={item.photos}
-              alt={`${item.name} photo`}
+              alt={t.placeDetail.photoAlt(item.name)}
               aspectRatio="4 / 3"
               radius={0}
               onIndexChange={setHeroIndex}
@@ -141,7 +142,7 @@ export function GuestPlaceDetail({
             <button
               type="button"
               onClick={() => setLightboxIndex(heroIndex)}
-              aria-label={`View ${item.photos.length} photo${item.photos.length === 1 ? "" : "s"} of ${item.name} full-screen`}
+              aria-label={t.placeDetail.viewPhotosFullScreen(item.photos.length, item.name)}
               style={{
                 position: "absolute",
                 top: 12,
@@ -240,7 +241,7 @@ export function GuestPlaceDetail({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`${item.name} photos`}
+          aria-label={t.placeDetail.photosDialogLabel(item.name)}
           style={{
             position: "fixed",
             inset: 0,
@@ -254,7 +255,7 @@ export function GuestPlaceDetail({
           <button
             type="button"
             onClick={() => setLightboxIndex(null)}
-            aria-label="Close photos"
+            aria-label={t.placeDetail.closePhotos}
             style={{
               position: "absolute",
               top: 8,
@@ -278,7 +279,7 @@ export function GuestPlaceDetail({
           </button>
           <PhotoGallery
             photos={item.photos}
-            alt={`${item.name} photo`}
+            alt={t.placeDetail.photoAlt(item.name)}
             aspectRatio="1 / 1"
             radius={0}
             initialIndex={lightboxIndex}

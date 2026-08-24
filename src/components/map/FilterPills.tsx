@@ -24,6 +24,8 @@ export interface FilterPillsProps {
   /** Defaults to the full CATEGORIES list. */
   categories?: Category[];
   allLabel?: string;
+  /** Accessible group label. Defaults to the English copy; the guest map passes the localized one. */
+  ariaLabel?: string;
   className?: string;
   style?: CSSProperties;
 }
@@ -33,6 +35,7 @@ export function FilterPills({
   onChange,
   categories = CATEGORIES,
   allLabel = "All",
+  ariaLabel = "Filter places by category",
   className,
   style,
 }: FilterPillsProps) {
@@ -93,7 +96,7 @@ export function FilterPills({
       <div
         className={`bl-pills${className ? ` ${className}` : ""}`}
         role="group"
-        aria-label="Filter places by category"
+        aria-label={ariaLabel}
         style={{
           display: "flex",
           gap: 8,

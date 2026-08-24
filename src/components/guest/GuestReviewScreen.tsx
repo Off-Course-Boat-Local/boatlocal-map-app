@@ -30,6 +30,7 @@ import { Lock, Star } from "lucide-react";
 
 import { GuestScreenHeader } from "./GuestScreenHeader";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { recordGuestEvent, recordGuestReview } from "@/lib/guestEvents";
 import type { ReviewOption, ReviewPlatform } from "@/lib/guestReview";
 import { reviewClickEventType } from "@/lib/guestReview";
@@ -173,6 +174,7 @@ export default function GuestReviewScreen({
 }: GuestReviewScreenProps) {
   const searchParams = useSearchParams();
   const mapHref = withGuestQuery("/map", guestQueryString(searchParams));
+  const { t } = useI18n();
 
   const [rating, setRating] = useState(0);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -195,7 +197,11 @@ export default function GuestReviewScreen({
   const privateEmphasized = rating > 0 && !positive;
 
   const eyebrowLabel =
-    rating === 0 ? "Then share it" : positive ? "Share it" : "Where should this go?";
+    rating === 0
+      ? t.review.eyebrowNeutral
+      : positive
+        ? t.review.eyebrowPositive
+        : t.review.eyebrowNegative;
 
   const handleRate = (n: number) => {
     setRating(n);
@@ -257,9 +263,9 @@ export default function GuestReviewScreen({
       {/* Gradient header band (reference review.tsx) — replaces the old
           centred "Your trip / Did you enjoy…" heading block. */}
       <GuestScreenHeader
-        eyebrow="Feedback"
-        title="How was it?"
-        subtitle={`${companyName} reads every single one — it takes about 20 seconds.`}
+        eyebrow={t.review.eyebrow}
+        title={t.review.title}
+        subtitle={t.review.subtitle(companyName)}
       />
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6">
@@ -278,7 +284,7 @@ export default function GuestReviewScreen({
             className="text-center text-base font-semibold"
             style={{ color: INK, fontFamily: displayFontFamily }}
           >
-            Rate your experience
+            {t.review.rateTitle}
           </h2>
           <div className="mt-4 flex justify-center gap-1.5">
             {[1, 2, 3, 4, 5].map((n) => {
@@ -287,7 +293,7 @@ export default function GuestReviewScreen({
                 <button
                   key={n}
                   type="button"
-                  aria-label={`${n} star${n > 1 ? "s" : ""}`}
+                  aria-label={t.review.starLabel(n)}
                   onClick={() => handleRate(n)}
                   className="p-1 transition-transform active:scale-90"
                   style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
@@ -306,9 +312,7 @@ export default function GuestReviewScreen({
               className="mt-3 text-center text-sm"
               style={{ color: MUTED, fontFamily: bodyFontFamily }}
             >
-              {positive
-                ? "Glad it landed well."
-                : "Sorry it fell short — tell us what happened."}
+              {positive ? t.review.positiveCaption : t.review.negativeCaption}
             </p>
           )}
         </section>
@@ -336,17 +340,18 @@ export default function GuestReviewScreen({
               >
                 <OptionRow
                   icon={<ReviewPlatformIcon platform={option.platform} />}
-                  title={`Review us on ${option.label}`}
-                  subtitle="Public, helps other guests find us"
+                  // The platform name itself (Google, Tripadvisor) never
+                  // translates — only the sentence around it.
+                  title={t.review.reviewOn(option.label)}
+                  subtitle={t.review.publicSubtitle}
                   emphasized={publicEmphasized}
-                  badge="Best"
+                  badge={t.review.bestBadge}
                 />
               </a>
             ))}
             {placeholderNotice && (
               <p className="text-xs" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
-                {companyName} hasn&rsquo;t set up a review link yet — this opens a
-                plain Google search instead.
+                {t.review.placeholderNotice(companyName)}
               </p>
             )}
           </div>
@@ -367,8 +372,8 @@ export default function GuestReviewScreen({
               >
                 <OptionRow
                   icon={<Lock className="h-5 w-5" style={{ color: "var(--brand-primary)" }} />}
-                  title="Share private feedback instead"
-                  subtitle={`Only ${companyName} sees this`}
+                  title={t.review.privateTitle}
+                  subtitle={t.review.privateSubtitle(companyName)}
                   emphasized={privateEmphasized}
                 />
               </button>
@@ -381,14 +386,14 @@ export default function GuestReviewScreen({
                   className="text-sm font-semibold"
                   style={{ color: INK, fontFamily: bodyFontFamily }}
                 >
-                  Tell {companyName} directly
+                  {t.review.tellDirectly(companyName)}
                 </label>
                 <textarea
                   id="private-feedback"
                   value={feedbackText}
                   onChange={(event) => setFeedbackText(event.target.value)}
                   rows={4}
-                  placeholder="What could have been better?"
+                  placeholder={t.review.feedbackPlaceholder}
                   style={{
                     borderRadius: 12,
                     border: `1px solid ${BORDER}`,
@@ -404,14 +409,14 @@ export default function GuestReviewScreen({
                   className="text-sm font-semibold"
                   style={{ color: INK, fontFamily: bodyFontFamily }}
                 >
-                  Email or phone (optional)
+                  {t.review.contactLabel}
                 </label>
                 <input
                   id="private-feedback-contact"
                   type="text"
                   value={feedbackContact}
                   onChange={(event) => setFeedbackContact(event.target.value)}
-                  placeholder="So they can follow up, if you'd like"
+                  placeholder={t.review.contactPlaceholder}
                   style={{
                     borderRadius: 12,
                     border: `1px solid ${BORDER}`,
@@ -433,7 +438,7 @@ export default function GuestReviewScreen({
                       opacity: isPending || feedbackText.trim().length === 0 ? 0.6 : 1,
                     }}
                   >
-                    Send feedback
+                    {t.review.send}
                   </button>
                   <button
                     type="button"
@@ -449,7 +454,7 @@ export default function GuestReviewScreen({
                       border: `1px solid ${BORDER}`,
                     }}
                   >
-                    Cancel
+                    {t.common.cancel}
                   </button>
                 </div>
               </form>
@@ -466,7 +471,7 @@ export default function GuestReviewScreen({
                   fontSize: 14,
                 }}
               >
-                Thanks — that&rsquo;s been passed along to {companyName}.
+                {t.review.thanks(companyName)}
               </p>
             )}
           </div>
@@ -485,7 +490,7 @@ export default function GuestReviewScreen({
               textUnderlineOffset: 2,
             }}
           >
-            Maybe later
+            {t.review.maybeLater}
           </Link>
         </div>
         </div>

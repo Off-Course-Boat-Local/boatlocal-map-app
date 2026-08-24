@@ -17,6 +17,7 @@ import GuestWelcomeScreen from "@/components/guest/GuestWelcomeScreen";
 import { getMapPins } from "@/lib/data/source";
 import { guestQueryString } from "@/lib/guestLinks";
 import { getGuestContext } from "@/lib/guestServerContext";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
 
 export default async function WelcomePage({
   searchParams,
@@ -34,15 +35,16 @@ export default async function WelcomePage({
 
   const qs = guestQueryString(await searchParams);
 
+  // Only the guide-less FALLBACKS below are app-authored copy — a real
+  // guide's name and their hand-written welcome pass through verbatim.
+  const dict = getDictionary(await getLocale());
+
   return (
     <GuestWelcomeScreen
       brand={brand}
-      guideName={guide?.name ?? "your guide"}
+      guideName={guide?.name ?? dict.common.yourGuide}
       guideAvatarInitial={guide?.avatarInitial ?? "?"}
-      guideWelcome={
-        guide?.welcome ??
-        "Welcome! I've collected my favourite spots in the city, just for you."
-      }
+      guideWelcome={guide?.welcome ?? dict.welcome.defaultWelcome}
       placeCount={placeCount}
       topPick={topPick}
       qs={qs}

@@ -24,6 +24,7 @@ import { GuestScreenHeader } from "./GuestScreenHeader";
 import { useIsDesktopPointer } from "@/hooks/useIsDesktopPointer";
 import { useIsStandalone } from "@/hooks/useIsStandalone";
 import { displayFontFamily, bodyFontFamily } from "@/lib/fonts";
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import {
   BORDER,
@@ -68,6 +69,7 @@ export interface InstallScreenProps {
 }
 
 export default function InstallScreen({ brand, companyId }: InstallScreenProps) {
+  const { t } = useI18n();
   const platform = useSyncExternalStore(
     noopSubscribe,
     getPlatformSnapshot,
@@ -132,9 +134,9 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
       style={{ fontFamily: bodyFontFamily, color: INK }}
     >
       <GuestScreenHeader
-        eyebrow="Two taps"
-        title="Keep this on your phone"
-        subtitle={`${brand.appName} on your home screen — no app store, no account.`}
+        eyebrow={t.install.eyebrow}
+        title={t.install.title}
+        subtitle={t.install.subtitle(brand.appName)}
       />
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6">
@@ -158,7 +160,7 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
               {brand.appName}
             </p>
             <p className="text-[0.8125rem]" style={{ margin: 0, color: MUTED }}>
-              Local guide · full screen
+              {t.install.identityCaption}
             </p>
           </div>
         </div>
@@ -167,8 +169,8 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
           {standalone || justInstalled ? (
             <StatusCard tone="success">
               {justInstalled
-                ? `You're set — ${brand.appName} is on your home screen.`
-                : `You're already using the installed app. Nicely done.`}
+                ? t.install.installedJustNow(brand.appName)
+                : t.install.alreadyInstalled}
             </StatusCard>
           ) : isMobilePlatform ? (
             <div>
@@ -197,7 +199,7 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
                           : { background: "transparent", color: MUTED }),
                       }}
                     >
-                      {p === "ios" ? "iPhone" : "Android"}
+                      {p === "ios" ? t.install.iphone : t.install.android}
                     </button>
                   );
                 })}
@@ -225,9 +227,7 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
             // iOS or Android — still a phone/tablet, so generic (not
             // "scan with your phone") instructions.
             <StatusCard tone="neutral">
-              Open your browser&rsquo;s menu and look for &ldquo;Add to Home
-              Screen&rdquo; or &ldquo;Install app&rdquo; to add {brand.appName}{" "}
-              here.
+              {t.install.genericInstructions(brand.appName)}
             </StatusCard>
           )}
         </div>
@@ -273,6 +273,7 @@ function StatusCard({
  * than a flat info box, echoing the visual language of the phone StepRows.
  */
 function DesktopScanCard() {
+  const { t } = useI18n();
   return (
     <div
       className="rounded-2xl p-5"
@@ -299,14 +300,13 @@ function DesktopScanCard() {
             className="text-[0.9375rem] font-semibold"
             style={{ margin: 0, color: INK, fontFamily: displayFontFamily }}
           >
-            Scan to install
+            {t.install.scanTitle}
           </p>
           <p
             className="mt-1 text-sm leading-relaxed"
             style={{ margin: 0, marginTop: 4, color: MUTED, fontFamily: bodyFontFamily }}
           >
-            This lives on a phone, not a desktop. Your QR code is in the panel
-            beside this screen.
+            {t.install.scanBody}
           </p>
         </div>
       </div>
@@ -317,11 +317,11 @@ function DesktopScanCard() {
         className="mt-4 flex flex-col gap-2.5 border-t pt-4"
         style={{ borderColor: BORDER, margin: 0, marginTop: 16, padding: 0, paddingTop: 16 }}
       >
-        <MicroStep index={1}>
-          Point your phone&rsquo;s camera at the QR code in the side panel.
-        </MicroStep>
-        <MicroStep index={2}>Tap the link that pops up on your phone.</MicroStep>
-        <MicroStep index={3}>Follow the install steps from there.</MicroStep>
+        {t.install.microSteps.map((step, i) => (
+          <MicroStep key={i} index={i + 1}>
+            {step}
+          </MicroStep>
+        ))}
       </ol>
     </div>
   );
@@ -416,16 +416,24 @@ function ShareGlyph() {
 }
 
 function IosSteps() {
+  const { t } = useI18n();
+  const s = t.install.ios;
   return (
     <ol className="flex flex-col gap-3">
-      <StepRow index={1} title="Open the Share menu">
-        Tap the Share icon <ShareGlyph /> in the browser toolbar.
+      <StepRow index={1} title={s.step1Title}>
+        {s.step1Before}
+        <ShareGlyph />
+        {s.step1After}
       </StepRow>
-      <StepRow index={2} title="Add to Home Screen">
-        Scroll down and tap <strong>&ldquo;Add to Home Screen&rdquo;</strong>.
+      <StepRow index={2} title={s.step2Title}>
+        {s.step2Before}
+        <strong>{s.step2Strong}</strong>
+        {s.step2After}
       </StepRow>
-      <StepRow index={3} title="Confirm">
-        Tap <strong>&ldquo;Add&rdquo;</strong> in the top right.
+      <StepRow index={3} title={s.step3Title}>
+        {s.step3Before}
+        <strong>{s.step3Strong}</strong>
+        {s.step3After}
       </StepRow>
     </ol>
   );
@@ -438,11 +446,13 @@ function AndroidSteps({
   canOneTap: boolean;
   onInstall: () => void;
 }) {
+  const { t } = useI18n();
+  const s = t.install.androidSteps;
   if (canOneTap) {
     return (
       <div className="flex flex-col items-center gap-4">
         <p className="text-sm leading-relaxed" style={{ color: MUTED }}>
-          Your browser can install this in one tap.
+          {t.install.oneTapHint}
         </p>
         <button
           type="button"
@@ -457,7 +467,7 @@ function AndroidSteps({
           }}
         >
           <Download className="h-4 w-4" aria-hidden />
-          Add to Home Screen
+          {t.install.oneTapCta}
         </button>
       </div>
     );
@@ -465,15 +475,23 @@ function AndroidSteps({
 
   return (
     <ol className="flex flex-col gap-3">
-      <StepRow index={1} title="Open the browser menu">
-        Tap the <strong>⋮</strong> menu in the top right of the browser.
+      <StepRow index={1} title={s.step1Title}>
+        {s.step1Before}
+        {/* The ⋮ glyph is the browser's own — it never translates. */}
+        <strong>⋮</strong>
+        {s.step1After}
       </StepRow>
-      <StepRow index={2} title="Add to Home screen">
-        Tap <strong>&ldquo;Add to Home screen&rdquo;</strong> (or &ldquo;Install
-        app&rdquo;).
+      <StepRow index={2} title={s.step2Title}>
+        {s.step2Before}
+        <strong>{s.step2Strong}</strong>
+        {s.step2After}
       </StepRow>
-      <StepRow index={3} title="Confirm">
-        Confirm with <strong>&ldquo;Add&rdquo;</strong> / <strong>&ldquo;Install&rdquo;</strong>.
+      <StepRow index={3} title={s.step3Title}>
+        {s.step3Before}
+        <strong>{s.step3Strong1}</strong>
+        {s.step3Middle}
+        <strong>{s.step3Strong2}</strong>
+        {s.step3After}
       </StepRow>
     </ol>
   );

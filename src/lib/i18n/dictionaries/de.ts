@@ -1,0 +1,243 @@
+// Deutsch — informal "du", friendly consumer-app tone (tourism register).
+// Typed as `Dictionary`, so a missing key is a TYPE error, never a runtime
+// fallback. German quotation marks („…“) where the UI quotes OS labels.
+
+import type { Dictionary } from "./en";
+
+const de: Dictionary = {
+  common: {
+    all: "Alle",
+    yourGuide: "dein Guide",
+    close: "Schließen",
+    back: "Zurück",
+    cancel: "Abbrechen",
+    bookTour: "Diese Tour buchen",
+    walkingDirections: "Fußweg anzeigen",
+    savePlace: (name) => `${name} speichern`,
+    removeSaved: (name) => `${name} aus Gespeichert entfernen`,
+    scanAside: "Scanne den Code, um das auf deinem Handy zu öffnen — dort gehört es hin.",
+    languageLabel: "Sprache",
+  },
+
+  categories: {
+    boats: "Boote",
+    breakfast: "Frühstück",
+    lunch: "Mittagessen",
+    coffee: "Kaffee",
+    drinks: "Getränke",
+    see: "Sehenswert",
+    photo: "Fotospot",
+    shop: "Shoppen",
+  },
+
+  nav: {
+    ariaLabel: "Gäste-Navigation",
+    map: "Karte",
+    list: "Liste",
+    saved: "Gespeichert",
+    review: "Bewerten",
+    install: "Installieren",
+    savedBadge: (n) => ` (${n} gespeichert)`,
+  },
+
+  list: {
+    recommendationsFrom: (n, guide) => `${n} Tipps von ${guide}`,
+    filterAriaLabel: "Orte nach Kategorie filtern",
+    emptyCategory: "In dieser Kategorie gibt es noch keine Tipps.",
+    viewDetails: (name) => `Details zu ${name} ansehen`,
+  },
+
+  map: {
+    locationOff: "Standort ist aus — Entfernungen sind ausgeblendet.",
+    locationUnavailable: "Dein Standort lässt sich gerade nicht bestimmen.",
+    tryAgain: "Erneut versuchen",
+    turnOnLocation: "Aktiviere den Standort, um die Entfernung zu sehen",
+    ferryLine: "Fähre ab Centraal, dann ein kurzer Fußweg",
+    ferryCaveat: "Über das IJ führt keine Brücke — nimm die kostenlose Fähre.",
+    longWalkCaveat:
+      "Luftlinien-Schätzung — der echte Weg führt eventuell übers Wasser. Prüfe die Route.",
+    rightHere: "Direkt hier",
+    walkLine: (minutes, distance) => `~${minutes} Min. zu Fuß · ${distance}`,
+    tripSummary: (dateLabel, guests) =>
+      `${dateLabel} · ${guests} ${guests === 1 ? "Gast" : "Gäste"}`,
+    noTripDetails: "Noch keine Reisedaten fürs Buchen hinterlegt",
+    edit: "Bearbeiten",
+    addDetails: "Reisedaten hinzufügen",
+  },
+
+  placeDetail: {
+    photoAlt: (name) => `Foto von ${name}`,
+    closeItem: (name) => `${name} schließen`,
+    showPhotos: (n, name) => `${n} Fotos von ${name} anzeigen`,
+    hidePhotos: "Fotos ausblenden",
+    photosDialogLabel: (name) => `Fotos von ${name}`,
+    closePhotos: "Fotos schließen",
+    viewPhotosFullScreen: (n, name) =>
+      `${n} Foto${n === 1 ? "" : "s"} von ${name} im Vollbild ansehen`,
+  },
+
+  saved: {
+    eyebrow: "Deine Auswahl",
+    title: "Gespeichert",
+    emptySubtitle: (app) => `Noch nichts von ${app} gespeichert`,
+    countSubtitle: (n, app) => `${n} von ${app} gespeichert`,
+    emptyTitle: "Noch nichts gespeichert",
+    emptyBody:
+      "Tippe bei einem Ort oder einer Bootstour aufs Herz, und es landet hier — deine Auswahl für den Tag.",
+    browseList: "Liste durchstöbern",
+    exploreMap: "Karte entdecken",
+  },
+
+  review: {
+    eyebrow: "Feedback",
+    title: "Wie war's?",
+    subtitle: (company) =>
+      `${company} liest jedes einzelne Feedback — es dauert etwa 20 Sekunden.`,
+    rateTitle: "Bewerte dein Erlebnis",
+    starLabel: (n) => `${n} Stern${n > 1 ? "e" : ""}`,
+    positiveCaption: "Schön, dass es dir gefallen hat.",
+    negativeCaption: "Schade, dass es nicht gepasst hat — erzähl uns, was passiert ist.",
+    eyebrowNeutral: "Dann teile es",
+    eyebrowPositive: "Teile es",
+    eyebrowNegative: "Wohin damit?",
+    reviewOn: (platform) => `Bewerte uns auf ${platform}`,
+    publicSubtitle: "Öffentlich, hilft anderen Gästen, uns zu finden",
+    bestBadge: "Top",
+    placeholderNotice: (company) =>
+      `${company} hat noch keinen Bewertungslink eingerichtet — das hier öffnet eine einfache Google-Suche.`,
+    privateTitle: "Privates Feedback senden",
+    privateSubtitle: (company) => `Nur ${company} sieht das`,
+    tellDirectly: (company) => `Sag es ${company} direkt`,
+    feedbackPlaceholder: "Was hätte besser sein können?",
+    contactLabel: "E-Mail oder Telefon (optional)",
+    contactPlaceholder: "Damit sie sich melden können, wenn du magst",
+    send: "Feedback senden",
+    thanks: (company) => `Danke — das wurde an ${company} weitergegeben.`,
+    maybeLater: "Vielleicht später",
+  },
+
+  install: {
+    eyebrow: "Zweimal tippen",
+    title: "Leg dir das aufs Handy",
+    subtitle: (app) => `${app} auf deinem Homescreen — kein App Store, kein Konto.`,
+    identityCaption: "Lokaler Guide · Vollbild",
+    iphone: "iPhone",
+    android: "Android",
+    installedJustNow: (app) => `Fertig — ${app} ist auf deinem Homescreen.`,
+    alreadyInstalled: "Du nutzt bereits die installierte App. Gut gemacht.",
+    genericInstructions: (app) =>
+      `Öffne das Menü deines Browsers und suche nach „Zum Home-Bildschirm hinzufügen“ oder „App installieren“, um ${app} hinzuzufügen.`,
+    scanTitle: "Zum Installieren scannen",
+    scanBody:
+      "Das gehört auf ein Handy, nicht auf einen Desktop. Dein QR-Code ist im Bereich neben diesem Fenster.",
+    microSteps: [
+      "Richte die Kamera deines Handys auf den QR-Code im Seitenbereich.",
+      "Tippe auf den Link, der auf deinem Handy erscheint.",
+      "Folge dort den Installationsschritten.",
+    ],
+    oneTapHint: "Dein Browser kann das mit einem Tipp installieren.",
+    oneTapCta: "Zum Homescreen hinzufügen",
+    ios: {
+      step1Title: "Öffne das Teilen-Menü",
+      step1Before: "Tippe auf das Teilen-Symbol ",
+      step1After: " in der Browserleiste.",
+      step2Title: "Zum Home-Bildschirm",
+      step2Before: "Scrolle nach unten und tippe auf ",
+      step2Strong: "„Zum Home-Bildschirm“",
+      step2After: ".",
+      step3Title: "Bestätigen",
+      step3Before: "Tippe oben rechts auf ",
+      step3Strong: "„Hinzufügen“",
+      step3After: ".",
+    },
+    androidSteps: {
+      step1Title: "Öffne das Browsermenü",
+      step1Before: "Tippe auf das ",
+      step1After: "-Menü oben rechts im Browser.",
+      step2Title: "Zum Startbildschirm hinzufügen",
+      step2Before: "Tippe auf ",
+      step2Strong: "„Zum Startbildschirm hinzufügen“",
+      step2After: " (oder „App installieren“).",
+      step3Title: "Bestätigen",
+      step3Before: "Bestätige mit ",
+      step3Strong1: "„Hinzufügen“",
+      step3Middle: " / ",
+      step3Strong2: "„Installieren“",
+      step3After: ".",
+    },
+  },
+
+  booking: {
+    dialogLabel: "Reisedaten für die Bootsbuchung",
+    title: "Planst du eine Bootstour?",
+    body: "Gib Datum und Gruppengröße an, dann ist alles startklar, sobald du eine passende Tour findest — oder überspring das und mach es später.",
+    dateLabel: "Datum",
+    guestsLabel: "Gäste",
+    fewerGuests: "Weniger Gäste",
+    moreGuests: "Mehr Gäste",
+    save: "Reisedaten speichern",
+  },
+
+  datePicker: {
+    pickDate: "Datum wählen",
+    prevMonth: "Vorheriger Monat",
+    nextMonth: "Nächster Monat",
+    monthNames: [
+      "Januar",
+      "Februar",
+      "März",
+      "April",
+      "Mai",
+      "Juni",
+      "Juli",
+      "August",
+      "September",
+      "Oktober",
+      "November",
+      "Dezember",
+    ],
+    monthNamesShort: [
+      "Jan",
+      "Feb",
+      "März",
+      "Apr",
+      "Mai",
+      "Juni",
+      "Juli",
+      "Aug",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Dez",
+    ],
+    weekdayNames: [
+      "Sonntag",
+      "Montag",
+      "Dienstag",
+      "Mittwoch",
+      "Donnerstag",
+      "Freitag",
+      "Samstag",
+    ],
+    weekdayNamesShort: ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
+    weekdayHeader: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+  },
+
+  welcome: {
+    installBanner: "Leg dir das auf den Homescreen — nächstes Mal genügt ein Tipp.",
+    installCta: "Installieren",
+    dismiss: "Schließen",
+    openMap: "Karte öffnen",
+    browseList: "Liste durchstöbern",
+    spotsFrom: (n, guide) =>
+      `${n} handverlesene Orte von ${guide}, plus Bootstouren zum Buchen.`,
+    topPick: (guide) => `Der Favorit von ${guide}`,
+    shareTitle: "Mit deiner Reisebegleitung teilen",
+    copyLink: "Link kopieren",
+    linkCopied: "Link kopiert",
+    defaultWelcome:
+      "Willkommen! Ich habe meine Lieblingsorte der Stadt extra für dich zusammengestellt.",
+  },
+};
+
+export default de;
