@@ -40,7 +40,7 @@ export default function PhoneFrame({
         "md:flex md:h-dvh md:items-center md:justify-center md:gap-12 md:p-10",
         className ?? "",
       ].join(" ")}
-      style={{ background: "var(--brand-surround, #E8E6DF)" }}
+      style={{ background: "var(--brand-surround, #F6F6F3)" }}
     >
       <div
         className={[

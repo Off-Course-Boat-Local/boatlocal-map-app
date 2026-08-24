@@ -57,11 +57,12 @@ const NEUTRAL_FALLBACK_BRAND: Brand = {
   primary: PORTAL_ACCENT,
   primaryDark: "#14449E",
   accent: "#FF7A45",
-  // The founder-preferred warm beige — the same tone the Admin/Studio
-  // dashboards sit on, and the default the phone-frame surround falls back
-  // to (PhoneFrame's `var(--brand-surround, #E8E6DF)`). Explicitly requested
-  // over a cool gray/blue-white here.
-  surround: "#E8E6DF",
+  // The exact background the Admin/Studio dashboards use — founder-specified
+  // (#F6F6F3, 2026-08-24, correcting an earlier #E8E6DF guess): the guest
+  // app's desktop surround must stay in the same family as the portals.
+  // PhoneFrame's own `var(--brand-surround, ...)` fallback carries the same
+  // value.
+  surround: "#F6F6F3",
 };
 
 export interface GuestContext {
