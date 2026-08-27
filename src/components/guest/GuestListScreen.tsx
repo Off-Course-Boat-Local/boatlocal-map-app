@@ -16,6 +16,7 @@ import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
 import { GuestScreenHeader } from "./GuestScreenHeader";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { CategoryGlyph } from "@/components/map/Pin";
 import { useGuestFilter } from "@/lib/guestFilterContext";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
@@ -110,9 +111,9 @@ export default function GuestListScreen({
           aria-label={t.list.filterAriaLabel}
         >
           {[
-            { id: null, label: t.common.all },
+            { id: null, label: t.common.all, color: undefined },
             // Labels come from the dictionary; ids never translate.
-            ...CATEGORIES.map((cat) => ({ id: cat.id, label: t.categories[cat.id] })),
+            ...CATEGORIES.map((cat) => ({ id: cat.id, label: t.categories[cat.id], color: cat.color })),
           ].map((cat) => {
             const isActive = filter === cat.id;
             return (
@@ -121,7 +122,7 @@ export default function GuestListScreen({
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setFilter(isActive ? null : cat.id)}
-                className="h-9 shrink-0 rounded-full px-4 text-[0.8125rem] font-semibold transition-colors"
+                className="inline-flex items-center gap-1.5 h-9 shrink-0 rounded-full px-4 text-[0.8125rem] font-semibold transition-colors"
                 style={{
                   fontFamily: bodyFontFamily,
                   cursor: "pointer",
@@ -141,6 +142,13 @@ export default function GuestListScreen({
                       }),
                 }}
               >
+                {cat.id && (
+                  <CategoryGlyph
+                    category={cat.id}
+                    size={14}
+                    color={isActive ? "#FFFFFF" : cat.color}
+                  />
+                )}
                 {cat.label}
               </button>
             );
