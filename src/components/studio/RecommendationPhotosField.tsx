@@ -4,23 +4,32 @@
 //
 // There is no Supabase Storage yet (see project rules), so uploads are read
 // client-side into data: URLs and submitted as ordinary hidden form fields
-// (name="photos", one per photo) — RecommendationRecord.photos is already
-// just string[], and the guest-facing PhotoGallery component already
-// renders any URL, data: or otherwise, so nothing downstream needs to know
-// the difference. When real Storage exists, only handleFiles' body changes
+// (name="photos", one per photo) — RecommendationRow.photos is already just
+// string[], and the guest-facing PhotoGallery component already renders any
+// URL, data: or otherwise, so nothing downstream needs to know the
+// difference. When real Storage exists, only handleFiles' body changes
 // (upload -> get a public URL -> push that instead of the data: URL); the
 // hidden-input wiring and the rest of the form stay identical.
 //
-// Reuses the guest-facing PhotoGallery component for the live preview
-// (project rule: don't rebuild it) and surfaces the founder's explicit
-// "3+ photos" nudge.
+// ENFORCES:
+//   - max 5 photos per place (silently drops any beyond that if multiple
+//     files are picked at once, and warns the user).
+//   - 4MB max per individual file (protects the database row and the
+//     client-side render from huge uploads pre-Storage).
+//   - non-image MIME types rejected.
+//   - "3+ photos" nudge shown as a soft notice above the picker, matching
+//     PRD §6.4's recommendations guidance.
+//
+// REVEALS A REMOVE BUTTON over each thumbnail, allowing re-ordering (delete +
+// re-upload) and curation before submitting the form.
 
 import { useId, useRef, useState } from "react";
+import { Upload, X } from "lucide-react";
 
 import PhotoGallery from "@/components/map/PhotoGallery";
 import { MAX_PHOTOS, PHOTO_NUDGE_THRESHOLD } from "@/lib/studio/recommendationForm";
 
-const MAX_FILE_BYTES = 4 * 1024 * 1024; // data: URLs are the only "storage" pre-Supabase — keep them small.
+const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB
 
 export interface RecommendationPhotosFieldProps {
   initialPhotos?: string[];
@@ -62,7 +71,7 @@ export default function RecommendationPhotosField({
     if (inputRef.current) inputRef.current.value = "";
 
     if (skippedForRoom > 0) {
-      setNotice(`Only added ${files.length} — the limit is ${MAX_PHOTOS} photos per listing.`);
+      setNotice(`Only added ${files.length} — the limit is ${MAX_PHOTOS} photos per place.`);
     } else if (skippedForType > 0) {
       setNotice("Some files were skipped — only images under 4MB are supported.");
     } else {
@@ -87,8 +96,7 @@ export default function RecommendationPhotosField({
         </span>
       </div>
 
-      {/* Submitted as part of the surrounding <form> even though this field
-          itself renders no visible <input name="photos">. */}
+      {/* Hidden inputs submitted with the form */}
       {photos.map((src, i) => (
         <input key={`${i}-${src.length}`} type="hidden" name="photos" value={src} />
       ))}
@@ -97,40 +105,55 @@ export default function RecommendationPhotosField({
         role="status"
         className={
           showNudge
-            ? "rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800"
-            : "rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700"
+            ? "rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-400"
+            : "rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400"
         }
       >
         {showNudge
-          ? "Listings with 3+ photos get more saves — add a couple more."
-          : "Nice — this listing has 3+ photos."}
+          ? "Places with 3+ photos get more attention — add a couple more."
+          : "Nice — this place has 3+ photos."}
       </p>
 
       {photos.length > 0 ? (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           <PhotoGallery photos={photos} alt="Preview" aspectRatio="16 / 10" radius={10} />
           <div className="flex flex-wrap gap-2">
             {photos.map((src, i) => (
-              <div key={`${i}-thumb`} className="relative">
+              <div key={`${i}-thumb`} className="group relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={src}
                   alt={`Photo ${i + 1} of ${photos.length}`}
-                  className="h-14 w-14 rounded-lg border border-[var(--studio-border)] object-cover"
+                  className="h-14 w-14 rounded-lg border border-[var(--studio-border)] object-cover shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => removeAt(i)}
                   aria-label={`Remove photo ${i + 1}`}
-                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--studio-ink)] text-[10px] leading-none font-bold text-white"
+                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-slate-900 text-white shadow-xs transition-transform hover:scale-110 active:scale-95"
                 >
-                  &times;
+                  <X className="size-3" strokeWidth={2.5} />
                 </button>
               </div>
             ))}
           </div>
         </div>
       ) : null}
+
+      {/* Custom styled clickable button with pointer cursor */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[var(--studio-accent)] px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-all hover:opacity-90 active:scale-98"
+        >
+          <Upload className="size-3.5" strokeWidth={2.25} />
+          Choose Photos
+        </button>
+        <span className="text-xs text-[var(--studio-ink-soft)]">
+          PNG, JPG, WEBP up to 4MB each
+        </span>
+      </div>
 
       <input
         ref={inputRef}
@@ -139,8 +162,9 @@ export default function RecommendationPhotosField({
         accept="image/*"
         multiple
         onChange={(e) => void handleFiles(e.target.files)}
-        className="block w-full text-xs text-[var(--studio-ink-soft)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--studio-accent)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+        className="sr-only"
       />
+
       {notice ? (
         <p role="alert" className="text-xs text-red-600">
           {notice}

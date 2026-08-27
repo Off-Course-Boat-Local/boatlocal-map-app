@@ -11,10 +11,9 @@ import {
   listCompanies,
 } from "@/lib/data/source";
 import AdminTable from "@/components/admin/AdminTable";
-import { Eyebrow, Panel, PRIMARY_BUTTON_CLASS, SectionHeading } from "@/components/admin/primitives";
+import AnalyticsFilterBar from "@/components/admin/AnalyticsFilterBar";
+import { Eyebrow, Panel, SectionHeading } from "@/components/admin/primitives";
 import StatCard from "@/components/admin/StatCard";
-import PortalDatePicker from "@/components/PortalDatePicker";
-import PortalSelect from "@/components/PortalSelect";
 
 export const metadata: Metadata = { title: "Platform analytics" };
 
@@ -116,44 +115,12 @@ export default async function AdminAnalyticsPage({
       </Panel>
 
       <Panel className="mt-6">
-        <form method="get" className="flex flex-wrap items-end gap-4">
-          <div>
-            <label htmlFor="company" className="mb-1.5 block text-sm text-[var(--admin-ink-soft)]">
-              Company
-            </label>
-            <PortalSelect
-              id="company"
-              name="company"
-              defaultValue={companyId ?? ""}
-              placeholder="All companies"
-              options={companies.map((company) => ({ value: company.id, label: company.name }))}
-              className="w-48"
-            />
-          </div>
-          <div>
-            <label htmlFor="from" className="mb-1.5 block text-sm text-[var(--admin-ink-soft)]">
-              From
-            </label>
-            <PortalDatePicker id="from" name="from" defaultValue={fromStr} />
-          </div>
-          <div>
-            <label htmlFor="to" className="mb-1.5 block text-sm text-[var(--admin-ink-soft)]">
-              To
-            </label>
-            <PortalDatePicker id="to" name="to" defaultValue={toStr} />
-          </div>
-          <button type="submit" className={PRIMARY_BUTTON_CLASS}>
-            Apply
-          </button>
-          {companyId || fromStr || toStr ? (
-            <a
-              href="/admin/analytics"
-              className="text-sm text-[var(--admin-ink-soft)] underline-offset-2 hover:underline"
-            >
-              Reset
-            </a>
-          ) : null}
-        </form>
+        <AnalyticsFilterBar
+          companies={companies.map((c) => ({ id: c.id, name: c.name }))}
+          currentCompanyId={companyId}
+          currentFrom={fromStr}
+          currentTo={toStr}
+        />
       </Panel>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

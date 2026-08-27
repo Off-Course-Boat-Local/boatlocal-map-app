@@ -259,7 +259,7 @@ const en = {
     copyLink: "Copy link",
     linkCopied: "Link copied",
     defaultWelcome:
-      "Welcome! I've collected my favourite spots in the city, just for you.",
+      "Welcome to Amsterdam! Explore our favourite local spots, hidden canal gems, and boat cruises curated just for you.",
   },
 };
 

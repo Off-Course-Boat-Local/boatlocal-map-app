@@ -1,39 +1,13 @@
 "use client";
 
 // Admin > Boats — full CRUD for the platform boat tour catalog (PRD §8.2).
-// This is the ONLY place a boat tour can be created, edited, deleted, or
-// reordered — Studio's Boat tours tab (src/components/studio/
-// BoatToursManager.tsx) only toggles/reorders which of these a company
-// features on its own guest map, never the tour record itself.
-//
-// State here is optimistic for reordering and status toggles (mirroring
-// Studio's BoatToursManager pattern): an interaction reorders/updates local
-// state immediately, fires the matching Server Action, and resyncs with the
-// server via router.refresh() either way, so this never silently drifts
-// from what the Server Action actually persisted. Create/edit/delete go
-// through the modal and rely on revalidatePath (from the Server Action) +
-// router.refresh for the resulting list update.
-//
-// Reordering is native HTML5 drag-and-drop (draggable/onDragStart/
-// onDragOver/onDrop/onDragEnd) rather than a dnd-kit/react-beautiful-dnd
-// dependency, matching this app's existing "hand-roll interactions instead
-// of pulling in a library" convention (e.g. guest's DatePickerField). Known
-// gap: native HTML5 DnD has no built-in keyboard story, so the grip handle
-// also supports ArrowUp/ArrowDown (see handleKeyboardReorder) as a keyboard/
-// screen-reader-usable equivalent of the old up/down buttons — mouse-drag
-// and arrow-keys both funnel into the same commitReorder() so the persisted
-// result is identical either way.
-//
-// AdminTable (deliberately not touched by this change) owns each row's
-// actual <tr> and doesn't expose per-row drag events, so every cell's
-// content here is individually wrapped by withDropZone() with a negative
-// margin matching AdminTable's own cell padding (px-5 py-4) — that makes
-// each wrapper div cover its whole <td>, so dropping anywhere across a row
-// (not just on the grip handle) registers correctly.
+// Modern, sleek card-based drag-and-drop reordering with full visual lift,
+// drop insertion indicators, thumbnail previews, high-contrast badges,
+// and smooth continuous reordering without locking up.
 
-import { GripVertical, Pencil, Plus } from "lucide-react";
+import { GripVertical, Pencil, Plus, Ship } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type DragEvent, type KeyboardEvent, type ReactNode, useState, useTransition } from "react";
+import { type DragEvent, type KeyboardEvent, useEffect, useState, useTransition } from "react";
 
 import type { BoatTourRecord } from "@/lib/data/types";
 import {
@@ -43,8 +17,8 @@ import {
 } from "@/lib/admin/boatTourActions";
 import { ArchiveIcon, CheckCircleIcon, TrashIcon } from "@/components/PortalIcons";
 import PortalRowMenu, { type PortalRowMenuItem } from "@/components/PortalRowMenu";
+import PortalModal from "@/components/PortalModal";
 import { PRIMARY_BUTTON_CLASS } from "./primitives";
-import AdminTable from "./AdminTable";
 import StatusBadge from "./StatusBadge";
 import BoatTourForm from "./BoatTourForm";
 
@@ -55,16 +29,25 @@ export interface BoatToursManagerProps {
 type EditingState = { mode: "new" } | { mode: "edit"; tour: BoatTourRecord } | null;
 
 export default function BoatToursManager({ initialTours }: BoatToursManagerProps) {
-  const [tours, setTours] = useState(
+  const [tours, setTours] = useState<BoatTourRecord[]>(() =>
     [...initialTours].sort((a, b) => a.position - b.position),
   );
   const [editing, setEditing] = useState<EditingState>(null);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Drag state
   const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<"before" | "after">("before");
+
   const router = useRouter();
+
+  // Sync state whenever server revalidates initialTours
+  useEffect(() => {
+    setTours([...initialTours].sort((a, b) => a.position - b.position));
+  }, [initialTours]);
 
   const nextPosition = tours.reduce((max, t) => Math.max(max, t.position), 0) + 1;
 
@@ -76,84 +59,75 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
         const result = await run();
         if (result && "error" in result && result.error) setActionError(result.error);
       } finally {
-        // Resync with the server's actual state either way — cheap
-        // insurance against optimistic state drifting from what the
-        // fake store (or, later, Supabase) actually persisted.
         router.refresh();
         setPendingId(null);
       }
     });
   }
 
-  /**
-   * Applies a full new order to local state optimistically: every tour gets
-   * repositioned to its 1-based index in `orderedIds`, matching exactly
-   * what reorderBoatToursAction persists server-side. Shared by both the
-   * mouse-drag drop handler and the keyboard arrow-key handler below so
-   * dragging and keyboard reordering produce identical results.
-   */
-  function commitReorder(orderedIds: string[]) {
-    setTours((prev) =>
-      prev.map((t) => {
-        const index = orderedIds.indexOf(t.id);
-        return index === -1 ? t : { ...t, position: index + 1 };
-      }),
-    );
-  }
-
-  function handleDragStart(e: DragEvent<HTMLButtonElement>, id: string) {
-    if (isPending) {
-      e.preventDefault();
-      return;
-    }
+  function handleDragStart(e: DragEvent<HTMLDivElement>, id: string) {
     setDraggedId(id);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", id);
   }
 
-  function handleDragOver(e: DragEvent<HTMLDivElement>, overId: string) {
-    if (!draggedId || draggedId === overId) return;
+  function handleDragOver(e: DragEvent<HTMLDivElement>, targetId: string) {
+    if (!draggedId || draggedId === targetId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    if (dragOverId !== overId) setDragOverId(overId);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const position = e.clientY < midpoint ? "before" : "after";
+
+    if (dropTargetId !== targetId || dropPosition !== position) {
+      setDropTargetId(targetId);
+      setDropPosition(position);
+    }
   }
 
   function handleDrop(e: DragEvent<HTMLDivElement>, targetId: string) {
     e.preventDefault();
     const sourceId = draggedId;
+    const position = dropPosition;
+
     setDraggedId(null);
-    setDragOverId(null);
+    setDropTargetId(null);
+
     if (!sourceId || sourceId === targetId) return;
 
     const ordered = [...tours].sort((a, b) => a.position - b.position);
     const sourceIndex = ordered.findIndex((t) => t.id === sourceId);
+    if (sourceIndex === -1) return;
+
+    const [movedItem] = ordered.splice(sourceIndex, 1);
     const targetIndex = ordered.findIndex((t) => t.id === targetId);
-    if (sourceIndex === -1 || targetIndex === -1) return;
+    if (targetIndex === -1) return;
 
-    const reordered = [...ordered];
-    const [moved] = reordered.splice(sourceIndex, 1);
-    reordered.splice(targetIndex, 0, moved);
-    const orderedIds = reordered.map((t) => t.id);
+    const insertIndex = position === "before" ? targetIndex : targetIndex + 1;
+    ordered.splice(insertIndex, 0, movedItem);
 
-    commitReorder(orderedIds);
-    runAction(sourceId, () => reorderBoatToursAction(orderedIds));
+    const renumbered = ordered.map((t, idx) => ({ ...t, position: idx + 1 }));
+    setTours(renumbered);
+
+    const orderedIds = renumbered.map((t) => t.id);
+    startTransition(async () => {
+      try {
+        await reorderBoatToursAction(orderedIds);
+      } catch {
+        setTours([...initialTours].sort((a, b) => a.position - b.position));
+      }
+    });
   }
 
   function handleDragEnd() {
     setDraggedId(null);
-    setDragOverId(null);
+    setDropTargetId(null);
   }
 
-  /**
-   * Keyboard equivalent of the removed up/down buttons, kept on the drag
-   * handle itself since native HTML5 DnD offers no keyboard story on its
-   * own (see this file's header comment) — Arrow Up/Down swap the focused
-   * row with its neighbour, same shape as a one-slot mouse drag.
-   */
   function handleKeyboardReorder(e: KeyboardEvent<HTMLButtonElement>, id: string) {
     if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
     e.preventDefault();
-    if (isPending) return;
 
     const ordered = [...tours].sort((a, b) => a.position - b.position);
     const index = ordered.findIndex((t) => t.id === id);
@@ -162,36 +136,17 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
 
     const reordered = [...ordered];
     [reordered[index], reordered[swapIndex]] = [reordered[swapIndex], reordered[index]];
-    const orderedIds = reordered.map((t) => t.id);
+    const renumbered = reordered.map((t, idx) => ({ ...t, position: idx + 1 }));
+    setTours(renumbered);
 
-    commitReorder(orderedIds);
-    runAction(id, () => reorderBoatToursAction(orderedIds));
-  }
-
-  /**
-   * Wraps a cell's content so drops register anywhere across the row, not
-   * just over the grip handle — see this file's header comment for why
-   * (AdminTable owns the <tr>, so per-cell divs are the drop targets). The
-   * negative margin matches AdminTable's own td padding (px-5 py-4)
-   * exactly, so the wrapper fills the whole cell with no dead zone.
-   */
-  function withDropZone(tourId: string, cellIndex: number, node: ReactNode) {
-    const isOver = dragOverId === tourId && draggedId !== tourId;
-    const isBeingDragged = draggedId === tourId;
-    return (
-      <div
-        key={`${tourId}-${cellIndex}`}
-        onDragOver={(e) => handleDragOver(e, tourId)}
-        onDrop={(e) => handleDrop(e, tourId)}
-        className={[
-          "-mx-5 -my-4 px-5 py-4 transition-colors",
-          isOver ? "bg-[var(--admin-accent)]/10 ring-1 ring-inset ring-[var(--admin-accent)]/40" : "",
-          isBeingDragged ? "opacity-40" : "",
-        ].join(" ")}
-      >
-        {node}
-      </div>
-    );
+    const orderedIds = renumbered.map((t) => t.id);
+    startTransition(async () => {
+      try {
+        await reorderBoatToursAction(orderedIds);
+      } catch {
+        setTours([...initialTours].sort((a, b) => a.position - b.position));
+      }
+    });
   }
 
   async function handleDelete(tour: BoatTourRecord) {
@@ -208,11 +163,13 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="text-sm text-[var(--admin-ink-soft)]">
-          {tours.length} tour{tours.length === 1 ? "" : "s"} in the catalog — admin-owned;
-          each company chooses which to feature and in what order from Studio.
-        </p>
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm text-[var(--admin-ink-soft)]">
+            Drag cards to rearrange the catalog order. {tours.length} tour{tours.length === 1 ? "" : "s"} total.
+          </p>
+        </div>
         <button type="button" onClick={() => setEditing({ mode: "new" })} className={PRIMARY_BUTTON_CLASS}>
           <Plus className="size-4" strokeWidth={2} />
           Add tour
@@ -225,10 +182,13 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
         </p>
       ) : null}
 
-      <AdminTable
-        columns={["Order", "Name", "Area", "Price & duration", "Photos", "Status", "Actions"]}
-        rows={ordered.map((tour) => {
-          const rowPending = isPending && pendingId === tour.id;
+      {/* Modern Sleek Draggable Cards List */}
+      <div className="space-y-2.5">
+        {ordered.map((tour, index) => {
+          const rowPending = pendingId === tour.id;
+          const isDraggingThis = draggedId === tour.id;
+          const isOverTarget = dropTargetId === tour.id;
+          const photo = tour.photos && tour.photos[0];
 
           const menuItems: PortalRowMenuItem[] = [
             {
@@ -251,70 +211,123 @@ export default function BoatToursManager({ initialTours }: BoatToursManagerProps
             },
           ];
 
-          const cells: ReactNode[] = [
-            <div key="order" className="flex items-center gap-2">
-              <button
-                type="button"
-                draggable
-                aria-label={`Reorder ${tour.name}`}
-                onDragStart={(e) => handleDragStart(e, tour.id)}
-                onDragEnd={handleDragEnd}
-                onKeyDown={(e) => handleKeyboardReorder(e, tour.id)}
-                className="cursor-grab touch-none text-[var(--admin-ink-soft)] transition-colors hover:text-[var(--admin-accent)] active:cursor-grabbing"
-              >
-                <GripVertical className="size-4" strokeWidth={2} />
-              </button>
-              <span className="w-5 text-sm tabular-nums text-[var(--admin-ink-soft)]">{tour.position}</span>
-            </div>,
-            <span key="name" className="font-medium">
-              {tour.name}
-            </span>,
-            tour.area,
-            tour.meta,
-            String(tour.photos.length),
-            <StatusBadge
-              key="status"
-              status={tour.status}
-              tone={tour.status === "active" ? "positive" : "neutral"}
-            />,
-            <div key="actions" className="flex justify-end">
-              <PortalRowMenu items={menuItems} label={`Actions for ${tour.name}`} />
-            </div>,
-          ];
+          return (
+            <div
+              key={tour.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, tour.id)}
+              onDragOver={(e) => handleDragOver(e, tour.id)}
+              onDrop={(e) => handleDrop(e, tour.id)}
+              onDragEnd={handleDragEnd}
+              className={[
+                "group relative flex items-center gap-3.5 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3.5 transition-all duration-150",
+                "hover:border-[var(--admin-accent)]/50 hover:shadow-xs",
+                isDraggingThis ? "opacity-30 scale-[0.99] border-dashed border-[var(--admin-accent)]" : "opacity-100",
+                isOverTarget && dropPosition === "before" ? "border-t-2 border-t-[var(--admin-accent)] -translate-y-0.5" : "",
+                isOverTarget && dropPosition === "after" ? "border-b-2 border-b-[var(--admin-accent)] translate-y-0.5" : "",
+              ].join(" ")}
+            >
+              {/* Drag Handle & High-Contrast Order Pill */}
+              <div className="flex items-center gap-2.5 select-none">
+                {/* Drag Handle with contrast hover state */}
+                <button
+                  type="button"
+                  aria-label={`Reorder ${tour.name}. Use arrow up and down keys to move.`}
+                  onKeyDown={(e) => handleKeyboardReorder(e, tour.id)}
+                  className="cursor-grab active:cursor-grabbing p-1.5 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] text-[var(--admin-ink-soft)] transition-all hover:bg-[var(--admin-accent)] hover:border-[var(--admin-accent)] hover:text-white"
+                >
+                  <GripVertical className="size-4 text-inherit" strokeWidth={2.25} />
+                </button>
 
-          return cells.map((cell, cellIndex) => withDropZone(tour.id, cellIndex, cell));
-        })}
-        emptyMessage="No boat tours in the catalog yet. Add at least one."
-      />
+                {/* High Contrast Order Pill */}
+                <span className="flex size-6.5 shrink-0 items-center justify-center rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold tabular-nums text-slate-800 dark:text-slate-100 shadow-2xs">
+                  {index + 1}
+                </span>
+              </div>
 
-      {editing ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--admin-ink)]/30 p-4 pt-10 backdrop-blur-[2px] sm:pt-16">
-          <div className="w-full max-w-lg rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-6 shadow-[var(--admin-shadow-float)]">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold tracking-tight text-[var(--admin-ink)]">
-                {editing.mode === "new" ? "Add a boat tour" : `Edit ${editing.tour.name}`}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setEditing(null)}
-                aria-label="Close"
-                className="text-[var(--admin-ink-soft)] hover:text-[var(--admin-ink)]"
-              >
-                &times;
-              </button>
+              {/* Thumbnail / Boat Icon */}
+              <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800 border border-[var(--admin-border)] flex items-center justify-center">
+                {photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photo}
+                    alt={tour.name}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      // Gracefully hide broken image and show placeholder icon
+                      e.currentTarget.style.display = "none";
+                      e.currentTarget.parentElement?.querySelector(".fallback-boat-icon")?.classList.remove("hidden");
+                    }}
+                  />
+                ) : null}
+                <Ship className={`size-6 text-[var(--admin-ink-soft)] fallback-boat-icon ${photo ? "hidden" : ""}`} />
+              </div>
+
+              {/* Tour Details */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="truncate text-sm font-semibold text-[var(--admin-ink)]">
+                    {tour.name}
+                  </h3>
+                  <StatusBadge
+                    status={tour.status}
+                    tone={tour.status === "active" ? "positive" : "neutral"}
+                  />
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--admin-ink-soft)]">
+                  <span>{tour.area}</span>
+                  {tour.meta ? (
+                    <>
+                      <span>•</span>
+                      <span>{tour.meta}</span>
+                    </>
+                  ) : null}
+                  {tour.photos ? (
+                    <>
+                      <span>•</span>
+                      <span>{tour.photos.length} photo{tour.photos.length === 1 ? "" : "s"}</span>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Actions Menu */}
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setEditing({ mode: "edit", tour })}
+                  title={`Edit ${tour.name}`}
+                  aria-label={`Edit ${tour.name}`}
+                  className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2 text-[var(--admin-ink-soft)] transition-all hover:border-[var(--admin-accent)]/40 hover:bg-[var(--admin-nav-active-bg)] hover:text-[var(--admin-accent)] active:scale-95 shadow-2xs"
+                >
+                  <Pencil className="size-4" />
+                </button>
+                <PortalRowMenu items={menuItems} label={`Actions for ${tour.name}`} />
+              </div>
             </div>
-            <BoatTourForm
-              tour={editing.mode === "edit" ? editing.tour : null}
-              suggestedPosition={nextPosition}
-              onDone={() => {
-                setEditing(null);
-                router.refresh();
-              }}
-              onCancel={() => setEditing(null)}
-            />
-          </div>
-        </div>
-      ) : null}
+          );
+        })}
+      </div>
+
+      {/* Create / Edit Modal Form */}
+      <PortalModal
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        title={editing?.mode === "edit" ? "Edit boat tour" : "Add boat tour"}
+        maxWidthClassName="max-w-2xl"
+      >
+        {editing ? (
+          <BoatTourForm
+            tour={editing.mode === "edit" ? editing.tour : null}
+            suggestedPosition={nextPosition}
+            onDone={() => {
+              setEditing(null);
+              router.refresh();
+            }}
+            onCancel={() => setEditing(null)}
+          />
+        ) : null}
+      </PortalModal>
     </div>
   );
 }

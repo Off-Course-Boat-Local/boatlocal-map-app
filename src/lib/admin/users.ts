@@ -2,9 +2,8 @@ import "server-only";
 
 import type { User } from "@supabase/supabase-js";
 
-import { emailBaseUrl } from "@/lib/email/client";
-import { sendEmail } from "@/lib/email/client";
-import { platformUserInviteEmail } from "@/lib/email/templates";
+import { emailBaseUrl, sendEmail } from "@/lib/email/client";
+import { passwordResetEmail, platformUserInviteEmail } from "@/lib/email/templates";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createUserInviteToken, hashUserInviteToken } from "./userInviteToken";
 
@@ -275,4 +274,203 @@ export async function listPlatformUsers(): Promise<PlatformUserListItem[]> {
   }
 
   return rows.toSorted((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+}
+
+export async function deletePlatformUser(id: string): Promise<{ success: boolean; error?: string }> {
+  const admin = createAdminClient();
+
+  if (id.startsWith("invite:")) {
+    const inviteId = id.slice(7);
+    const { error } = await admin.from("user_invites").delete().eq("id", inviteId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  if (id.startsWith("legacy-guide:")) {
+    const guideId = id.slice(13);
+    const { error } = await admin.from("guides").delete().eq("id", guideId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  if (id.startsWith("legacy-company:")) {
+    const companyId = id.slice(15);
+    const { error } = await admin
+      .from("companies")
+      .update({ owner_status: "deactivated", owner_email: null })
+      .eq("id", companyId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  // Regular user account (profiles + Supabase auth user)
+  const { error: profileError } = await admin.from("profiles").delete().eq("id", id);
+  if (profileError) return { success: false, error: profileError.message };
+
+  const { error: authError } = await admin.auth.admin.deleteUser(id);
+  if (authError) {
+    console.warn("Auth user delete notice:", authError.message);
+  }
+
+  return { success: true };
+}
+
+export async function resendPlatformUserInvite(
+  id: string,
+): Promise<{ success: boolean; inviteUrl?: string; emailSent?: boolean; error?: string }> {
+  const admin = createAdminClient();
+
+  if (id.startsWith("invite:")) {
+    const inviteId = id.slice(7);
+    const { data: invite, error } = await admin
+      .from("user_invites")
+      .select("*")
+      .eq("id", inviteId)
+      .single();
+
+    if (error || !invite) return { success: false, error: "Invitation record not found." };
+
+    let companyName: string | undefined;
+    if (invite.company_id) {
+      const { data: company } = await admin
+        .from("companies")
+        .select("name")
+        .eq("id", invite.company_id)
+        .maybeSingle();
+      companyName = company?.name;
+    }
+
+    const rawToken = createUserInviteToken();
+    const tokenHash = hashUserInviteToken(rawToken);
+
+    await admin
+      .from("user_invites")
+      .update({ token_hash: tokenHash, updated_at: new Date().toISOString() })
+      .eq("id", inviteId);
+
+    let baseUrl: string;
+    try {
+      baseUrl = emailBaseUrl();
+    } catch {
+      return { success: true, emailSent: false, inviteUrl: `/join/${rawToken}` };
+    }
+
+    const inviteUrl = `${baseUrl}/join/${rawToken}`;
+    const rendered = platformUserInviteEmail({
+      firstName: invite.first_name || undefined,
+      roleLabel: USER_ROLE_LABEL[invite.role as PlatformUserRole] ?? "Member",
+      companyName,
+      inviteUrl,
+      baseUrl,
+    });
+
+    const sendResult = await sendEmail({ to: invite.email, ...rendered });
+    return {
+      success: true,
+      emailSent: sendResult.ok,
+      inviteUrl,
+      error: sendResult.ok ? undefined : sendResult.error,
+    };
+  }
+
+  if (id.startsWith("legacy-guide:")) {
+    const guideId = id.slice(13);
+    const { data: guide, error } = await admin
+      .from("guides")
+      .select("*, companies(name)")
+      .eq("id", guideId)
+      .single();
+
+    if (error || !guide || !guide.email) {
+      return { success: false, error: "Guide invitation not found or has no email." };
+    }
+
+    const inviteResult = await createPlatformInvite({
+      email: guide.email,
+      firstName: guide.name,
+      lastName: "",
+      role: "guide",
+      companyId: guide.company_id,
+      invitedBy: "system",
+    });
+
+    if (inviteResult.status === "created") {
+      return {
+        success: true,
+        emailSent: inviteResult.emailSent,
+        inviteUrl: inviteResult.inviteUrl,
+        error: inviteResult.emailError,
+      };
+    }
+    return { success: false, error: "Could not create invite for guide." };
+  }
+
+  return { success: false, error: "Only invited users can be resent an invitation." };
+}
+
+export async function sendPlatformUserPasswordReset(
+  email: string,
+): Promise<{ success: boolean; error?: string }> {
+  const admin = createAdminClient();
+  const normalized = normalizedEmail(email);
+
+  let baseUrl: string;
+  try {
+    baseUrl = emailBaseUrl();
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Email not configured." };
+  }
+
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: normalized,
+  });
+
+  if (error) return { success: false, error: error.message };
+
+  const resetUrl = data?.properties?.action_link ?? `${baseUrl}/set-password`;
+  const rendered = passwordResetEmail({
+    email: normalized,
+    resetUrl,
+    baseUrl,
+  });
+
+  const sendResult = await sendEmail({ to: normalized, ...rendered });
+  return sendResult.ok ? { success: true } : { success: false, error: sendResult.error };
+}
+
+export async function togglePlatformUserStatus(
+  id: string,
+  nextStatus: PlatformUserStatus,
+): Promise<{ success: boolean; error?: string }> {
+  const admin = createAdminClient();
+
+  if (id.startsWith("invite:") || id.startsWith("legacy-guide:") || id.startsWith("legacy-company:")) {
+    if (nextStatus === "deactivated") {
+      return deletePlatformUser(id);
+    }
+    return { success: true };
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("guide_id, company_id, role")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (profile?.guide_id) {
+    await admin
+      .from("guides")
+      .update({ status: nextStatus === "active" ? "active" : "deactivated" })
+      .eq("id", profile.guide_id);
+  }
+
+  if (profile?.role === "company" && profile.company_id) {
+    await admin
+      .from("companies")
+      .update({ owner_status: nextStatus === "active" ? "active" : "deactivated" })
+      .eq("id", profile.company_id);
+  }
+
+  return { success: true };
 }

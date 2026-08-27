@@ -78,12 +78,16 @@ export default function CreateCompanyForm({ onDone }: CreateCompanyFormProps) {
         </label>
 
         <label className={labelClass}>
-          Type <span className="font-normal text-[var(--admin-ink-soft)]">(optional)</span>
-          <input
+          Company type
+          <select
             name="companyType"
-            placeholder="Hotel, Shop, Bar…"
+            defaultValue="Host"
             className={inputClass}
-          />
+          >
+            <option value="Host">Host (Hotel, Rental, Concierge)</option>
+            <option value="Tour Operator">Tour Operator (Boat Cruises)</option>
+            <option value="Platform">Platform (Boat Local)</option>
+          </select>
         </label>
       </div>
 

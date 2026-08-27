@@ -93,12 +93,20 @@ export default function AdminLoginForm({ initialError }: { initialError?: string
             {passwordPending ? "Signing in…" : "Sign in"}
           </button>
 
-          <a
-            href="/admin/login"
-            className="block text-center text-xs text-[var(--admin-ink-soft)] underline underline-offset-2"
-          >
-            Not you? Use a different email
-          </a>
+          <div className="flex items-center justify-between pt-1 text-xs">
+            <a
+              href="/admin/login"
+              className="text-[var(--admin-ink-soft)] hover:underline"
+            >
+              Use different email
+            </a>
+            <a
+              href={`/forgot-password?email=${encodeURIComponent(emailState.email || "")}&portal=admin`}
+              className="font-medium text-[var(--admin-accent)] hover:underline"
+            >
+              Forgot password?
+            </a>
+          </div>
         </form>
       </div>
     );

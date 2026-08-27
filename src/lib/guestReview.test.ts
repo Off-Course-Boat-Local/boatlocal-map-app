@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL,
   getReviewOptions,
   placeholderGoogleSearchUrl,
   reviewClickEventType,
@@ -23,13 +24,19 @@ describe("getReviewOptions", () => {
     ]);
   });
 
-  it("returns only Tripadvisor when just tripadvisorReviewUrl is configured", () => {
+  it("returns Google (BoatLocal default) and Tripadvisor when only tripadvisorReviewUrl is configured", () => {
     const options = getReviewOptions(
       { googleReviewUrl: null, tripadvisorReviewUrl: "https://tripadvisor.com/example" },
       "Boat & Bike Co.",
     );
 
     expect(options).toEqual([
+      {
+        platform: "google",
+        label: "Google",
+        url: DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL,
+        isPlaceholder: false,
+      },
       {
         platform: "tripadvisor",
         label: "Tripadvisor",
@@ -52,21 +59,32 @@ describe("getReviewOptions", () => {
     expect(options.every((o) => o.isPlaceholder === false)).toBe(true);
   });
 
-  it("falls back to a single placeholder option when neither is configured", () => {
+  it("defaults Google to BoatLocal official review URL when neither is configured", () => {
     const options = getReviewOptions(
       { googleReviewUrl: null, tripadvisorReviewUrl: null },
       "Boat & Bike Co.",
     );
 
-    expect(options).toHaveLength(1);
-    expect(options[0]).toMatchObject({ platform: "google", isPlaceholder: true });
-    expect(options[0].url).toBe(placeholderGoogleSearchUrl("Boat & Bike Co."));
+    expect(options).toEqual([
+      {
+        platform: "google",
+        label: "Google",
+        url: DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL,
+        isPlaceholder: false,
+      },
+    ]);
   });
 
-  it("falls back to a placeholder when the company record itself is null", () => {
+  it("defaults Google to BoatLocal official review URL when company record is null", () => {
     const options = getReviewOptions(null, "Boat & Bike Co.");
-    expect(options).toHaveLength(1);
-    expect(options[0].isPlaceholder).toBe(true);
+    expect(options).toEqual([
+      {
+        platform: "google",
+        label: "Google",
+        url: DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL,
+        isPlaceholder: false,
+      },
+    ]);
   });
 
   it("never returns an empty list", () => {

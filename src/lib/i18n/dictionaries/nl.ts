@@ -237,7 +237,7 @@ const nl: Dictionary = {
     copyLink: "Kopieer link",
     linkCopied: "Link gekopieerd",
     defaultWelcome:
-      "Welkom! Ik heb mijn favoriete plekken in de stad speciaal voor je verzameld.",
+      "Welkom in Amsterdam! Ontdek onze favoriete lokale plekken, verborgen parels aan de grachten en rondvaarten speciaal voor jou samengesteld.",
   },
 };
 

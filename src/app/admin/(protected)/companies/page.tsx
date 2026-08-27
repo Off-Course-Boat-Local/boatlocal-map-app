@@ -92,17 +92,20 @@ export default async function AdminCompaniesPage() {
         <span key="id" className="font-mono text-xs">
           {company.id}
         </span>,
-        company.companyType ?? <span className="text-[var(--admin-ink-soft)]">—</span>,
+        company.companyType ? (
+          <span
+            key="type"
+            className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300 capitalize"
+          >
+            {company.companyType}
+          </span>
+        ) : (
+          <span key="type" className="text-[var(--admin-ink-soft)]">—</span>
+        ),
         company.ownerEmail ? (
-          <div key="owner" className="flex flex-col gap-1.5">
-            <span className="text-xs">{company.ownerEmail}</span>
-            {company.ownerStatus ? (
-              <StatusBadge
-                status={OWNER_STATUS_LABEL[company.ownerStatus]}
-                tone={OWNER_STATUS_TONE[company.ownerStatus]}
-              />
-            ) : null}
-          </div>
+          <span key="owner" className="text-xs text-[var(--admin-ink)] block truncate max-w-[200px]" title={company.ownerEmail}>
+            {company.ownerEmail}
+          </span>
         ) : (
           <span key="owner" className="text-xs text-[var(--admin-ink-soft)]">
             —

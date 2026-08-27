@@ -114,21 +114,6 @@ describe("BrandingForm", () => {
     );
   });
 
-  it("persists welcome copy to localStorage on Save, not through the server action", async () => {
-    renderForm();
-    const textarea = screen.getByLabelText("Welcome copy");
-    await userEvent.type(textarea, "Welcome aboard!");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    await screen.findByText("Saved.");
-    expect(
-      window.localStorage.getItem(`boatlocal:studio:welcome-copy-draft:v1:${companyId}`),
-    ).toBe("Welcome aboard!");
-    expect(saveCompanyBrandingAction).toHaveBeenCalledWith(
-      companyId,
-      expect.not.objectContaining({ welcomeCopy: expect.anything() }),
-    );
-  });
 
   it("restores saved values and clears the live preview override on Discard changes", async () => {
     renderForm();

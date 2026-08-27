@@ -236,7 +236,7 @@ const de: Dictionary = {
     copyLink: "Link kopieren",
     linkCopied: "Link kopiert",
     defaultWelcome:
-      "Willkommen! Ich habe meine Lieblingsorte der Stadt extra für dich zusammengestellt.",
+      "Willkommen in Amsterdam! Entdecke unsere liebsten Geheimtipps, Grachten-Highlights und ausgewählte Bootstouren.",
   },
 };
 

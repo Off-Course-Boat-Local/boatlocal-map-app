@@ -39,16 +39,23 @@ import { BRANDS, DEFAULT_BRAND } from "@/lib/brand";
 import { getActiveCompanyRecord, getCompanyBrand } from "@/lib/data/source";
 import { GUEST_BRAND_HEADER } from "@/lib/guestHeaders";
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const requestHeaders = await headers();
   const brandId = requestHeaders.get(GUEST_BRAND_HEADER) ?? DEFAULT_BRAND.id;
 
-  const [brandFromSource, companyRecord] = await Promise.all([
-    getCompanyBrand(brandId),
-    getActiveCompanyRecord(brandId),
-  ]);
-  const brand = brandFromSource ?? BRANDS[brandId] ?? DEFAULT_BRAND;
-  const iconSrc = companyRecord?.logoUrl;
+  let brand = BRANDS[brandId] ?? DEFAULT_BRAND;
+  let iconSrc: string | null | undefined = null;
+
+  if (UUID_REGEX.test(brandId)) {
+    const [brandFromSource, companyRecord] = await Promise.all([
+      getCompanyBrand(brandId),
+      getActiveCompanyRecord(brandId),
+    ]);
+    if (brandFromSource) brand = brandFromSource;
+    iconSrc = companyRecord?.logoUrl;
+  }
 
   return {
     name: brand.appName,

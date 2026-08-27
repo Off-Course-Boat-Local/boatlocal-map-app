@@ -86,3 +86,45 @@ export async function inviteUserAction(
     return { error: "Could not create this invitation. Please try again." };
   }
 }
+
+export async function deleteUserAction(userId: string): Promise<{ error?: string }> {
+  await requireAdminSession();
+  const { deletePlatformUser } = await import("./users");
+  const result = await deletePlatformUser(userId);
+  if (!result.success) return { error: result.error ?? "Failed to delete user." };
+  revalidatePath("/admin/users");
+  return {};
+}
+
+export async function resendUserInviteAction(
+  userId: string,
+): Promise<{ error?: string; inviteUrl?: string; emailSent?: boolean }> {
+  await requireAdminSession();
+  const { resendPlatformUserInvite } = await import("./users");
+  const result = await resendPlatformUserInvite(userId);
+  if (!result.success) return { error: result.error ?? "Failed to resend invitation." };
+  revalidatePath("/admin/users");
+  return { inviteUrl: result.inviteUrl, emailSent: result.emailSent };
+}
+
+export async function sendUserPasswordResetAction(
+  email: string,
+): Promise<{ error?: string; success?: boolean }> {
+  await requireAdminSession();
+  const { sendPlatformUserPasswordReset } = await import("./users");
+  const result = await sendPlatformUserPasswordReset(email);
+  if (!result.success) return { error: result.error ?? "Failed to send password reset email." };
+  return { success: true };
+}
+
+export async function toggleUserStatusAction(
+  userId: string,
+  nextStatus: "active" | "deactivated",
+): Promise<{ error?: string }> {
+  await requireAdminSession();
+  const { togglePlatformUserStatus } = await import("./users");
+  const result = await togglePlatformUserStatus(userId, nextStatus);
+  if (!result.success) return { error: result.error ?? "Failed to update user status." };
+  revalidatePath("/admin/users");
+  return {};
+}

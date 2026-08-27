@@ -27,15 +27,17 @@ export interface ReviewOption {
 }
 
 /**
+ * Official BoatLocal Google Review direct deep link (Place ID: ChIJB5GUHB4JxkcRLsceJ5ywwYo).
+ * Used by default when a company has not configured their own Google Review URL,
+ * ensuring guest reviews naturally flow to BoatLocal.
+ */
+export const DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL =
+  "https://search.google.com/local/writereview?placeid=ChIJB5GUHB4JxkcRLsceJ5ywwYo";
+
+/**
  * Key-free Google search deep link (no Places API, no Maps JS API, no API
  * key — see src/lib/mapsHandoff.ts for the same pattern used for
- * directions). Used only as a last-resort placeholder when a company has
- * configured neither googleReviewUrl nor tripadvisorReviewUrl, so the
- * screen never renders with zero ways forward.
- *
- * TODO: once every company is required to configure at least one review
- * link in Studio (src/lib/data/source.ts's updateCompanyBranding), this
- * fallback can be removed entirely.
+ * directions).
  */
 export function placeholderGoogleSearchUrl(companyName: string): string {
   const params = new URLSearchParams({ q: `${companyName} reviews` });
@@ -43,12 +45,10 @@ export function placeholderGoogleSearchUrl(companyName: string): string {
 }
 
 /**
- * Builds the list of public review options to show, in priority order
- * (Google, then Tripadvisor), reading straight from the fields the data
- * schema already has (`CompanyRecord.googleReviewUrl` /
- * `.tripadvisorReviewUrl`). Only includes a platform the company has
- * actually configured; if the company has configured neither, returns a
- * single hardcoded placeholder rather than an empty list.
+ * Builds the list of public review options to show:
+ * 1. Google: Uses the company's own `googleReviewUrl` if configured; otherwise defaults
+ *    to BoatLocal's official direct Google review URL (`DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL`).
+ * 2. Tripadvisor: Only included if the company has explicitly configured `tripadvisorReviewUrl`.
  */
 export function getReviewOptions(
   company: Pick<CompanyRecord, "googleReviewUrl" | "tripadvisorReviewUrl"> | null,
@@ -56,30 +56,22 @@ export function getReviewOptions(
 ): ReviewOption[] {
   const options: ReviewOption[] = [];
 
-  if (company?.googleReviewUrl) {
-    options.push({
-      platform: "google",
-      label: "Google",
-      url: company.googleReviewUrl,
-      isPlaceholder: false,
-    });
-  }
+  // Google review button is always present: company URL if set, else BoatLocal official review link
+  const googleUrl = company?.googleReviewUrl || DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL;
+  options.push({
+    platform: "google",
+    label: "Google",
+    url: googleUrl,
+    isPlaceholder: false,
+  });
 
+  // Tripadvisor review button: ONLY shown if explicitly configured
   if (company?.tripadvisorReviewUrl) {
     options.push({
       platform: "tripadvisor",
       label: "Tripadvisor",
       url: company.tripadvisorReviewUrl,
       isPlaceholder: false,
-    });
-  }
-
-  if (options.length === 0) {
-    options.push({
-      platform: "google",
-      label: "Google",
-      url: placeholderGoogleSearchUrl(companyName),
-      isPlaceholder: true,
     });
   }
 

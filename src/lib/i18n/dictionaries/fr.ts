@@ -239,7 +239,7 @@ const fr: Dictionary = {
     copyLink: "Copier le lien",
     linkCopied: "Lien copié",
     defaultWelcome:
-      "Bienvenue ! J'ai rassemblé mes adresses préférées de la ville, rien que pour toi.",
+      "Bienvenue à Amsterdam ! Découvrez nos adresses préférées, les joyaux cachés le long des canaux et nos croisières sélectionnées pour vous.",
   },
 };
 

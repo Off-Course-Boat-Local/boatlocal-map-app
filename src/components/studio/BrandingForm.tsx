@@ -1,27 +1,10 @@
 "use client";
 
 // Studio Branding form (PRD §7.2, company role only): logo upload,
-// primary + accent colour (hex input + presets), app name, and a welcome
-// copy field, wired live into PhonePreviewPanel via StudioPreviewContext —
-// see that module's header comment for why it exists.
-//
-// Persistence is split, deliberately, in two different ways for two
-// different reasons (both commented at their own source):
-//   - App name / colours / logo -> saveCompanyBrandingAction()
-//     (src/lib/studio/brandingActions.ts) -> updateCompanyBranding()
-//     (src/lib/data/source.ts), which already carries the
-//     "TODO: replace with Supabase query" comment. This is the real
-//     DataSource-backed save path, not a placeholder invented here.
-//   - Welcome copy -> localStorage only (src/lib/studio/welcomeCopyDraft.ts)
-//     because CompanyRecord has no column for it yet — see that file's
-//     header comment for the full reasoning.
-//
-// primaryDark is not its own picker (PRD only asks for primary + accent):
-// it is derived automatically from primary via darkenHex() whenever primary
-// changes, and left untouched otherwise so an edit-free Save never
-// overwrites a hand-tuned dark shade with a generic one.
+// primary + accent colour (hex input + presets), app name, wired live into
+// PhonePreviewPanel via StudioPreviewContext.
 
-import { useCallback, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 
 import { BRANDS } from "@/lib/brand";
 import type { UpdateCompanyBrandingInput } from "@/lib/data/source";
@@ -29,7 +12,6 @@ import type { CompanyRecord } from "@/lib/data/types";
 import { saveCompanyBrandingAction } from "@/lib/studio/brandingActions";
 import { darkenHex, isValidHexColor } from "@/lib/studio/color";
 import { fileToDataUrl, InvalidLogoFileError } from "@/lib/studio/fileToDataUrl";
-import { getWelcomeCopyDraft, setWelcomeCopyDraft } from "@/lib/studio/welcomeCopyDraft";
 import type { Brand } from "@/lib/types";
 
 import { CARD_SHADOW, GhostButton, PageHeader, PrimaryButton, inputClass, labelClass } from "./primitives";
@@ -37,17 +19,8 @@ import { useStudioPreview } from "./StudioPreviewContext";
 
 export interface BrandingFormProps {
   companyId: string;
-  /** The company's brand as currently saved — also this form's "discard changes" target. */
   initialBrand: Brand;
   initialLogoUrl: string | null;
-  /**
-   * Defaults to saveCompanyBrandingAction (Studio's own save path, gated on
-   * a signed-in "company" dev session). Admin's /admin/default-company page
-   * passes its own admin-gated equivalent (src/lib/admin/defaultCompanyActions.ts)
-   * instead — same underlying updateCompanyBranding() call, different
-   * session check — so this one form serves both surfaces without a second
-   * copy of the UI.
-   */
   saveAction?: (
     companyId: string,
     input: UpdateCompanyBrandingInput,
@@ -58,18 +31,6 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 
 const PRIMARY_PRESETS = Object.values(BRANDS).map((b) => ({ hex: b.primary, name: b.companyName }));
 const ACCENT_PRESETS = Object.values(BRANDS).map((b) => ({ hex: b.accent, name: b.companyName }));
-
-// useSyncExternalStore plumbing for the welcome-copy draft (see the ref
-// declaration below for why it, not useState+useEffect, reads it). Module-
-// scope, stable references: subscribeToNothing never calls back (this form
-// is the only writer, and only ever on Save), and getServerWelcomeCopySnapshot
-// always returns "" (no `window` on the server, matching welcomeCopyDraft.ts).
-function subscribeToNothing(): () => void {
-  return () => {};
-}
-function getServerWelcomeCopySnapshot(): string {
-  return "";
-}
 
 function ColorField({
   id,
@@ -95,8 +56,6 @@ function ColorField({
         <input
           type="color"
           aria-label={`${label} picker`}
-          // Native colour inputs require a full #rrggbb value; fall back to
-          // black rather than crashing on a mid-edit or invalid hex string.
           value={valid ? value : "#000000"}
           onChange={(e) => onChange(e.target.value)}
           className="h-9 w-9 shrink-0 cursor-pointer rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface)] p-0.5"
@@ -154,23 +113,6 @@ export default function BrandingForm({
   const [accent, setAccent] = useState(initialBrand.accent);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl);
   const [logoError, setLogoError] = useState<string | null>(null);
-
-  // Welcome copy is an *uncontrolled* textarea (see the ref below), and its
-  // starting value comes from useSyncExternalStore rather than a plain
-  // useState initializer — the same reason src/hooks/useSavedPlaces.ts
-  // reaches for it: localStorage is only readable once `window` exists, the
-  // server always sees "" (getServerSnapshot below), and useSyncExternalStore
-  // is the one hook React guarantees will reconcile that server/client
-  // difference without a hydration-mismatch error — no effect, no flash.
-  // There is genuinely nothing to *subscribe* to (this form is the only
-  // writer, and only writes on Save, never mid-edit), so `subscribe` is a
-  // permanent no-op rather than something wired to storage/custom events.
-  const initialWelcomeCopy = useSyncExternalStore(
-    subscribeToNothing,
-    useCallback(() => getWelcomeCopyDraft(companyId), [companyId]),
-    getServerWelcomeCopySnapshot,
-  );
-  const welcomeCopyRef = useRef<HTMLTextAreaElement>(null);
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -239,10 +181,6 @@ export default function BrandingForm({
     preview.setLogoUrl(null);
   }
 
-  function handleWelcomeCopyChange() {
-    markDirty();
-  }
-
   function handleDiscard() {
     setAppName(initialBrand.appName);
     setPrimary(initialBrand.primary);
@@ -250,7 +188,6 @@ export default function BrandingForm({
     setAccent(initialBrand.accent);
     setLogoUrl(initialLogoUrl);
     setLogoError(null);
-    if (welcomeCopyRef.current) welcomeCopyRef.current.value = initialWelcomeCopy;
     setSaveState("idle");
     setSaveError(null);
     preview.setBrand(initialBrand);
@@ -279,9 +216,6 @@ export default function BrandingForm({
         brandAccent: accent,
         logoUrl,
       });
-      // Placeholder persistence for the one field with no schema column yet
-      // — see welcomeCopyDraft.ts.
-      setWelcomeCopyDraft(companyId, welcomeCopyRef.current?.value ?? "");
       setSaveState("saved");
     } catch (err) {
       setSaveState("error");
@@ -305,21 +239,27 @@ export default function BrandingForm({
           type="text"
           value={appName}
           onChange={(e) => handleAppNameChange(e.target.value)}
-          placeholder="Jan's Amsterdam"
+          placeholder="e.g. Amsterdam by Canal Voyagers"
           className={inputClass}
         />
         <p className="text-xs text-[var(--studio-ink-soft)]">Shown in the guest app header.</p>
       </section>
 
-      <section className={`space-y-3 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}>
-        <p className={labelClass}>Logo</p>
+      <section className={`space-y-4 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}>
+        <div>
+          <label className={labelClass}>Logo</label>
+          <p className="text-xs text-[var(--studio-ink-soft)]">
+            A clean, high-resolution SVG or PNG logo for your guest app header.
+          </p>
+        </div>
+
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-bg)]">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-bg)]">
             {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- data URL upload preview, same pattern as ShareQr/PlaceCard/PhotoGallery.
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={logoUrl} alt="Company logo preview" className="h-full w-full object-contain p-1" />
             ) : (
-              <span className="text-[10px] tracking-wide text-[var(--studio-ink-soft)] uppercase">No logo</span>
+              <span className="text-[10px] tracking-wide text-[var(--studio-ink-soft)] uppercase font-semibold">No logo</span>
             )}
           </div>
           <div className="space-y-1">
@@ -331,7 +271,7 @@ export default function BrandingForm({
                 <button
                   type="button"
                   onClick={handleRemoveLogo}
-                  className="rounded-xl px-3 py-1.5 text-sm font-medium text-[var(--studio-ink-soft)] transition-colors hover:bg-[var(--studio-bg)] hover:text-[var(--studio-ink)]"
+                  className="rounded-xl px-3 py-1.5 text-xs font-medium text-[var(--studio-ink-soft)] transition-colors hover:bg-[var(--studio-bg)] hover:text-[var(--studio-ink)] cursor-pointer"
                 >
                   Remove
                 </button>
@@ -377,25 +317,6 @@ export default function BrandingForm({
         <span className="font-mono">{primaryDark}</span>) is generated automatically from the
         primary colour.
       </p>
-
-      <section className={`space-y-2 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}>
-        <label className={labelClass} htmlFor="branding-welcome-copy">
-          Welcome copy
-        </label>
-        <textarea
-          id="branding-welcome-copy"
-          ref={welcomeCopyRef}
-          defaultValue={initialWelcomeCopy}
-          onChange={handleWelcomeCopyChange}
-          rows={3}
-          placeholder="A short hello shown to guests when they first open the app."
-          className={inputClass}
-        />
-        <p className="text-xs text-[var(--studio-ink-soft)]">
-          Saved to this browser only for now — there is no database column for it yet, so it
-          doesn&apos;t sync anywhere else.
-        </p>
-      </section>
 
       <div className="flex items-center gap-3">
         <PrimaryButton onClick={handleSave} disabled={saveState === "saving"}>

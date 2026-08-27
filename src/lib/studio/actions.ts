@@ -1,57 +1,92 @@
 "use server";
 
-// The two Server Actions LoginForm.tsx / StudioSidebar.tsx call.
-//
-// requestMagicLinkAction sends a real Supabase magic link — no password,
-// nothing invented on top of Supabase Auth. `shouldCreateUser: false` is
-// the load-bearing line: Studio is invite-gated (a guide's account is
-// created by src/app/join/[token]/actions.ts, a company's first user by
-// Admin's onboarding flow), never self-serve, so a bare email with no
-// existing auth user must never be able to mint itself a login here. The
-// response is identical whether or not the email has an account, so this
-// form can't be used to enumerate which addresses have Studio access.
-//
-// logoutAction ends the real Supabase session (`auth.signOut()`), which
-// clears the `@supabase/ssr` cookies this same request's client wrote.
-
 import { redirect } from "next/navigation";
-
-import { currentOrigin } from "@/lib/studio/requestOrigin";
 import { createClient } from "@/lib/supabase/server";
+import { getUserLoginProfileState } from "@/lib/auth/passwordStatus";
+import { sendPasswordSetupEmailAction } from "@/lib/auth/passwordActions";
 
-export interface LoginActionState {
+export interface StudioLoginState {
   error?: string;
   sent?: boolean;
+  passwordMode?: boolean;
+  email?: string;
 }
 
-export async function requestMagicLinkAction(
-  _prevState: LoginActionState,
+function isPlausibleEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+/**
+ * Step 1 for Studio sign-in:
+ * - Checks if account exists. If not, returns clear feedback.
+ * - If account exists and has a password -> returns passwordMode: true.
+ * - If account exists without a password -> sends branded setup link.
+ */
+export async function checkStudioLoginMethodAction(
+  _prevState: StudioLoginState,
   formData: FormData,
-): Promise<LoginActionState> {
+): Promise<StudioLoginState> {
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
 
-  if (!email) return { error: "Enter an email address." };
+  if (!isPlausibleEmail(email)) {
+    return { error: "Enter a valid email address." };
+  }
+
+  const userState = await getUserLoginProfileState(email, "studio");
+
+  if (!userState.exists) {
+    return {
+      error: "No account found with this email address. Please check for typos or contact your company administrator for an invite.",
+    };
+  }
+
+  if (userState.passwordSet) {
+    return { passwordMode: true, email };
+  }
+
+  // Account exists, but no password set yet -> send branded password setup link
+  const result = await sendPasswordSetupEmailAction(email, "studio");
+  if (!result.ok && result.error) {
+    return { error: result.error };
+  }
+
+  return { sent: true, email };
+}
+
+/**
+ * Step 2 for Studio sign-in:
+ * Validates password and sets the session.
+ */
+export async function signInStudioWithPasswordAction(
+  _prevState: StudioLoginState,
+  formData: FormData,
+): Promise<StudioLoginState> {
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  const password = String(formData.get("password") ?? "");
+
+  if (!password) {
+    return { passwordMode: true, email, error: "Enter your password." };
+  }
 
   const supabase = await createClient();
-  const origin = await currentOrigin();
-
-  await supabase.auth.signInWithOtp({
+  const { error } = await supabase.auth.signInWithPassword({
     email,
-    options: {
-      shouldCreateUser: false,
-      emailRedirectTo: `${origin}/auth/confirm?next=/studio`,
-    },
+    password,
   });
 
-  // Deliberately ignoring the error here (including "no account for this
-  // email", which Supabase reports as an error when shouldCreateUser is
-  // false, and rate-limit responses): surfacing any of that would let this
-  // form enumerate which addresses have Studio access. A genuine Studio
-  // user with a real account gets a real email; everyone else sees the
-  // same "check your inbox" message and nothing arrives.
-  return { sent: true };
+  if (error) {
+    return {
+      passwordMode: true,
+      email,
+      error: "Incorrect password. Please try again or use 'Forgot password'.",
+    };
+  }
+
+  redirect("/studio");
 }
 
 export async function logoutAction(): Promise<void> {

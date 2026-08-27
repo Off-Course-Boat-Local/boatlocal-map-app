@@ -32,6 +32,7 @@ import type { Metadata } from "next";
 import "@/app/studio/studio-theme.css";
 import DefaultCompanyHeader from "@/components/admin/DefaultCompanyHeader";
 import DefaultCompanyPicker from "@/components/admin/DefaultCompanyPicker";
+import DefaultCompanyTabs from "@/components/admin/DefaultCompanyTabs";
 import BrandingForm from "@/components/studio/BrandingForm";
 import { StudioPreviewProvider } from "@/components/studio/StudioPreviewContext";
 import RecommendationsManager from "@/components/studio/RecommendationsManager";
@@ -130,28 +131,28 @@ export default async function AdminDefaultCompanyPage() {
           its own beyond the variables), so wrapping just these two
           components in it is enough to fix their styling without pulling
           in any of Studio's actual page-shell layout. */}
-      <div className="studio-root space-y-8">
-        {/* StudioPreviewProvider is the one bit of Studio plumbing BrandingForm
-            genuinely can't run without (it calls useStudioPreview() on every
-            field change) — see that context's own header comment. Admin has
-            no phone-preview panel of its own; this just satisfies the
-            context requirement so the form doesn't crash, nothing renders
-            from it here. */}
-        <StudioPreviewProvider initialBrand={initialBrand} initialLogoUrl={flagged.logoUrl}>
-          <BrandingForm
-            companyId={flagged.id}
-            initialBrand={initialBrand}
-            initialLogoUrl={flagged.logoUrl}
-            saveAction={saveDefaultCompanyBrandingAction}
-          />
-        </StudioPreviewProvider>
-
-        <RecommendationsManager
-          recommendations={recommendations}
-          role="company"
-          deleteAction={deleteDefaultCompanyRecommendationAction}
-          setVisibilityAction={setDefaultCompanyRecommendationVisibilityAction}
-          saveAction={saveDefaultCompanyRecommendationAction.bind(null, flagged.id)}
+      <div className="studio-root">
+        <DefaultCompanyTabs
+          recommendationsCount={recommendations.length}
+          brandingContent={
+            <StudioPreviewProvider initialBrand={initialBrand} initialLogoUrl={flagged.logoUrl}>
+              <BrandingForm
+                companyId={flagged.id}
+                initialBrand={initialBrand}
+                initialLogoUrl={flagged.logoUrl}
+                saveAction={saveDefaultCompanyBrandingAction}
+              />
+            </StudioPreviewProvider>
+          }
+          recommendationsContent={
+            <RecommendationsManager
+              recommendations={recommendations}
+              role="company"
+              deleteAction={deleteDefaultCompanyRecommendationAction}
+              setVisibilityAction={setDefaultCompanyRecommendationVisibilityAction}
+              saveAction={saveDefaultCompanyRecommendationAction.bind(null, flagged.id)}
+            />
+          }
         />
       </div>
     </div>

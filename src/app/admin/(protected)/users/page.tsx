@@ -83,7 +83,7 @@ export default async function AdminUsersPage() {
       <span key="active" className="whitespace-nowrap text-sm text-[var(--admin-ink-soft)]">
         {displayDate(user.lastActiveAt)}
       </span>,
-      <UserRowActions key="actions" userName={userLabel} />,
+      <UserRowActions key="actions" user={user} />,
     ];
   });
 

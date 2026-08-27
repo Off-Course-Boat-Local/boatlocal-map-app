@@ -12,7 +12,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Star } from "lucide-react";
+import { Compass } from "lucide-react";
 
 import MapAppMark from "@/components/MapAppMark";
 import {
@@ -25,16 +25,8 @@ import {
   UsersIcon,
 } from "@/components/PortalIcons";
 
-/**
- * lucide-react's Star, sized/stroked to match PortalIcons' own `base()`
- * defaults (18px, 1.75 stroke) — everything else in the sidebar stays in
- * the shared hand-traced PortalIcons family, but the founder specifically
- * flagged this one hand-drawn star as looking rougher than the rest
- * ("premium icons please") and asked for it swapped, so it's the one
- * deliberate exception rather than a rule change for sidebar icons.
- */
-function PremiumStarIcon(props: { className?: string }) {
-  return <Star size={18} strokeWidth={1.75} {...props} />;
+function CompassNavIcon(props: { className?: string }) {
+  return <Compass size={18} strokeWidth={1.75} {...props} />;
 }
 
 const NAV_ITEMS = [
@@ -49,7 +41,7 @@ const NAV_ITEMS = [
   // all. A separate page from Companies because managing its content
   // (branding + recommendations) reuses Studio's own editors, not the
   // Companies table's row actions.
-  { href: "/admin/default-company", label: "Default company", icon: PremiumStarIcon },
+  { href: "/admin/default-company", label: "Default company", icon: CompassNavIcon },
 ] as const;
 
 export interface AdminSidebarProps {
@@ -62,7 +54,7 @@ export default function AdminSidebar({ email, onLogoutAction }: AdminSidebarProp
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col justify-between gap-6 border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-bg)] p-5 text-[var(--admin-sidebar-ink)]">
+    <aside className="flex h-full w-64 shrink-0 flex-col justify-between gap-6 border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-bg)] p-5 text-[var(--admin-sidebar-ink)]">
       <div>
         <div className="px-1">
           <MapAppMark

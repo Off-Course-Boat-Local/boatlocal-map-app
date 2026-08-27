@@ -66,7 +66,7 @@ export default function GuideProfileForm({
             name="photo"
             accept="image/*"
             onChange={onPhotoChange}
-            className="mt-1 block text-xs text-[var(--studio-ink-soft)] file:mr-2 file:rounded-lg file:border file:border-[var(--studio-border)] file:bg-[var(--studio-surface)] file:px-2 file:py-1 file:text-xs"
+            className="mt-1 block text-xs text-[var(--studio-ink-soft)] cursor-pointer file:mr-2 file:cursor-pointer file:rounded-xl file:border file:border-[var(--studio-border)] file:bg-[var(--studio-surface)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--studio-ink)] file:transition-all hover:file:bg-[var(--studio-bg)]"
           />
         </label>
       </div>

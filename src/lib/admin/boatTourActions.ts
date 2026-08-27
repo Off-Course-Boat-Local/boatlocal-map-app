@@ -119,13 +119,13 @@ export async function deleteBoatTourAction(id: string): Promise<{ error?: string
 export async function reorderBoatToursAction(orderedIds: string[]): Promise<{ error?: string }> {
   await requireAdminSession();
 
-  for (let index = 0; index < orderedIds.length; index += 1) {
-    try {
-      await setBoatTourPosition(ADMIN_ACTOR, orderedIds[index], index + 1);
-    } catch (err) {
-      if (err instanceof StudioPermissionError) return { error: err.message };
-      throw err;
-    }
+  try {
+    await Promise.all(
+      orderedIds.map((id, index) => setBoatTourPosition(ADMIN_ACTOR, id, index + 1)),
+    );
+  } catch (err) {
+    if (err instanceof StudioPermissionError) return { error: err.message };
+    throw err;
   }
 
   revalidatePath(BOATS_PATH);

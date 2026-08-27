@@ -145,7 +145,16 @@ export default async function AdminOverviewPage() {
             <span key="id" className="font-mono text-xs">
               {company.id}
             </span>,
-            company.companyType ?? <span className="text-[var(--admin-ink-soft)]">—</span>,
+            company.companyType ? (
+              <span
+                key="type"
+                className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300 capitalize"
+              >
+                {company.companyType}
+              </span>
+            ) : (
+              <span key="type" className="text-[var(--admin-ink-soft)]">—</span>
+            ),
             <StatusBadge
               key="status"
               status={STATUS_LABEL[company.status]}

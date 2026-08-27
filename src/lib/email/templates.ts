@@ -58,30 +58,52 @@ function layout({
   body,
   cta,
   baseUrl,
+  preheader,
 }: {
   heading: string;
   body: string;
   cta: string;
   baseUrl: string;
+  preheader?: string;
 }): string {
+  const preview = preheader
+    ? `<span style="display:none;font-size:0px;line-height:0px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">${escapeHtml(preheader)}</span>`
+    : "";
+
   return `<!doctype html>
-<html>
-  <body style="margin:0;padding:0;background:${BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(heading)}</title>
+  </head>
+  <body style="margin:0;padding:0;background:${BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+    ${preview}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};padding:32px 16px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;padding:32px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;background:#ffffff;border-radius:16px;border:1px solid #e5e7eb;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
             <tr>
               <td style="padding-bottom:24px;">${wordmark(baseUrl)}</td>
             </tr>
             <tr>
-              <td style="font-size:20px;font-weight:600;color:${INK};padding-bottom:12px;">${heading}</td>
+              <td style="font-size:20px;font-weight:700;color:${INK};padding-bottom:12px;letter-spacing:-0.02em;">${heading}</td>
             </tr>
             <tr>
-              <td style="font-size:14px;line-height:22px;color:${INK_SOFT};padding-bottom:24px;">${body}</td>
+              <td style="font-size:14.5px;line-height:22px;color:${INK_SOFT};padding-bottom:24px;">${body}</td>
             </tr>
             <tr>
               <td>${cta}</td>
+            </tr>
+            <tr>
+              <td style="padding-top:32px;border-top:1px solid #f3f4f6;margin-top:24px;">
+                <p style="font-size:11.5px;line-height:16px;color:#9ca3af;margin:0 0 8px;">
+                  If you did not request or expect this email, you can safely ignore it.
+                </p>
+                <p style="font-size:11.5px;line-height:16px;color:#9ca3af;margin:0;">
+                  Map App by Boat Local · Amsterdam, Netherlands · <a href="${baseUrl}" style="color:#6b7280;text-decoration:underline;">boatlocal.nl</a>
+                </p>
+              </td>
             </tr>
           </table>
         </td>
@@ -92,10 +114,16 @@ function layout({
 }
 
 function button(href: string, label: string): string {
-  return `<a href="${href}" style="display:inline-block;background:${ACCENT};color:#ffffff;text-decoration:none;font-size:14px;font-weight:500;padding:12px 20px;border-radius:8px;">${label}</a>
+  return `<table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="border-radius:8px;background:${ACCENT};">
+                <a href="${href}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:${ACCENT};color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 24px;border-radius:8px;letter-spacing:0.01em;">${label}</a>
+              </td>
+            </tr>
+          </table>
           <p style="font-size:12px;line-height:18px;color:${INK_SOFT};margin:20px 0 0;">
-            Or paste this link into your browser:<br />
-            <span style="color:${INK_SOFT};word-break:break-all;">${href}</span>
+            Button not working? Paste this link into your browser:<br />
+            <a href="${href}" style="color:${ACCENT};word-break:break-all;text-decoration:none;">${href}</a>
           </p>`;
 }
 
@@ -195,6 +223,7 @@ export function platformUserInviteEmail({
     subject: `You're invited to Map App as ${roleLabel}`,
     html: layout({
       baseUrl,
+      preheader: `You've been invited to join Map App as ${roleLabel}. Set your password to get started.`,
       heading: "You've been invited",
       body:
         `${greeting}you've been invited to join Map App as ` +
@@ -209,6 +238,79 @@ export function platformUserInviteEmail({
       "Set your password and confirm your name to finish creating your account.",
       "",
       inviteUrl,
+    ].join("\n"),
+  };
+}
+
+export interface PasswordResetEmailInput {
+  email: string;
+  resetUrl: string;
+  baseUrl: string;
+}
+
+/**
+ * Branded password reset email sent when a user clicks "Forgot password?".
+ */
+export function passwordResetEmail({
+  resetUrl,
+  baseUrl,
+}: PasswordResetEmailInput): RenderedEmail {
+  const safeUrl = escapeHtml(resetUrl);
+
+  return {
+    subject: "Reset your Map App password",
+    html: layout({
+      baseUrl,
+      preheader: "Reset your Map App password using this secure link.",
+      heading: "Reset your password",
+      body:
+        "We received a request to reset the password for your Map App account. " +
+        "Click the button below to choose a new password. This link is valid for 1 hour.",
+      cta: button(safeUrl, "Reset password"),
+    }),
+    text: [
+      "Reset your Map App password",
+      "",
+      "We received a request to reset the password for your Map App account.",
+      "Click the link below to choose a new password (valid for 1 hour):",
+      "",
+      resetUrl,
+    ].join("\n"),
+  };
+}
+
+export interface SetPasswordEmailInput {
+  email: string;
+  setupUrl: string;
+  baseUrl: string;
+}
+
+/**
+ * Branded email sent when an existing user with no password enters their email to sign in.
+ */
+export function setPasswordEmail({
+  setupUrl,
+  baseUrl,
+}: SetPasswordEmailInput): RenderedEmail {
+  const safeUrl = escapeHtml(setupUrl);
+
+  return {
+    subject: "Set your Map App password",
+    html: layout({
+      baseUrl,
+      preheader: "Set your password to sign in to Map App.",
+      heading: "Set your password",
+      body:
+        "Your Map App account is active. To enable instant password sign-in on any device, " +
+        "click the button below to set your password.",
+      cta: button(safeUrl, "Set password"),
+    }),
+    text: [
+      "Set your Map App password",
+      "",
+      "Your Map App account is active. Click the link below to set your password:",
+      "",
+      setupUrl,
     ].join("\n"),
   };
 }

@@ -236,7 +236,7 @@ const es: Dictionary = {
     copyLink: "Copiar enlace",
     linkCopied: "Enlace copiado",
     defaultWelcome:
-      "¡Qué alegría tenerte aquí! He reunido mis rincones favoritos de la ciudad, solo para ti.",
+      "¡Bienvenido a Ámsterdam! Descubre nuestros rincones favoritos, joyas escondidas junto a los canales y paseos en barco seleccionados para ti.",
   },
 };
 

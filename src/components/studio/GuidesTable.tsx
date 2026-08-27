@@ -85,7 +85,7 @@ export default function GuidesTable({ guides }: { guides: GuideRowData[] }) {
               >
                 <button
                   type="submit"
-                  className="rounded-lg border border-[var(--studio-border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--studio-ink)] transition-colors hover:bg-[var(--studio-bg)]"
+                  className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--studio-ink)] transition-all hover:bg-[var(--studio-bg)] hover:border-[var(--studio-ink-soft)]/40 active:scale-95 cursor-pointer shadow-xs"
                 >
                   {isDeactivated ? "Reactivate" : "Deactivate"}
                 </button>

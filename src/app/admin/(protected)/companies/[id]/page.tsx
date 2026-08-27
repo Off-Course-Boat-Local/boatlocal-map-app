@@ -82,7 +82,11 @@ export default async function AdminCompanyDetailPage({
             </div>
             <p className="mt-1.5 text-sm text-[var(--admin-ink-soft)]">
               <span className="font-mono">{company.id}</span>
-              {company.companyType ? ` · ${company.companyType}` : ""}
+              {company.companyType ? (
+                <span className="capitalize"> · {company.companyType}</span>
+              ) : (
+                ""
+              )}
             </p>
           </div>
           <CompanyRowActions
