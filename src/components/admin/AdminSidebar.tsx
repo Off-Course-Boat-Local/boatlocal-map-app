@@ -41,7 +41,7 @@ const NAV_ITEMS = [
   // all. A separate page from Companies because managing its content
   // (branding + recommendations) reuses Studio's own editors, not the
   // Companies table's row actions.
-  { href: "/admin/default-company", label: "Default company", icon: CompassNavIcon },
+  { href: "/admin/default-company", label: "Default settings", icon: CompassNavIcon },
 ] as const;
 
 export interface AdminSidebarProps {

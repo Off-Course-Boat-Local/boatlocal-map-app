@@ -94,7 +94,6 @@ export default async function AdminCompanyDetailPage({
             companyName={company.name}
             status={company.status}
             ownerInvite={invite}
-            isPlatformDefault={company.id === platformDefault?.id}
           />
         </div>
       </div>
