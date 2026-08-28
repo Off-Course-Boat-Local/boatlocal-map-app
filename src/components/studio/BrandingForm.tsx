@@ -123,11 +123,10 @@ export default function BrandingForm({
       id: initialBrand.id,
       companyName: initialBrand.companyName,
       surround: initialBrand.surround,
-      appName,
-      primary,
-      primaryDark,
-      accent,
-      ...next,
+      appName: next.appName !== undefined ? next.appName : appName,
+      primary: next.primary !== undefined ? next.primary : primary,
+      primaryDark: next.primaryDark !== undefined ? next.primaryDark : primaryDark,
+      accent: next.accent !== undefined ? next.accent : accent,
     });
   }
 
