@@ -13,8 +13,8 @@ import type { Brand } from "./types";
 export const BRANDS: Record<string, Brand> = {
   coastal: {
     id: "coastal",
-    companyName: "Boat & Bike Co.",
-    appName: "Jan's Amsterdam",
+    companyName: "Boat Local",
+    appName: "BoatLocal Map App",
     primary: "#2B4FE0",
     primaryDark: "#1D37A8",
     accent: "#6E8CFF",
