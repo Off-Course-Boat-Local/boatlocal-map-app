@@ -30,10 +30,15 @@
 // row (recommendation_category_not_boats CHECK enforces this at the DB
 // layer too).
 //
-// NOTE: still no Google Places, on purpose (house rule). Address entry uses
-// the same shared src/components/AddressField.tsx BoatTourForm and Studio's
-// RecommendationForm both use — an OSM/Photon search plus a draggable pin,
-// never a cached Google result.
+// NOTE ON GOOGLE PLACES: the house rule against it (still true for address
+// entry — this form's AddressField still searches OSM/Photon, same as
+// BoatTourForm and Studio's RecommendationForm) was knowingly overridden for
+// ONE thing: AdminRecommendationForm.tsx's "Search Google Maps" enrichment
+// button (src/lib/admin/googlePlaces.ts), which pulls category/hours/photos
+// to speed up curating these rows (founder request, 2026-09-01). That is a
+// deliberate, scoped exception — accepting the Google ToS caching/display
+// risk googlePlaces.ts's header documents — not a reversal of the rule for
+// anything else in the app.
 
 import { CATEGORIES } from "../categories";
 import type { CategoryId } from "../types";

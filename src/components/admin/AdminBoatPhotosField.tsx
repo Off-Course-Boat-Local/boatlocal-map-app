@@ -5,7 +5,7 @@
 // preview, remove buttons, and drag-and-drop or file picker support.
 
 import { useId, useRef, useState } from "react";
-import { ImagePlus, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 
 import PhotoGallery from "@/components/map/PhotoGallery";
 import { MAX_PHOTOS, PHOTO_NUDGE_THRESHOLD } from "@/lib/admin/boatTourForm";
@@ -14,6 +14,16 @@ const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB
 
 export interface AdminBoatPhotosFieldProps {
   initialPhotos?: string[];
+  /**
+   * Photos supplied from outside the file picker — e.g. Google Places
+   * enrichment in AdminRecommendationForm — merged in as data URLs exactly
+   * like a file upload would be (same MAX_PHOTOS cap, same overflow
+   * notice). Keyed on `injectKey` rather than the array itself so the
+   * parent can pass a fresh array each render without this re-firing; only
+   * an actual new batch (a bumped key) should be merged.
+   */
+  injectPhotos?: string[];
+  injectKey?: number;
 }
 
 function readAsDataUrl(file: File): Promise<string | null> {
@@ -31,11 +41,34 @@ function readAsDataUrl(file: File): Promise<string | null> {
 
 export default function AdminBoatPhotosField({
   initialPhotos = [],
+  injectPhotos,
+  injectKey,
 }: AdminBoatPhotosFieldProps) {
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
   const [notice, setNotice] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = useId();
+  // Tracks the last-applied `injectKey` so an external batch (Google Places
+  // photos) is merged exactly once per bump, during render rather than in
+  // an Effect — same "adjusting state when a prop changes" pattern
+  // AddressField's `applyKey` uses, and for the same reason: this starts
+  // equal to `injectKey`, so it never fires on the initial mount.
+  const [appliedInjectKey, setAppliedInjectKey] = useState(injectKey);
+
+  // Merges an externally-supplied batch (Google Places photos) the same way
+  // handleFiles merges an upload: respects MAX_PHOTOS, surfaces the same
+  // overflow notice.
+  if (injectKey !== appliedInjectKey && injectPhotos && injectPhotos.length > 0) {
+    setAppliedInjectKey(injectKey);
+    const room = Math.max(0, MAX_PHOTOS - photos.length);
+    const toAdd = injectPhotos.slice(0, room);
+    if (injectPhotos.length > toAdd.length) {
+      setNotice(`Only added ${toAdd.length} — the limit is ${MAX_PHOTOS} photos per tour.`);
+    } else {
+      setNotice(null);
+    }
+    setPhotos((prev) => [...prev, ...toAdd]);
+  }
 
   async function handleFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;

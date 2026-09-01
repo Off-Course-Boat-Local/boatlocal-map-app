@@ -26,6 +26,7 @@ import AddressField from "@/components/AddressField";
 import PortalSelect from "@/components/PortalSelect";
 import PortalToggle from "@/components/PortalToggle";
 import type { RecommendationRecord } from "@/lib/data/types";
+import type { PlaceDetails } from "@/lib/admin/googlePlaces";
 import {
   saveAdminRecommendationAction,
   type AdminRecommendationFormState,
@@ -33,6 +34,7 @@ import {
 import { ADMIN_RECOMMENDATION_CATEGORIES, NOTE_MAX_LENGTH } from "@/lib/admin/adminRecommendationForm";
 import { FIELD_CLASS, FIELD_LABEL_CLASS, GHOST_BUTTON_CLASS, PRIMARY_BUTTON_CLASS } from "./primitives";
 import AdminBoatPhotosField from "./AdminBoatPhotosField";
+import GooglePlaceSearchField from "./GooglePlaceSearchField";
 
 const initialState: AdminRecommendationFormState = {};
 
@@ -60,6 +62,56 @@ export default function AdminRecommendationForm({
   // Controlled so a picked address suggestion can fill it in — an admin can
   // still overwrite whatever the geocoder guessed.
   const [area, setArea] = useState(recommendation?.area ?? "");
+
+  // Everything below is controlled ONLY so a Google Places pick
+  // (GooglePlaceSearchField) can fill it in — same "an admin can still
+  // overwrite it by hand afterward" behaviour as `area` above. `category`
+  // uses a remount key rather than an onChange-driven value because
+  // PortalSelect only takes `defaultValue` (see its own header comment on
+  // why — it's a shared component many other forms use uncontrolled);
+  // bumping the key forces it to reinitialize with the new defaultValue.
+  const [name, setName] = useState(recommendation?.name ?? "");
+  const [hours, setHours] = useState(recommendation?.hours ?? "");
+  // Typed as plain string (not CategoryId) so it can hold whatever
+  // PortalSelect's onValueChange or a Google category guess hands back —
+  // parseAdminRecommendationForm on the server is what actually validates
+  // this is a real CategoryId before it's ever persisted.
+  const [category, setCategory] = useState<string>(
+    recommendation?.category ?? ADMIN_RECOMMENDATION_CATEGORIES[0]?.id ?? "",
+  );
+  const [categoryKey, setCategoryKey] = useState(0);
+  const [addressApplyKey, setAddressApplyKey] = useState(0);
+  const [addressApplyPick, setAddressApplyPick] = useState<{
+    address: string;
+    area?: string;
+    lng: number;
+    lat: number;
+  } | null>(null);
+  const [photosInjectKey, setPhotosInjectKey] = useState(0);
+  const [photosInject, setPhotosInject] = useState<string[]>([]);
+
+  function applyGooglePlace(details: PlaceDetails) {
+    if (details.name) setName(details.name);
+    if (details.hours) setHours(details.hours);
+    setArea((current) => current.trim() || details.area);
+    if (details.suggestedCategory) {
+      setCategory(details.suggestedCategory);
+      setCategoryKey((k) => k + 1);
+    }
+    if (Number.isFinite(details.lat) && Number.isFinite(details.lng)) {
+      setAddressApplyPick({
+        address: details.address || details.name,
+        area: details.area,
+        lat: details.lat,
+        lng: details.lng,
+      });
+      setAddressApplyKey((k) => k + 1);
+    }
+    if (details.photos.length > 0) {
+      setPhotosInject(details.photos);
+      setPhotosInjectKey((k) => k + 1);
+    }
+  }
 
   // useActionState re-renders this component with the new state as soon as
   // the action resolves, so this fires exactly once per successful submit.
@@ -90,11 +142,14 @@ export default function AdminRecommendationForm({
         <input
           name="name"
           required
-          defaultValue={recommendation?.name}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           placeholder="Café de Jaren"
           className={inputClass}
         />
       </label>
+
+      <GooglePlaceSearchField query={name} onApply={applyGooglePlace} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -102,9 +157,11 @@ export default function AdminRecommendationForm({
             Category
           </label>
           <PortalSelect
+            key={categoryKey}
             id="admin-recommendation-category"
             name="category"
-            defaultValue={recommendation?.category ?? ADMIN_RECOMMENDATION_CATEGORIES[0]?.id ?? ""}
+            defaultValue={category}
+            onValueChange={setCategory}
             options={ADMIN_RECOMMENDATION_CATEGORIES.map((c) => ({ value: c.id, label: c.label }))}
             className="mt-1"
           />
@@ -129,18 +186,22 @@ export default function AdminRecommendationForm({
         initialLng={recommendation?.lng}
         initialLat={recommendation?.lat}
         onAreaSuggested={(suggested) => setArea((current) => current.trim() || suggested)}
+        applyPick={addressApplyPick}
+        applyKey={addressApplyKey}
       />
 
       <label className={labelClass}>
         Opening hours
         <input
           name="hours"
-          defaultValue={recommendation?.hours}
+          value={hours}
+          onChange={(e) => setHours(e.target.value)}
           placeholder="Tue–Sun 11:00–18:00, closed Mondays"
           className={inputClass}
         />
         <span className="mt-1 block text-xs text-[var(--admin-ink-soft)]">
-          Free text — whatever you&apos;d tell a guest.
+          Free text — whatever you&apos;d tell a guest. Google&apos;s hours come in verbatim —
+          trim it down to what a guest actually needs.
         </span>
       </label>
 
@@ -161,7 +222,11 @@ export default function AdminRecommendationForm({
         </span>
       </label>
 
-      <AdminBoatPhotosField initialPhotos={recommendation?.photos ?? []} />
+      <AdminBoatPhotosField
+        initialPhotos={recommendation?.photos ?? []}
+        injectPhotos={photosInject}
+        injectKey={photosInjectKey}
+      />
 
       {state.error ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">

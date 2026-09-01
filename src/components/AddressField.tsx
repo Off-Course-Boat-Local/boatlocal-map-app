@@ -157,6 +157,17 @@ export interface AddressFieldProps {
   onAreaSuggested?: (area: string) => void;
   /** Session-gated proxy to query. Defaults to Studio's own route. */
   geocodeEndpoint?: string;
+  /**
+   * A pick supplied from outside the search box — e.g. Google Places
+   * enrichment in AdminRecommendationForm — applied exactly like clicking a
+   * Photon suggestion (pin drops, draggable, `touched` set). Bump `applyKey`
+   * (e.g. a counter or Date.now()) each time a new one should be applied;
+   * the same `applyPick` object with an unchanged `applyKey` is a no-op, so
+   * the parent doesn't need to worry about this re-firing on unrelated
+   * re-renders.
+   */
+  applyPick?: { address: string; area?: string; lng: number; lat: number } | null;
+  applyKey?: number;
 }
 
 export default function AddressField({
@@ -165,6 +176,8 @@ export default function AddressField({
   initialLat,
   onAreaSuggested,
   geocodeEndpoint = "/api/studio/geocode",
+  applyPick,
+  applyKey,
 }: AddressFieldProps) {
   const listId = useId();
 
@@ -183,6 +196,12 @@ export default function AddressField({
   // Maps URL, or drags the pin — suppresses the "you haven't placed this
   // yet" nudge while they're still typing.
   const [touched, setTouched] = useState(false);
+  // Tracks the last-applied `applyKey` so an external pick (Google Places
+  // enrichment) is applied exactly once per bump, without an Effect —
+  // "adjusting state when a prop changes" per React's own guidance
+  // (https://react.dev/learn/you-might-not-need-an-effect), same pattern
+  // AdminBoatPhotosField's `injectKey` uses.
+  const [appliedApplyKey, setAppliedApplyKey] = useState(applyKey);
 
   const boxRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -251,6 +270,25 @@ export default function AddressField({
     setOpen(false);
     setTouched(true);
     if (r.area) onAreaSuggested?.(r.area);
+  }
+
+  // Applies an externally-supplied pick (Google Places enrichment) the same
+  // way a clicked Photon suggestion would be — exactly once per `applyKey`
+  // bump, during render rather than in an Effect (see appliedApplyKey's
+  // comment above).
+  if (
+    applyKey !== appliedApplyKey &&
+    applyPick &&
+    Number.isFinite(applyPick.lng) &&
+    Number.isFinite(applyPick.lat)
+  ) {
+    setAppliedApplyKey(applyKey);
+    setAddress(applyPick.address);
+    setCoords({ lng: applyPick.lng, lat: applyPick.lat });
+    setResults([]);
+    setOpen(false);
+    setTouched(true);
+    if (applyPick.area) onAreaSuggested?.(applyPick.area);
   }
 
   function handleAddressChange(value: string) {
