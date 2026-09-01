@@ -5,6 +5,7 @@ import { isEmailAllowlistedForAdmin } from "@/lib/admin/allowlist";
 import { getAdminLoginProfileState } from "@/lib/admin/passwordStatus";
 import { createClient } from "@/lib/supabase/server";
 import { sendPasswordSetupEmailAction } from "@/lib/auth/passwordActions";
+import { devSignInAsAdmin } from "@/lib/admin/devBypass";
 
 export interface AdminLoginState {
   error?: string;
@@ -86,5 +87,18 @@ export async function signInAdminWithPasswordAction(
     };
   }
 
+  redirect("/admin");
+}
+
+/**
+ * Localhost-only "Sign in as developer" button — see devBypass.ts's header
+ * for why this mints a real session rather than faking one.
+ * devSignInAsAdmin already throws in production and for a non-allowlisted
+ * email, so this action has nothing further to gate; the error just
+ * surfaces to the button's caught fetch, same as any other Server Action
+ * failure.
+ */
+export async function devSignInAsAdminAction(email: string): Promise<void> {
+  await devSignInAsAdmin(email);
   redirect("/admin");
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import AdminLoginForm from "@/components/admin/AdminLoginForm";
 import MapAppMark from "@/components/MapAppMark";
+import { firstAllowlistedAdminEmail } from "@/lib/admin/devBypass";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -34,7 +35,10 @@ export default async function AdminLoginPage({
           <MapAppMark iconSize={28} className="font-display text-lg" />
         </div>
 
-        <AdminLoginForm initialError={errorMessage} />
+        <AdminLoginForm
+          initialError={errorMessage}
+          devEmail={process.env.NODE_ENV !== "production" ? firstAllowlistedAdminEmail() : null}
+        />
       </div>
     </div>
   );

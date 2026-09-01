@@ -15,6 +15,7 @@ import { useActionState } from "react";
 import {
   checkAdminLoginMethodAction,
   signInAdminWithPasswordAction,
+  devSignInAsAdminAction,
   type AdminLoginState,
 } from "@/app/admin/login/actions";
 import { FIELD_CLASS, FIELD_LABEL_CLASS, PRIMARY_BUTTON_CLASS } from "@/components/admin/primitives";
@@ -26,7 +27,34 @@ function emptyState(): AdminLoginState {
   return {};
 }
 
-export default function AdminLoginForm({ initialError }: { initialError?: string }) {
+/**
+ * Localhost-only "sign in as developer" button — see
+ * src/lib/admin/devBypass.ts's header for what this actually does (a REAL
+ * session, not a fake one) and why it's safe. `devEmail` is null in
+ * production (AdminLoginPage never passes one), so this renders nothing
+ * there — no separate check needed here.
+ */
+function DevSignInButton({ devEmail }: { devEmail: string | null }) {
+  if (!devEmail) return null;
+  return (
+    <form action={devSignInAsAdminAction.bind(null, devEmail)} className="mt-4">
+      <button
+        type="submit"
+        className="w-full rounded-xl border border-dashed border-amber-500/50 bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-500/15 dark:text-amber-400"
+      >
+        Dev: sign in as {devEmail}
+      </button>
+    </form>
+  );
+}
+
+export default function AdminLoginForm({
+  initialError,
+  devEmail = null,
+}: {
+  initialError?: string;
+  devEmail?: string | null;
+}) {
   const [emailState, emailFormAction, emailPending] = useActionState(
     checkAdminLoginMethodAction,
     initialError ? { error: initialError } : emptyState(),
@@ -150,6 +178,8 @@ export default function AdminLoginForm({ initialError }: { initialError?: string
           {emailPending ? "Continuing…" : "Continue"}
         </button>
       </form>
+
+      <DevSignInButton devEmail={devEmail} />
     </div>
   );
 }
