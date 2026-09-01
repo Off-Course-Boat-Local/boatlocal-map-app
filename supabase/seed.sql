@@ -99,75 +99,75 @@ from public.boat_tours;
 -- matters for who may edit which row in Studio.
 -- ---------------------------------------------------------------------------
 insert into public.recommendations (
-  id, company_id, owner_type, guide_id, category, name, area, address, lng, lat, note, hours, photos, visible
+  id, company_id, owner_type, guide_id, categories, name, area, address, lng, lat, note, hours, photos, visible
 ) values
   ('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111111', 'company', null,
-   'breakfast', 'Bakers & Roasters', 'De Pijp', 'Eerste Jacob van Campenstraat 54', 4.8917, 52.3556,
+   array['breakfast'], 'Bakers & Roasters', 'De Pijp', 'Eerste Jacob van Campenstraat 54', 4.8917, 52.3556,
    'Best pancakes in the city. Go before 9 or you''ll queue for an hour.', 'Daily 08:30–16:00',
    array['https://picsum.photos/seed/bakers0/800/600','https://picsum.photos/seed/bakers1/800/600','https://picsum.photos/seed/bakers2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111111', 'guide', '22222222-2222-2222-2222-222222222222',
-   'breakfast', 'Mook Pancakes', 'Centrum', 'Vondelstraat 24', 4.8807, 52.3639,
+   array['breakfast'], 'Mook Pancakes', 'Centrum', 'Vondelstraat 24', 4.8807, 52.3639,
    'Dutch pancakes done properly. The apple one is the move.', 'Daily 09:00–17:00',
    array['https://picsum.photos/seed/mook0/800/600','https://picsum.photos/seed/mook1/800/600','https://picsum.photos/seed/mook2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444403', '11111111-1111-1111-1111-111111111111', 'company', null,
-   'lunch', 'Café de Jaren', 'Centrum', 'Nieuwe Doelenstraat 20', 4.8956, 52.3676,
+   array['lunch'], 'Café de Jaren', 'Centrum', 'Nieuwe Doelenstraat 20', 4.8956, 52.3676,
    'Sit on the terrace over the Amstel. Worth it for the view alone.', 'Daily 10:00–01:00',
    array['https://picsum.photos/seed/jaren0/800/600','https://picsum.photos/seed/jaren1/800/600','https://picsum.photos/seed/jaren2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444404', '11111111-1111-1111-1111-111111111111', 'guide', '22222222-2222-2222-2222-222222222222',
-   'lunch', 'Pendergast', 'Jordaan', 'Tweede Egelantiersdwarsstraat 6', 4.8815, 52.3745,
+   array['lunch'], 'Pendergast', 'Jordaan', 'Tweede Egelantiersdwarsstraat 6', 4.8815, 52.3745,
    'Great sandwiches, no fuss. Where I actually eat on my day off.', 'Tue–Sun 11:00–18:00, closed Mondays',
    array['https://picsum.photos/seed/pender0/800/600','https://picsum.photos/seed/pender1/800/600','https://picsum.photos/seed/pender2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444405', '11111111-1111-1111-1111-111111111111', 'company', null,
-   'lunch', 'Foodhallen', 'Oud-West', 'Bellamyplein 51', 4.869, 52.3661,
+   array['lunch'], 'Foodhallen', 'Oud-West', 'Bellamyplein 51', 4.869, 52.3661,
    'Old tram depot, twenty food stalls. Good when nobody can agree.', 'Sun–Thu 11:00–23:30, Fri–Sat till 01:00',
    array['https://picsum.photos/seed/foodhal0/800/600','https://picsum.photos/seed/foodhal1/800/600','https://picsum.photos/seed/foodhal2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444406', '11111111-1111-1111-1111-111111111111', 'company', null,
-   'coffee', 'Lot Sixty One', 'Oud-West', 'Kinkerstraat 112', 4.8703, 52.3648,
+   array['coffee'], 'Lot Sixty One', 'Oud-West', 'Kinkerstraat 112', 4.8703, 52.3648,
    'They roast their own. Small place, take it away and walk.', 'Mon–Fri 08:00–17:00, weekends from 09:00',
    array['https://picsum.photos/seed/lot610/800/600','https://picsum.photos/seed/lot611/800/600','https://picsum.photos/seed/lot612/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444407', '11111111-1111-1111-1111-111111111111', 'guide', '22222222-2222-2222-2222-222222222222',
-   'coffee', 'Screaming Beans', 'Nine Streets', 'Hartenstraat 12', 4.8853, 52.3719,
+   array['coffee'], 'Screaming Beans', 'Nine Streets', 'Hartenstraat 12', 4.8853, 52.3719,
    'Tiny, always busy, best flat white in the Nine Streets.', 'Daily 08:00–18:00',
    array['https://picsum.photos/seed/beans0/800/600','https://picsum.photos/seed/beans1/800/600','https://picsum.photos/seed/beans2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444408', '11111111-1111-1111-1111-111111111111', 'company', null,
-   'drinks', 'Brouwerij ''t IJ', 'Oost', 'Funenkade 7', 4.9265, 52.3667,
+   array['drinks'], 'Brouwerij ''t IJ', 'Oost', 'Funenkade 7', 4.9265, 52.3667,
    'Brewery under a windmill. Sit outside, order the Zatte.', 'Daily 14:00–20:00',
    array['https://picsum.photos/seed/brouwerij0/800/600','https://picsum.photos/seed/brouwerij1/800/600','https://picsum.photos/seed/brouwerij2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444409', '11111111-1111-1111-1111-111111111111', 'company', null,
-   'drinks', 'Café Papeneiland', 'Jordaan', 'Prinsengracht 2', 4.8846, 52.3799,
+   array['drinks'], 'Café Papeneiland', 'Jordaan', 'Prinsengracht 2', 4.8846, 52.3799,
    'A proper brown café from 1642. Order a jenever, don''t rush it.', 'Daily 10:00–01:00',
    array['https://picsum.photos/seed/papen0/800/600','https://picsum.photos/seed/papen1/800/600','https://picsum.photos/seed/papen2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444410', '11111111-1111-1111-1111-111111111111', 'company', null,
-   'see', 'Rijksmuseum', 'Museumkwartier', 'Museumstraat 1', 4.8852, 52.36,
+   array['see'], 'Rijksmuseum', 'Museumkwartier', 'Museumstraat 1', 4.8852, 52.36,
    'Book online first. Go straight to the Night Watch, then wander back.', 'Daily 09:00–17:00',
    array['https://picsum.photos/seed/rijks0/800/600','https://picsum.photos/seed/rijks1/800/600','https://picsum.photos/seed/rijks2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444411', '11111111-1111-1111-1111-111111111111', 'guide', '22222222-2222-2222-2222-222222222222',
-   'see', 'Anne Frank House', 'Jordaan', 'Westermarkt 20', 4.884, 52.3752,
+   array['see'], 'Anne Frank House', 'Jordaan', 'Westermarkt 20', 4.884, 52.3752,
    'Tickets sell out weeks ahead — book before you land, not here.', 'Daily 09:00–22:00',
    array['https://picsum.photos/seed/anne0/800/600','https://picsum.photos/seed/anne1/800/600','https://picsum.photos/seed/anne2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444412', '11111111-1111-1111-1111-111111111111', 'company', null,
-   'photo', 'NDSM Werf', 'Noord', 'NDSM-plein 1', 4.8927, 52.4013,
+   array['photo'], 'NDSM Werf', 'Noord', 'NDSM-plein 1', 4.8927, 52.4013,
    'Free ferry from Centraal. Street art everywhere, best light at sunset.', 'Always open',
    array['https://picsum.photos/seed/ndsm0/800/600','https://picsum.photos/seed/ndsm1/800/600','https://picsum.photos/seed/ndsm2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444413', '11111111-1111-1111-1111-111111111111', 'company', null,
-   'shop', 'De 9 Straatjes', 'Centrum', 'Reestraat / Hartenstraat', 4.8846, 52.3712,
+   array['shop'], 'De 9 Straatjes', 'Centrum', 'Reestraat / Hartenstraat', 4.8846, 52.3712,
    'Nine little streets of small shops. Just walk them, don''t plan it.', 'Most shops 10:00–18:00',
    array['https://picsum.photos/seed/negen0/800/600','https://picsum.photos/seed/negen1/800/600','https://picsum.photos/seed/negen2/800/600'], true),
 
   ('44444444-4444-4444-4444-444444444414', '11111111-1111-1111-1111-111111111111', 'guide', '22222222-2222-2222-2222-222222222222',
-   'shop', 'Waterlooplein Market', 'Centrum', 'Waterlooplein', 4.9028, 52.3676,
+   array['shop'], 'Waterlooplein Market', 'Centrum', 'Waterlooplein', 4.9028, 52.3676,
    'Flea market. Come early for the good stuff, haggle a little.', 'Mon–Sat 09:00–17:00, closed Sunday',
    array['https://picsum.photos/seed/waterloo0/800/600','https://picsum.photos/seed/waterloo1/800/600','https://picsum.photos/seed/waterloo2/800/600'], true);
 

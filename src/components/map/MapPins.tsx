@@ -71,7 +71,7 @@ export default function MapPins({ pins, selectedId, onSelect }: MapPinsProps) {
         if (!el) return null;
         return createPortal(
           <Pin
-            category={p.category}
+            category={p.categories[0]}
             selected={selectedId === p.id}
             label={p.name}
             onClick={() => onSelect(p.id)}

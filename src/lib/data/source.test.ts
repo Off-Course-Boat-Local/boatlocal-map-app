@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BRANDS } from "../brand";
 import { BOAT_TOURS, GUIDE, PLACES } from "../data";
 import type { BoatLocalCruise } from "./types";
+import type { CategoryId } from "../types";
 import { fakeStore, resetFakeStore } from "./fakeStore";
 import {
   createCompany,
@@ -1114,7 +1115,7 @@ describe("Studio recommendation writes — mirrors RLS write policies", () => {
   const companyActor = { role: "company" as const, companyId: COMPANY_ID };
   const guideActor = { role: "guide" as const, companyId: COMPANY_ID, guideId: GUIDE_ID };
   const newInput = {
-    category: "coffee" as const,
+    categories: ["coffee"] as CategoryId[],
     name: "Test Cafe",
     area: "Centrum",
     address: "Teststraat 1",
@@ -1139,7 +1140,7 @@ describe("Studio recommendation writes — mirrors RLS write policies", () => {
 
   it("rejects a boat-category recommendation — boats are a separate table", async () => {
     await expect(
-      saveRecommendation(companyActor, { ...newInput, category: "boats" as never }),
+      saveRecommendation(companyActor, { ...newInput, categories: ["boats"] as never }),
     ).rejects.toThrow(StudioPermissionError);
   });
 
@@ -1200,7 +1201,7 @@ describe("admin-curated recommendations (owner_type='admin') — security bounda
   // (including "RLS itself would refuse this even if the app-layer check
   // were bypassed") lives in src/lib/data/source.integration.test.ts.
   const adminRecInput = {
-    category: "coffee" as const,
+    categories: ["coffee"] as CategoryId[],
     name: "Admin's Pick",
     area: "Centrum",
     address: "Keizersgracht 1",

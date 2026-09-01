@@ -1,0 +1,11 @@
+-- New category: "dancing" — founder call, 2026-09-01: "there is drinks and
+-- there is dancing", i.e. a bar/pub isn't the same thing as a club/dance
+-- venue, and lumping them under one category was losing that distinction
+-- (see e.g. Chicago Social Club / Skatecafe, both currently tagged
+-- "drinks" purely for lack of a better fit).
+--
+-- ALTER TYPE ... ADD VALUE cannot run in the same transaction as anything
+-- that reads the new value (Postgres restriction on enum additions), but
+-- this migration does nothing else, so that's not a concern here — a later
+-- migration is free to reference 'dancing' immediately.
+alter type public.category_id add value 'dancing';

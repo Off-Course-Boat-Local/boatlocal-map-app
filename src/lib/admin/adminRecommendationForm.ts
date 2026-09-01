@@ -85,11 +85,13 @@ export function parseAdminRecommendationForm(
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { ok: false, error: "Enter a name." };
 
-  const categoryRaw = String(formData.get("category") ?? "");
-  if (!ADMIN_RECOMMENDATION_CATEGORY_IDS.has(categoryRaw)) {
-    return { ok: false, error: "Choose a category." };
+  const categories = formData
+    .getAll("categories")
+    .map((c) => String(c))
+    .filter((c) => ADMIN_RECOMMENDATION_CATEGORY_IDS.has(c)) as CategoryId[];
+  if (categories.length === 0) {
+    return { ok: false, error: "Choose at least one category." };
   }
-  const category = categoryRaw as CategoryId;
 
   const area = String(formData.get("area") ?? "").trim();
   if (!area) return { ok: false, error: "Enter an area or neighbourhood." };
@@ -126,6 +128,6 @@ export function parseAdminRecommendationForm(
 
   return {
     ok: true,
-    value: { id, category, name, area, address, lng, lat, note, hours, photos, visible },
+    value: { id, categories, name, area, address, lng, lat, note, hours, photos, visible },
   };
 }

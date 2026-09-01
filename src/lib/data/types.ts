@@ -130,7 +130,8 @@ export interface RecommendationRecord {
   ownerType: RecommendationOwnerType;
   /** Set iff ownerType === "guide". */
   guideId: string | null;
-  category: CategoryId;
+  /** categories[0] is primary (pin colour/icon) — array order is priority order, set by whichever form wrote the row. */
+  categories: CategoryId[];
   name: string;
   area: string;
   address: string;
@@ -371,7 +372,7 @@ export interface SaveRecommendationInput {
    * anything) is passed here. See saveRecommendation in source.ts.
    */
   companyId?: string;
-  category: CategoryId;
+  categories: CategoryId[];
   name: string;
   area: string;
   address: string;

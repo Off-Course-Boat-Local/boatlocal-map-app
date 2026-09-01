@@ -9,6 +9,7 @@ export type CategoryId =
   | "lunch"
   | "coffee"
   | "drinks"
+  | "dancing"
   | "see"
   | "photo"
   | "shop";
@@ -42,7 +43,8 @@ export interface Brand {
 export interface Place {
   id: string;
   name: string;
-  category: CategoryId;
+  /** categories[0] is primary (pin colour/icon) — array order is priority order. */
+  categories: CategoryId[];
   /** Neighbourhood or nearest landmark — shown as the card subtitle prefix. */
   area: string;
   address: string;

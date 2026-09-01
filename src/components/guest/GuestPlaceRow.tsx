@@ -104,7 +104,11 @@ export function GuestPlaceRow({
             className="grid h-44 w-full place-items-center"
             style={{ background: BRAND_TINT }}
           >
-            <CategoryGlyph category={item.category} size={32} color={categoryColor(item.category)} />
+            <CategoryGlyph
+              category={item.categories[0]}
+              size={32}
+              color={categoryColor(item.categories[0])}
+            />
           </div>
         )}
         <span

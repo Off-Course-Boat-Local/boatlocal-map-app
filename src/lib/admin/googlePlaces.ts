@@ -37,11 +37,11 @@ function apiKey(): string {
 //
 // Places (New) returns an array of Google "type" strings per place (e.g.
 // ["cafe", "bakery", "food", "point_of_interest"]) — richer than our own
-// fixed, single-select CategoryId. This maps Google's types down to our
-// category list, in priority order (first matching type wins), so the admin
-// gets a pre-selected best guess but the existing <select> still has final
-// say — this never stores more than one category, since the schema (and the
-// existing form) only has room for one.
+// fixed category list. This maps Google's types down to every one of our
+// categories that matches (a place tagged both "cafe" and "bakery" guesses
+// both "coffee" and "breakfast"), in the same priority order the rules are
+// listed below, so the admin/company gets a pre-selected best guess but the
+// checkbox group still has final say.
 
 const GOOGLE_TYPE_TO_CATEGORY: Array<{ types: string[]; category: string }> = [
   { types: ["cafe", "coffee_shop"], category: "coffee" },
@@ -67,12 +67,13 @@ const GOOGLE_TYPE_TO_CATEGORY: Array<{ types: string[]; category: string }> = [
   { types: ["store", "shopping_mall", "clothing_store", "gift_shop", "book_store"], category: "shop" },
 ];
 
-/** Best-guess CategoryId from Google's `types`, or null if nothing matched. */
-export function guessCategory(types: string[]): string | null {
+/** Every matching CategoryId guessed from Google's `types`, in rule priority order. Empty if nothing matched. */
+export function guessCategories(types: string[]): string[] {
+  const matches: string[] = [];
   for (const rule of GOOGLE_TYPE_TO_CATEGORY) {
-    if (rule.types.some((t) => types.includes(t))) return rule.category;
+    if (rule.types.some((t) => types.includes(t))) matches.push(rule.category);
   }
-  return null;
+  return matches;
 }
 
 /* ------------------------------------------------------------------ */
@@ -150,7 +151,7 @@ export interface PlaceDetails {
   lat: number;
   lng: number;
   hours: string;
-  suggestedCategory: string | null;
+  suggestedCategories: string[];
   /** Data-URL strings, ready to feed straight into AdminBoatPhotosField. */
   photos: string[];
 }
@@ -228,7 +229,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
     lat: body.location?.latitude ?? NaN,
     lng: body.location?.longitude ?? NaN,
     hours: (body.regularOpeningHours?.weekdayDescriptions ?? []).join("; "),
-    suggestedCategory: guessCategory(body.types ?? []),
+    suggestedCategories: guessCategories(body.types ?? []),
     photos,
   };
 }

@@ -12,19 +12,26 @@
 //
 // Modelled on src/components/admin/BoatTourForm.tsx's structure (this is
 // Admin's own form convention, not Studio's — same shared AddressField +
-// PortalSelect + AdminBoatPhotosField, useActionState, primitives.tsx
-// classes) rather than on Studio's RecommendationForm, matching the task's
-// "an admin-owned equivalent, not a Studio import" instruction. There is no
-// guide selector here at all — an admin-curated recommendation is always
-// ownerType "admin", guideId null, scoped to whichever one company the
-// caller (AdminRecommendationsManager, bound to the company detail page) is
+// AdminBoatPhotosField, useActionState, primitives.tsx classes) rather than
+// on Studio's RecommendationForm, matching the task's "an admin-owned
+// equivalent, not a Studio import" instruction. There is no guide selector
+// here at all — an admin-curated recommendation is always ownerType
+// "admin", guideId null, scoped to whichever one company the caller
+// (AdminRecommendationsManager, bound to the company detail page) is
 // currently showing.
+//
+// CATEGORY is a checkbox group, not a <select>: a place can genuinely be
+// more than one thing — see
+// supabase/migrations/20260901120000_recommendations_multi_category.sql's
+// header comment. The order checked = the stored array order, and
+// array[0] is always the "primary" category used for the pin's colour/icon
+// on the guest map (src/components/map/MapPins.tsx).
 
 import { useActionState, useEffect, useState } from "react";
 
 import AddressField from "@/components/AddressField";
-import PortalSelect from "@/components/PortalSelect";
 import PortalToggle from "@/components/PortalToggle";
+import type { CategoryId } from "@/lib/types";
 import type { RecommendationRecord } from "@/lib/data/types";
 import type { PlaceDetails } from "@/lib/admin/googlePlaces";
 import {
@@ -65,21 +72,12 @@ export default function AdminRecommendationForm({
 
   // Everything below is controlled ONLY so a Google Places pick
   // (GooglePlaceSearchField) can fill it in — same "an admin can still
-  // overwrite it by hand afterward" behaviour as `area` above. `category`
-  // uses a remount key rather than an onChange-driven value because
-  // PortalSelect only takes `defaultValue` (see its own header comment on
-  // why — it's a shared component many other forms use uncontrolled);
-  // bumping the key forces it to reinitialize with the new defaultValue.
+  // overwrite it by hand afterward" behaviour as `area` above.
   const [name, setName] = useState(recommendation?.name ?? "");
   const [hours, setHours] = useState(recommendation?.hours ?? "");
-  // Typed as plain string (not CategoryId) so it can hold whatever
-  // PortalSelect's onValueChange or a Google category guess hands back —
-  // parseAdminRecommendationForm on the server is what actually validates
-  // this is a real CategoryId before it's ever persisted.
-  const [category, setCategory] = useState<string>(
-    recommendation?.category ?? ADMIN_RECOMMENDATION_CATEGORIES[0]?.id ?? "",
+  const [categories, setCategories] = useState<CategoryId[]>(
+    recommendation?.categories ?? [],
   );
-  const [categoryKey, setCategoryKey] = useState(0);
   const [addressApplyKey, setAddressApplyKey] = useState(0);
   const [addressApplyPick, setAddressApplyPick] = useState<{
     address: string;
@@ -90,13 +88,25 @@ export default function AdminRecommendationForm({
   const [photosInjectKey, setPhotosInjectKey] = useState(0);
   const [photosInject, setPhotosInject] = useState<string[]>([]);
 
+  function toggleCategory(id: CategoryId) {
+    setCategories((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    );
+  }
+
   function applyGooglePlace(details: PlaceDetails) {
     if (details.name) setName(details.name);
     if (details.hours) setHours(details.hours);
     setArea((current) => current.trim() || details.area);
-    if (details.suggestedCategory) {
-      setCategory(details.suggestedCategory);
-      setCategoryKey((k) => k + 1);
+    if (details.suggestedCategories.length > 0) {
+      // Merge, don't replace — an admin may have already hand-picked some.
+      setCategories((prev) => {
+        const merged = [...prev];
+        for (const c of details.suggestedCategories) {
+          if (!merged.includes(c as CategoryId)) merged.push(c as CategoryId);
+        }
+        return merged;
+      });
     }
     if (Number.isFinite(details.lat) && Number.isFinite(details.lng)) {
       setAddressApplyPick({
@@ -153,18 +163,41 @@ export default function AdminRecommendationForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="admin-recommendation-category" className={labelClass}>
-            Category
-          </label>
-          <PortalSelect
-            key={categoryKey}
-            id="admin-recommendation-category"
-            name="category"
-            defaultValue={category}
-            onValueChange={setCategory}
-            options={ADMIN_RECOMMENDATION_CATEGORIES.map((c) => ({ value: c.id, label: c.label }))}
-            className="mt-1"
-          />
+          <p className={labelClass}>Categories</p>
+          <p className="mt-0.5 text-xs text-[var(--admin-ink-soft)]">
+            Check every one that fits — the first one you check sets the pin colour.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {ADMIN_RECOMMENDATION_CATEGORIES.map((c) => {
+              const checked = categories.includes(c.id);
+              const order = checked ? categories.indexOf(c.id) + 1 : null;
+              return (
+                <label
+                  key={c.id}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    checked
+                      ? "border-[var(--admin-accent)] bg-[var(--admin-accent)]/10 text-[var(--admin-accent)]"
+                      : "border-[var(--admin-border)] text-[var(--admin-ink-soft)] hover:bg-[var(--admin-bg)]"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    name="categories"
+                    value={c.id}
+                    checked={checked}
+                    onChange={() => toggleCategory(c.id)}
+                    className="sr-only"
+                  />
+                  {order ? (
+                    <span className="flex size-4 items-center justify-center rounded-full bg-[var(--admin-accent)] text-[0.625rem] font-bold text-white">
+                      {order}
+                    </span>
+                  ) : null}
+                  {c.label}
+                </label>
+              );
+            })}
+          </div>
         </div>
 
         <label className={labelClass}>

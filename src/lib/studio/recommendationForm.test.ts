@@ -21,7 +21,7 @@ function formData(fields: Record<string, string | string[]>): FormData {
 
 const validFields = {
   name: "Café de Jaren",
-  category: "coffee",
+  categories: ["coffee"],
   area: "Centrum",
   address: "Nieuwe Doelenstraat 20",
   lng: "4.8965",
@@ -37,7 +37,7 @@ describe("RECOMMENDATION_CATEGORIES", () => {
 
   it("includes every other fixed category", () => {
     expect(RECOMMENDATION_CATEGORIES.map((c) => c.id).sort()).toEqual(
-      ["breakfast", "coffee", "drinks", "lunch", "photo", "see", "shop"].sort(),
+      ["breakfast", "coffee", "dancing", "drinks", "lunch", "photo", "see", "shop"].sort(),
     );
   });
 });
@@ -51,7 +51,7 @@ describe("parseRecommendationForm — happy path", () => {
     if (!result.ok) throw new Error("expected ok");
     expect(result.value).toEqual({
       id: undefined,
-      category: "coffee",
+      categories: ["coffee"],
       name: "Café de Jaren",
       area: "Centrum",
       address: "Nieuwe Doelenstraat 20",
@@ -79,9 +79,9 @@ describe("parseRecommendationForm — happy path", () => {
   });
 
   it("defaults photos to an empty array and hours to empty string when omitted", () => {
-    const { name, category, area, address, lng, lat, note } = validFields;
+    const { name, categories, area, address, lng, lat, note } = validFields;
     const result = parseRecommendationForm(
-      formData({ name, category, area, address, lng, lat, note }),
+      formData({ name, categories, area, address, lng, lat, note }),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("expected ok");
@@ -104,14 +104,28 @@ describe("parseRecommendationForm — validation failures", () => {
     expect(result).toEqual({ ok: false, error: "Enter a name." });
   });
 
-  it("rejects an invalid category", () => {
-    const result = parseRecommendationForm(formData({ ...validFields, category: "nonsense" }));
-    expect(result.ok).toBe(false);
+  it("rejects an unrecognised category — filtered out, leaving none selected", () => {
+    const result = parseRecommendationForm(formData({ ...validFields, categories: ["nonsense"] }));
+    expect(result).toEqual({ ok: false, error: "Choose at least one category." });
   });
 
-  it("rejects category 'boats' — boat tours are never a recommendation", () => {
-    const result = parseRecommendationForm(formData({ ...validFields, category: "boats" }));
-    expect(result.ok).toBe(false);
+  it("rejects no categories selected at all", () => {
+    const result = parseRecommendationForm(formData({ ...validFields, categories: [] }));
+    expect(result).toEqual({ ok: false, error: "Choose at least one category." });
+  });
+
+  it("'boats' is never offered as a selectable category — RECOMMENDATION_CATEGORIES excludes it, so it's silently filtered like any other unrecognised value", () => {
+    const result = parseRecommendationForm(formData({ ...validFields, categories: ["boats"] }));
+    expect(result).toEqual({ ok: false, error: "Choose at least one category." });
+  });
+
+  it("keeps multiple valid categories, in the order checked", () => {
+    const result = parseRecommendationForm(
+      formData({ ...validFields, categories: ["drinks", "coffee"] }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.value.categories).toEqual(["drinks", "coffee"]);
   });
 
   it("rejects a missing area", () => {

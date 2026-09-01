@@ -26,6 +26,7 @@ const nl: Dictionary = {
     lunch: "Lunch",
     coffee: "Koffie",
     drinks: "Borrel",
+    dancing: "Uitgaan",
     see: "Zien",
     photo: "Fotospot",
     shop: "Shoppen",

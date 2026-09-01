@@ -12,13 +12,21 @@
 // saveRecommendation() rejects category "boats" for the same reason; this
 // module just keeps the <select> from ever offering it in the first place.
 //
-// NOTE: still no Google Places, on purpose (house rule, and its terms
-// forbid caching coordinates for display on a non-Google map — which is
-// exactly what this app does). Address entry IS assisted now, though:
-// src/components/studio/AddressField.tsx searches an OSM geocoder and drops
-// a draggable pin, then submits `lng`/`lat` as hidden fields. The parsing
-// below is unchanged by that — it still receives the same three fields it
-// always did, they are just no longer typed by hand.
+// NOTE ON GOOGLE PLACES: the house rule against it (still true for address
+// entry — this form's AddressField still searches OSM/Photon) was knowingly
+// overridden for ONE thing: RecommendationForm.tsx's "Search Google Maps"
+// enrichment button (src/lib/admin/googlePlaces.ts via the Studio-gated
+// /api/studio/places/* routes), which pulls category/hours/photos to speed
+// up adding a place (founder request, 2026-09-01, extending the same
+// exception Admin's recommendation form already had — see
+// src/lib/admin/adminRecommendationForm.ts's own "NOTE ON GOOGLE PLACES").
+// That is a deliberate, scoped exception — accepting the Google ToS
+// caching/display risk googlePlaces.ts's header documents — not a reversal
+// of the rule for anything else in the app. Address entry itself is still
+// assisted only by src/components/AddressField.tsx's OSM geocoder, which
+// drops a draggable pin and submits `lng`/`lat` as hidden fields — the
+// parsing below is unchanged by any of this, it still receives the same
+// fields it always did.
 
 import { CATEGORIES } from "../categories";
 import type { CategoryId } from "../types";
@@ -59,11 +67,13 @@ export function parseRecommendationForm(formData: FormData): ParseRecommendation
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { ok: false, error: "Enter a name." };
 
-  const categoryRaw = String(formData.get("category") ?? "");
-  if (!RECOMMENDATION_CATEGORY_IDS.has(categoryRaw)) {
-    return { ok: false, error: "Choose a category." };
+  const categories = formData
+    .getAll("categories")
+    .map((c) => String(c))
+    .filter((c) => RECOMMENDATION_CATEGORY_IDS.has(c)) as CategoryId[];
+  if (categories.length === 0) {
+    return { ok: false, error: "Choose at least one category." };
   }
-  const category = categoryRaw as CategoryId;
 
   const area = String(formData.get("area") ?? "").trim();
   if (!area) return { ok: false, error: "Enter an area or neighbourhood." };
@@ -104,6 +114,6 @@ export function parseRecommendationForm(formData: FormData): ParseRecommendation
 
   return {
     ok: true,
-    value: { id, category, name, area, address, lng, lat, note, hours, photos, visible },
+    value: { id, categories, name, area, address, lng, lat, note, hours, photos, visible },
   };
 }

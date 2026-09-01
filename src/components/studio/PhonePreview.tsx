@@ -30,7 +30,9 @@ export default function PhonePreview({ pins, subtitle }: PhonePreviewProps) {
   const [activeTab, setActiveTab] = useState<"map" | "list" | "saved" | "review">("map");
 
   const filteredPins = categoryFilter
-    ? pins.filter((p) => (p.isBoat ? categoryFilter === "boats" : p.category === categoryFilter))
+    ? pins.filter((p) =>
+        p.isBoat ? categoryFilter === "boats" : p.categories.includes(categoryFilter),
+      )
     : pins;
 
   const selectedPin = pins.find((p) => p.id === selectedId);

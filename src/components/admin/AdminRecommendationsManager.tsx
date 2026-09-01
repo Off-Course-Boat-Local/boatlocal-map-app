@@ -159,7 +159,7 @@ export default function AdminRecommendationsManager({
             <span key="name" className="font-medium">
               {rec.name}
             </span>,
-            CATEGORY_MAP[rec.category]?.label ?? rec.category,
+            rec.categories.map((c) => CATEGORY_MAP[c]?.label ?? c).join(", "),
             rec.area,
             String(rec.photos.length),
             <PortalToggle

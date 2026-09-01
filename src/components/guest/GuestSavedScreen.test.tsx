@@ -21,8 +21,8 @@ vi.mock("next/navigation", () => ({
 const brand = BRANDS.coastal;
 
 const boat = ALL_PINS.find((p) => p.isBoat)!;
-const coffee = ALL_PINS.find((p) => p.category === "coffee")!;
-const shop = ALL_PINS.find((p) => p.category === "shop")!;
+const coffee = ALL_PINS.find((p) => p.categories.includes("coffee"))!;
+const shop = ALL_PINS.find((p) => p.categories.includes("shop"))!;
 
 beforeEach(() => {
   window.localStorage.clear();

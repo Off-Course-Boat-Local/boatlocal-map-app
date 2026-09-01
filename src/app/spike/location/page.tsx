@@ -170,7 +170,7 @@ function PlaceCardMock({
   pin: DemoPin;
   guest: { lng: number; lat: number } | null;
 }) {
-  const category = CATEGORY_MAP[pin.category];
+  const category = CATEGORY_MAP[pin.categories[0]];
   const place = PLACES.find((p) => p.id === pin.id);
   const url = googleMapsWalkingUrl({
     destLat: pin.lat,
@@ -524,7 +524,7 @@ export default function LocationSpikePage() {
                   <tr key={p.id} className="border-b border-black/5 last:border-0">
                     <td className="px-4 py-2.5">
                       <span className="flex items-center gap-2">
-                        <PinDot color={CATEGORY_MAP[p.category].color} />
+                        <PinDot color={CATEGORY_MAP[p.categories[0]].color} />
                         {p.name}
                       </span>
                     </td>

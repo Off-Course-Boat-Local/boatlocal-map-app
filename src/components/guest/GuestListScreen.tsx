@@ -55,7 +55,7 @@ export default function GuestListScreen({
   const [detailItem, setDetailItem] = useState<MapPin | null>(null);
 
   const pins = useMemo(
-    () => (filter ? allPins.filter((p) => p.category === filter) : allPins),
+    () => (filter ? allPins.filter((p) => p.categories.includes(filter)) : allPins),
     [allPins, filter],
   );
 

@@ -2,6 +2,8 @@ import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Hanken_Grotesk } from "next/font/google";
 import { fontVariables } from "@/lib/fonts";
+import DevCompanySwitcher from "@/components/studio/DevCompanySwitcher";
+import { listCompaniesForDevSwitch } from "@/lib/studio/devSwitch";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,7 +43,14 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Localhost-only: lets the founder hop into any company's Studio with one
+  // click while developing across machines — see devSwitch.ts's header
+  // comment. Never fetched in production, so the switcher never renders
+  // there either.
+  const devSwitchCompanies =
+    process.env.NODE_ENV !== "production" ? await listCompaniesForDevSwitch() : [];
+
   return (
     <html
       lang="en"
@@ -49,6 +58,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         {children}
+        {devSwitchCompanies.length > 0 ? (
+          <DevCompanySwitcher companies={devSwitchCompanies} />
+        ) : null}
         <Analytics />
       </body>
     </html>

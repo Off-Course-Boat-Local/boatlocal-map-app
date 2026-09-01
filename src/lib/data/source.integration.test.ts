@@ -112,7 +112,7 @@ describe("source.ts round-tripping against the real Supabase project", () => {
     const places = await getPlaces(companyId);
     expect(places.length).toBeGreaterThan(0);
     for (const place of places) {
-      expect(place.category).toBeTruthy();
+      expect(place.categories.length).toBeGreaterThan(0);
     }
   });
 
@@ -146,7 +146,7 @@ describe("source.ts round-tripping against the real Supabase project", () => {
           company_id: companyId,
           owner_type: "admin",
           guide_id: null,
-          category: "coffee",
+          categories: ["coffee"],
           name: "Integration-test admin pick",
           area: "Somewhere",
           address: "5 Test Street",

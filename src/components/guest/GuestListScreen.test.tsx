@@ -48,7 +48,7 @@ describe("GuestListScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: "Coffee" }));
 
     const rows = container.querySelectorAll("li");
-    const coffeeCount = ALL_PINS.filter((p) => p.category === "coffee").length;
+    const coffeeCount = ALL_PINS.filter((p) => p.categories.includes("coffee")).length;
     expect(rows).toHaveLength(coffeeCount);
   });
 
@@ -58,7 +58,7 @@ describe("GuestListScreen", () => {
   });
 
   it("shows an empty state when a filter matches nothing", async () => {
-    renderList(ALL_PINS.filter((p) => p.category !== "shop"));
+    renderList(ALL_PINS.filter((p) => !p.categories.includes("shop")));
     await userEvent.click(screen.getByRole("button", { name: "Shop" }));
     expect(screen.getByText(/no recommendations/i)).toBeInTheDocument();
   });

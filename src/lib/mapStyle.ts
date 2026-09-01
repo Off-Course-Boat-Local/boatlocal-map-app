@@ -45,10 +45,10 @@ export const MAP_COLORS = {
   park: "#D2E0B9",
   /** Woodland — a shade deeper than park so the Amsterdamse Bos has weight. */
   wood: "#CCDAB2",
-  /** Roads: a hair darker than the land. Texture only, never a feature. */
-  road: "#DEDDC8",
-  /** Slightly stronger for the few arterials so the grid doesn't go flat. */
-  roadMajor: "#D8D6BE",
+  /** Roads: visibly darker than the land now — founder call, 2026-09-01: "show me the roads better." */
+  road: "#C9C6A9",
+  /** Stronger still for the arterials, so the grid reads clearly at a glance. */
+  roadMajor: "#BCB896",
   /** Soft tan for the handful of buildings we do show. */
   building: "#DDD0B6",
   /** Muted blue-grey for water names. */
@@ -257,10 +257,12 @@ function baseLayers(c: MapColors): LayerSpecification[] {
     },
 
     /* ---------- roads -----------------------------------------------
-     * Deliberately dull. No casing, no name labels, opacity ramped down
-     * hard at low zoom so that at z12–13 you see canals and parks and
-     * almost nothing else. If you can "read the street grid" at a glance,
-     * this layer is too strong.
+     * Was "deliberately dull" (opacity ramped down hard at low zoom so
+     * canals/parks did all the work) — founder call, 2026-09-01: "show me
+     * the roads better." Same layer structure, stronger colour (see
+     * MAP_COLORS) and opacity now ramps up earlier/higher so the street
+     * grid is legible at the zoom a guest actually browses at, not just
+     * once you're zoomed into a single street.
      * -------------------------------------------------------------- */
     {
       id: "road-minor",
@@ -286,14 +288,11 @@ function baseLayers(c: MapColors): LayerSpecification[] {
           [16, 3.4],
           [18, 10],
         ]),
-        // Kept very low through the guide zooms (z13–15). At the zoom a guest
-        // actually browses at, roads are paper texture; the canal ring is the
-        // subject. They only firm up once you are zoomed into a single street.
         "line-opacity": zoomRamp(1, [
-          [12, 0],
-          [13.5, 0.18],
-          [15, 0.4],
-          [17, 0.85],
+          [12, 0.3],
+          [13.5, 0.55],
+          [15, 0.75],
+          [17, 0.95],
         ]),
       },
     },
@@ -326,10 +325,10 @@ function baseLayers(c: MapColors): LayerSpecification[] {
           [18, 15],
         ]),
         "line-opacity": zoomRamp(1, [
-          [10, 0],
-          [12, 0.22],
-          [14, 0.42],
-          [17, 0.9],
+          [10, 0.35],
+          [12, 0.55],
+          [14, 0.75],
+          [17, 1],
         ]),
       },
     },

@@ -91,7 +91,7 @@ function seedRecommendations(): RecommendationRecord[] {
       companyId: COMPANY_ID,
       ownerType: isGuideOwned ? "guide" : "company",
       guideId: isGuideOwned ? GUIDE_ID : null,
-      category: p.category,
+      categories: p.categories,
       name: p.name,
       area: p.area,
       address: p.address,

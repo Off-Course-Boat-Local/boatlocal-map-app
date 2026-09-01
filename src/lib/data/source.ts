@@ -309,7 +309,7 @@ interface RecommendationRow {
   company_id: string;
   owner_type: RecommendationOwnerType;
   guide_id: string | null;
-  category: CategoryId;
+  categories: CategoryId[];
   name: string;
   area: string;
   address: string;
@@ -330,7 +330,7 @@ function fromRecommendationRow(row: RecommendationRow): RecommendationRecord {
     companyId: row.company_id,
     ownerType: row.owner_type,
     guideId: row.guide_id,
-    category: row.category,
+    categories: row.categories,
     name: row.name,
     area: row.area,
     address: row.address,
@@ -448,7 +448,7 @@ function toPlace(rec: RecommendationRecord): Place {
   return {
     id: rec.id,
     name: rec.name,
-    category: rec.category,
+    categories: rec.categories,
     area: rec.area,
     address: rec.address,
     lng: rec.lng,
@@ -729,7 +729,7 @@ export async function getBoatTours(companyId: string): Promise<BoatTourView[]> {
 interface MapPinRow {
   id: string;
   name: string;
-  category: CategoryId;
+  categories: CategoryId[];
   area: string;
   lng: number;
   lat: number;
@@ -773,7 +773,7 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
     const boatPins: MapPin[] = tours.map((t) => ({
       id: t.id,
       name: t.name,
-      category: "boats",
+      categories: ["boats"],
       area: t.area,
       lng: t.lng,
       lat: t.lat,
@@ -789,7 +789,7 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
     const placePins: MapPin[] = places.map((p) => ({
       id: p.id,
       name: p.name,
-      category: p.category,
+      categories: p.categories,
       area: p.area,
       lng: p.lng,
       lat: p.lat,
@@ -807,7 +807,7 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
   return ((data ?? []) as MapPinRow[]).map((row) => ({
     id: row.id,
     name: row.name,
-    category: row.category,
+    categories: row.categories,
     area: row.area,
     lng: row.lng,
     lat: row.lat,
@@ -1997,8 +1997,12 @@ export async function saveRecommendation(
       "Admin must specify which company an admin-curated recommendation belongs to.",
     );
   }
-  if (input.category === "boats") {
-    // Enforced at the DB layer too (recommendation_category_not_boats CHECK).
+  if (input.categories.length === 0) {
+    // Enforced at the DB layer too (recommendation_categories_not_empty CHECK).
+    throw new StudioPermissionError("Choose at least one category.");
+  }
+  if (input.categories.includes("boats")) {
+    // Enforced at the DB layer too (recommendation_categories_not_boats CHECK).
     throw new StudioPermissionError("Boat tours are a separate table, never a recommendation.");
   }
 
@@ -2021,7 +2025,7 @@ export async function saveRecommendation(
         throw new StudioPermissionError(`Actor may not edit recommendation ${input.id}.`);
       }
       Object.assign(existing, {
-        category: input.category,
+        categories: input.categories,
         name: input.name,
         area: input.area,
         address: input.address,
@@ -2042,7 +2046,7 @@ export async function saveRecommendation(
       companyId,
       ownerType,
       guideId,
-      category: input.category,
+      categories: input.categories,
       name: input.name,
       area: input.area,
       address: input.address,
@@ -2082,7 +2086,7 @@ export async function saveRecommendation(
     const { data, error } = await supabase
       .from("recommendations")
       .update({
-        category: input.category,
+        categories: input.categories,
         name: input.name,
         area: input.area,
         address: input.address,
@@ -2111,7 +2115,7 @@ export async function saveRecommendation(
       company_id: companyId,
       owner_type: ownerType,
       guide_id: guideId,
-      category: input.category,
+      categories: input.categories,
       name: input.name,
       area: input.area,
       address: input.address,

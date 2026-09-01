@@ -19,7 +19,9 @@ describe("recommendation data", () => {
 
   it("uses only known categories", () => {
     for (const pin of ALL_PINS) {
-      expect(CATEGORY_MAP[pin.category], `${pin.name}`).toBeDefined();
+      for (const category of pin.categories) {
+        expect(CATEGORY_MAP[category], `${pin.name}`).toBeDefined();
+      }
     }
   });
 
@@ -83,7 +85,7 @@ describe("boat tours", () => {
     const boatPins = ALL_PINS.filter((p) => p.isBoat);
     expect(boatPins.length).toBe(BOAT_TOURS.length);
     for (const pin of boatPins) {
-      expect(pin.category).toBe("boats");
+      expect(pin.categories).toEqual(["boats"]);
       expect(pin.bookingUrl, pin.name).toBeTruthy();
     }
   });

@@ -7,7 +7,7 @@
 //
 // Photos are placeholder URLs standing in for guide uploads.
 
-import type { BoatTour, Guide, Place } from "./types";
+import type { BoatTour, CategoryId, Guide, Place } from "./types";
 
 const photo = (seed: string, n = 3) =>
   Array.from({ length: n }, (_, i) => `https://picsum.photos/seed/${seed}${i}/800/600`);
@@ -30,7 +30,7 @@ export const PLACES: Place[] = [
   {
     id: "bakers-roasters",
     name: "Bakers & Roasters",
-    category: "breakfast",
+    categories: ["breakfast"],
     area: "De Pijp",
     address: "Eerste Jacob van Campenstraat 54",
     lng: 4.8917,
@@ -42,7 +42,7 @@ export const PLACES: Place[] = [
   {
     id: "mook-pancakes",
     name: "Mook Pancakes",
-    category: "breakfast",
+    categories: ["breakfast"],
     area: "Centrum",
     address: "Vondelstraat 24",
     lng: 4.8807,
@@ -54,7 +54,7 @@ export const PLACES: Place[] = [
   {
     id: "cafe-de-jaren",
     name: "Café de Jaren",
-    category: "lunch",
+    categories: ["lunch"],
     area: "Centrum",
     address: "Nieuwe Doelenstraat 20",
     lng: 4.8956,
@@ -66,7 +66,7 @@ export const PLACES: Place[] = [
   {
     id: "pendergast",
     name: "Pendergast",
-    category: "lunch",
+    categories: ["lunch"],
     area: "Jordaan",
     address: "Tweede Egelantiersdwarsstraat 6",
     lng: 4.8815,
@@ -78,7 +78,7 @@ export const PLACES: Place[] = [
   {
     id: "foodhallen",
     name: "Foodhallen",
-    category: "lunch",
+    categories: ["lunch"],
     area: "Oud-West",
     address: "Bellamyplein 51",
     lng: 4.869,
@@ -90,7 +90,7 @@ export const PLACES: Place[] = [
   {
     id: "lot-sixty-one",
     name: "Lot Sixty One",
-    category: "coffee",
+    categories: ["coffee"],
     area: "Oud-West",
     address: "Kinkerstraat 112",
     lng: 4.8703,
@@ -102,7 +102,7 @@ export const PLACES: Place[] = [
   {
     id: "screaming-beans",
     name: "Screaming Beans",
-    category: "coffee",
+    categories: ["coffee"],
     area: "Nine Streets",
     address: "Hartenstraat 12",
     lng: 4.8853,
@@ -114,7 +114,7 @@ export const PLACES: Place[] = [
   {
     id: "brouwerij-ij",
     name: "Brouwerij 't IJ",
-    category: "drinks",
+    categories: ["drinks"],
     area: "Oost",
     address: "Funenkade 7",
     lng: 4.9265,
@@ -126,7 +126,7 @@ export const PLACES: Place[] = [
   {
     id: "cafe-papeneiland",
     name: "Café Papeneiland",
-    category: "drinks",
+    categories: ["drinks"],
     area: "Jordaan",
     address: "Prinsengracht 2",
     lng: 4.8846,
@@ -138,7 +138,7 @@ export const PLACES: Place[] = [
   {
     id: "rijksmuseum",
     name: "Rijksmuseum",
-    category: "see",
+    categories: ["see"],
     area: "Museumkwartier",
     address: "Museumstraat 1",
     lng: 4.8852,
@@ -150,7 +150,7 @@ export const PLACES: Place[] = [
   {
     id: "anne-frank",
     name: "Anne Frank House",
-    category: "see",
+    categories: ["see"],
     area: "Jordaan",
     address: "Westermarkt 20",
     lng: 4.884,
@@ -162,7 +162,7 @@ export const PLACES: Place[] = [
   {
     id: "ndsm-werf",
     name: "NDSM Werf",
-    category: "photo",
+    categories: ["photo"],
     area: "Noord",
     address: "NDSM-plein 1",
     lng: 4.8927,
@@ -174,7 +174,7 @@ export const PLACES: Place[] = [
   {
     id: "nine-streets",
     name: "De 9 Straatjes",
-    category: "shop",
+    categories: ["shop"],
     area: "Centrum",
     address: "Reestraat / Hartenstraat",
     lng: 4.8846,
@@ -186,7 +186,7 @@ export const PLACES: Place[] = [
   {
     id: "waterlooplein",
     name: "Waterlooplein Market",
-    category: "shop",
+    categories: ["shop"],
     area: "Centrum",
     address: "Waterlooplein",
     lng: 4.9028,
@@ -288,7 +288,8 @@ export const BOAT_TOURS: BoatTour[] = [
 export interface MapPin {
   id: string;
   name: string;
-  category: import("./types").CategoryId;
+  /** categories[0] is primary (pin colour/icon) — array order is priority order. */
+  categories: import("./types").CategoryId[];
   area: string;
   lng: number;
   lat: number;
@@ -311,7 +312,7 @@ export const ALL_PINS: MapPin[] = [
   ...BOAT_TOURS.map((b) => ({
     id: b.id,
     name: b.name,
-    category: "boats" as const,
+    categories: ["boats"] as CategoryId[],
     area: b.area,
     lng: b.lng,
     lat: b.lat,
@@ -324,7 +325,7 @@ export const ALL_PINS: MapPin[] = [
   ...PLACES.map((p) => ({
     id: p.id,
     name: p.name,
-    category: p.category,
+    categories: p.categories,
     area: p.area,
     lng: p.lng,
     lat: p.lat,

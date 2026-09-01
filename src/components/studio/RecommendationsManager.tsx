@@ -239,7 +239,7 @@ export default function RecommendationsManager({
                 ) : null}
               </td>
               <td className="text-[var(--studio-ink-soft)]">
-                {CATEGORY_MAP[rec.category]?.label ?? rec.category}
+                {rec.categories.map((c) => CATEGORY_MAP[c]?.label ?? c).join(", ")}
               </td>
               <td className="text-[var(--studio-ink-soft)]">{rec.area}</td>
               <td className="text-[var(--studio-ink-soft)] tabular-nums">{rec.photos.length}</td>

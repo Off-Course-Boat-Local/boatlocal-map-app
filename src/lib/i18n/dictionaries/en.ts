@@ -39,6 +39,7 @@ const en = {
     lunch: "Lunch",
     coffee: "Coffee",
     drinks: "Drinks",
+    dancing: "Dancing",
     see: "See",
     photo: "Photo spot",
     shop: "Shop",

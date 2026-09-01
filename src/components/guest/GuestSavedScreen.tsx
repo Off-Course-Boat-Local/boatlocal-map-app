@@ -73,7 +73,7 @@ export default function GuestSavedScreen({
     () =>
       CATEGORIES.map((category) => ({
         category,
-        items: savedPins.filter((p) => p.category === category.id),
+        items: savedPins.filter((p) => p.categories.includes(category.id)),
       })).filter((group) => group.items.length > 0),
     [savedPins],
   );

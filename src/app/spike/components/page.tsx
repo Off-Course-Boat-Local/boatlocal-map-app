@@ -125,7 +125,7 @@ export default function ComponentsSpikePage() {
   const brand = BRANDS[brandId];
 
   const visiblePins = useMemo(
-    () => (filter ? ALL_PINS.filter((p) => p.category === filter) : ALL_PINS),
+    () => (filter ? ALL_PINS.filter((p) => p.categories.includes(filter)) : ALL_PINS),
     [filter],
   );
 
@@ -138,7 +138,7 @@ export default function ComponentsSpikePage() {
 
   const boatSample: PlaceCardItem = {
     ...BOAT_TOURS[0],
-    category: "boats",
+    categories: ["boats"],
     meta: BOAT_TOURS[0].meta,
     isBoat: true,
   };
@@ -146,7 +146,7 @@ export default function ComponentsSpikePage() {
   const placeSample: PlaceCardItem = {
     id: PLACES[2].id,
     name: PLACES[2].name,
-    category: PLACES[2].category,
+    categories: PLACES[2].categories,
     area: PLACES[2].area,
     note: PLACES[2].note,
     meta: PLACES[2].hours,
@@ -295,7 +295,7 @@ export default function ComponentsSpikePage() {
                   }}
                 >
                   <Pin
-                    category={pin.category}
+                    category={pin.categories[0]}
                     label={pin.name}
                     selected={pin.id === selectedId}
                     onClick={() =>

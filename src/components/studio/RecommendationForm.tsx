@@ -15,15 +15,28 @@
 // toggle it off or not." It is also a switch rather than a checkbox, and
 // the same switch is repeated per-row in the table for the same reason.
 //
-// The category <select> deliberately excludes "boats": boat tours live in
-// their own table and are managed from the Boat tours tab, never here (see
-// RECOMMENDATION_CATEGORIES in ./recommendationForm.ts).
+// CATEGORY is a checkbox group, not a <select>: a place can genuinely be
+// more than one thing (a cafe that's also a breakfast spot) — see
+// supabase/migrations/20260901120000_recommendations_multi_category.sql's
+// header comment. The order checked = the stored array order, and
+// array[0] is always the "primary" category used for the pin's colour/icon
+// on the guest map (src/components/map/MapPins.tsx) — so the FIRST box a
+// guide/company checks is the one that decides the pin's look, same as
+// Admin's equivalent form. It deliberately excludes "boats": boat tours
+// live in their own table and are managed from the Boat tours tab, never
+// here (see RECOMMENDATION_CATEGORIES in ./recommendationForm.ts).
+//
+// GOOGLE PLACES enrichment (search Google Maps for the typed name, pull
+// hours/category-guesses/up to 8 photos) is available here too, same as
+// Admin's recommendation form — see recommendationForm.ts's own "NOTE ON
+// GOOGLE PLACES" for the scoped house-rule override this is part of.
 
 import { useActionState, useEffect, useState } from "react";
 
-import PortalSelect from "@/components/PortalSelect";
 import PortalToggle from "@/components/PortalToggle";
+import type { CategoryId } from "@/lib/types";
 import type { RecommendationRecord } from "@/lib/data/types";
+import type { PlaceDetails } from "@/lib/admin/googlePlaces";
 import {
   saveRecommendationAction,
   type RecommendationFormState,
@@ -32,6 +45,7 @@ import { NOTE_MAX_LENGTH, RECOMMENDATION_CATEGORIES } from "@/lib/studio/recomme
 import { GhostButton, PrimaryButton, inputClass, labelClass } from "./primitives";
 import AddressField from "@/components/AddressField";
 import RecommendationPhotosField from "./RecommendationPhotosField";
+import GooglePlaceSearchField from "./GooglePlaceSearchField";
 
 const initialState: RecommendationFormState = {};
 
@@ -65,6 +79,59 @@ export default function RecommendationForm({
   // still overwrite whatever the geocoder guessed.
   const [area, setArea] = useState(recommendation?.area ?? "");
 
+  // Everything below is controlled ONLY so a Google Places pick
+  // (GooglePlaceSearchField) can fill it in — same "still overwritable by
+  // hand afterward" behaviour as `area` above.
+  const [name, setName] = useState(recommendation?.name ?? "");
+  const [hours, setHours] = useState(recommendation?.hours ?? "");
+  const [categories, setCategories] = useState<CategoryId[]>(
+    recommendation?.categories ?? [],
+  );
+  const [addressApplyKey, setAddressApplyKey] = useState(0);
+  const [addressApplyPick, setAddressApplyPick] = useState<{
+    address: string;
+    area?: string;
+    lng: number;
+    lat: number;
+  } | null>(null);
+  const [photosInjectKey, setPhotosInjectKey] = useState(0);
+  const [photosInject, setPhotosInject] = useState<string[]>([]);
+
+  function toggleCategory(id: CategoryId) {
+    setCategories((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    );
+  }
+
+  function applyGooglePlace(details: PlaceDetails) {
+    if (details.name) setName(details.name);
+    if (details.hours) setHours(details.hours);
+    setArea((current) => current.trim() || details.area);
+    if (details.suggestedCategories.length > 0) {
+      // Merge, don't replace — a person may have already hand-picked some.
+      setCategories((prev) => {
+        const merged = [...prev];
+        for (const c of details.suggestedCategories) {
+          if (!merged.includes(c as CategoryId)) merged.push(c as CategoryId);
+        }
+        return merged;
+      });
+    }
+    if (Number.isFinite(details.lat) && Number.isFinite(details.lng)) {
+      setAddressApplyPick({
+        address: details.address || details.name,
+        area: details.area,
+        lat: details.lat,
+        lng: details.lng,
+      });
+      setAddressApplyKey((k) => k + 1);
+    }
+    if (details.photos.length > 0) {
+      setPhotosInject(details.photos);
+      setPhotosInjectKey((k) => k + 1);
+    }
+  }
+
   // useActionState re-renders this component with the new state as soon as
   // the action resolves, so this fires exactly once per successful submit.
   useEffect(() => {
@@ -94,24 +161,52 @@ export default function RecommendationForm({
         <input
           name="name"
           required
-          defaultValue={recommendation?.name}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           placeholder="Café de Jaren"
           className={inputClass}
         />
       </label>
 
+      <GooglePlaceSearchField query={name} onApply={applyGooglePlace} />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="recommendation-category" className={labelClass}>
-            Category
-          </label>
-          <PortalSelect
-            id="recommendation-category"
-            name="category"
-            defaultValue={recommendation?.category ?? RECOMMENDATION_CATEGORIES[0]?.id ?? ""}
-            options={RECOMMENDATION_CATEGORIES.map((c) => ({ value: c.id, label: c.label }))}
-            className="mt-1"
-          />
+          <p className={labelClass}>Categories</p>
+          <p className="mt-0.5 text-xs text-[var(--studio-ink-soft)]">
+            Check every one that fits — the first one you check sets the pin colour.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {RECOMMENDATION_CATEGORIES.map((c) => {
+              const checked = categories.includes(c.id);
+              const order = checked ? categories.indexOf(c.id) + 1 : null;
+              return (
+                <label
+                  key={c.id}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    checked
+                      ? "border-[var(--studio-accent)] bg-[var(--studio-accent)]/10 text-[var(--studio-accent)]"
+                      : "border-[var(--studio-border)] text-[var(--studio-ink-soft)] hover:bg-[var(--studio-bg)]"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    name="categories"
+                    value={c.id}
+                    checked={checked}
+                    onChange={() => toggleCategory(c.id)}
+                    className="sr-only"
+                  />
+                  {order ? (
+                    <span className="flex size-4 items-center justify-center rounded-full bg-[var(--studio-accent)] text-[0.625rem] font-bold text-white">
+                      {order}
+                    </span>
+                  ) : null}
+                  {c.label}
+                </label>
+              );
+            })}
+          </div>
         </div>
 
         <label className={labelClass}>
@@ -132,18 +227,22 @@ export default function RecommendationForm({
         initialLng={recommendation?.lng}
         initialLat={recommendation?.lat}
         onAreaSuggested={(suggested) => setArea((current) => current.trim() || suggested)}
+        applyPick={addressApplyPick}
+        applyKey={addressApplyKey}
       />
 
       <label className={labelClass}>
         Opening hours
         <input
           name="hours"
-          defaultValue={recommendation?.hours}
+          value={hours}
+          onChange={(e) => setHours(e.target.value)}
           placeholder="Tue–Sun 11:00–18:00, closed Mondays"
           className={inputClass}
         />
         <span className="mt-1 block text-xs text-[var(--studio-ink-soft)]">
-          Free text — whatever you&apos;d tell a guest.
+          Free text — whatever you&apos;d tell a guest. Google&apos;s hours come in verbatim —
+          trim it down to what a guest actually needs.
         </span>
       </label>
 
@@ -164,7 +263,11 @@ export default function RecommendationForm({
         </span>
       </label>
 
-      <RecommendationPhotosField initialPhotos={recommendation?.photos ?? []} />
+      <RecommendationPhotosField
+        initialPhotos={recommendation?.photos ?? []}
+        injectPhotos={photosInject}
+        injectKey={photosInjectKey}
+      />
 
       {state.error ? (
         <p role="alert" className="text-sm text-red-600">

@@ -28,6 +28,7 @@ const fr: Dictionary = {
     lunch: "Déjeuner",
     coffee: "Café",
     drinks: "Apéro",
+    dancing: "Danser",
     see: "À voir",
     photo: "Spot photo",
     shop: "Shopping",

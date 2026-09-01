@@ -32,7 +32,7 @@ const FLOAT_SHADOW =
 export interface PlaceCardItem {
   id: string;
   name: string;
-  category: CategoryId;
+  categories: CategoryId[];
   area: string;
   note: string;
   /** "90 min · €28 pp" for boats, opening hours for places. */

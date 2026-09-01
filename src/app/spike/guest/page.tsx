@@ -78,7 +78,7 @@ export default function GuestMapSpike() {
   const guest = guestPoint(location);
 
   const pins = useMemo(
-    () => (filter ? ALL_PINS.filter((p) => p.category === filter) : ALL_PINS),
+    () => (filter ? ALL_PINS.filter((p) => p.categories.includes(filter)) : ALL_PINS),
     [filter],
   );
 

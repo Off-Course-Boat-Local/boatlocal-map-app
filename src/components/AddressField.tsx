@@ -202,6 +202,10 @@ export default function AddressField({
   // (https://react.dev/learn/you-might-not-need-an-effect), same pattern
   // AdminBoatPhotosField's `injectKey` uses.
   const [appliedApplyKey, setAppliedApplyKey] = useState(applyKey);
+  // Holds an applied pick's area until the effect below can report it to the
+  // parent — see that effect's own comment for why this can't happen inline
+  // in the render-time block right below.
+  const pendingAreaRef = useRef<string | null>(null);
 
   const boxRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -275,7 +279,14 @@ export default function AddressField({
   // Applies an externally-supplied pick (Google Places enrichment) the same
   // way a clicked Photon suggestion would be — exactly once per `applyKey`
   // bump, during render rather than in an Effect (see appliedApplyKey's
-  // comment above).
+  // comment above). This component's OWN state (address/coords/etc.) can be
+  // adjusted here directly — that's React's own sanctioned "adjust state
+  // when a prop changes" pattern. Calling the PARENT's `onAreaSuggested`
+  // from here, though, is a second component's setState firing mid-render
+  // (a real bug this app hit live: "Cannot update a component
+  // (RecommendationForm) while rendering a different component
+  // (AddressField)") — so that notification is only staged into a ref here
+  // and actually fired from the effect below, after this render commits.
   if (
     applyKey !== appliedApplyKey &&
     applyPick &&
@@ -288,8 +299,19 @@ export default function AddressField({
     setResults([]);
     setOpen(false);
     setTouched(true);
-    if (applyPick.area) onAreaSuggested?.(applyPick.area);
+    if (applyPick.area) pendingAreaRef.current = applyPick.area;
   }
+
+  useEffect(() => {
+    if (pendingAreaRef.current) {
+      onAreaSuggested?.(pendingAreaRef.current);
+      pendingAreaRef.current = null;
+    }
+    // Fires once per applied pick (appliedApplyKey only changes when the
+    // render-time block above just staged a new area) — onAreaSuggested
+    // itself is a caller-supplied callback, not meant to retrigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedApplyKey]);
 
   function handleAddressChange(value: string) {
     setAddress(value);

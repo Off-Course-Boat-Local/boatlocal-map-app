@@ -140,7 +140,7 @@ export default function GuestMapScreen({
   const guest = guestPoint(location);
 
   const pins = useMemo(
-    () => (filter ? allPins.filter((p) => p.category === filter) : allPins),
+    () => (filter ? allPins.filter((p) => p.categories.includes(filter)) : allPins),
     [allPins, filter],
   );
 
