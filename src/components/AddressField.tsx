@@ -48,7 +48,6 @@
 // session-gated `/api/admin/geocode`.
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import type { Marker as MapLibreMarker } from "maplibre-gl";
 
 import BaseMap, { useMapInstance } from "@/components/map/BaseMap";
 import { PORTAL_ACCENT } from "@/components/MapAppMark";
@@ -83,7 +82,7 @@ function DraggablePin({
   onMove: (next: { lng: number; lat: number }) => void;
 }) {
   const map = useMapInstance();
-  const markerRef = useRef<MapLibreMarker | null>(null);
+  const markerRef = useRef<google.maps.Marker | null>(null);
   // Keeps the latest callback reachable from the marker's dragend listener
   // without re-creating the marker on every parent render. Written in its
   // own effect (not during render) — a ref is an escape hatch for event
@@ -98,28 +97,47 @@ function DraggablePin({
   useEffect(() => {
     if (!map) return;
     let cancelled = false;
+    let marker: google.maps.Marker | null = null;
 
-    (async () => {
-      const { Marker } = await import("maplibre-gl");
+    void (async () => {
+      // The LEGACY google.maps.Marker (not the newer AdvancedMarkerElement,
+      // and not this app's own DomOverlay.ts) — deliberately, because it's
+      // the only one of the three that supports `draggable` + a `dragend`
+      // event out of the box with no Map ID requirement.
+      // AdvancedMarkerElement would need a cloud-configured Map ID this app
+      // doesn't have (see BaseMap.tsx's header comment); DomOverlay has no
+      // built-in drag handling at all — hand-rolling drag-to-latlng math on
+      // a raw OverlayView is real work this simple round pin doesn't need.
+      // Its one real limitation — no arbitrary DOM/React content, icon-only
+      // — is a non-issue here: the pin has always just been a solid circle
+      // with a white ring, which a plain SVG icon path reproduces exactly.
+      //
+      // Legacy Marker lives in the "marker" library specifically, separate
+      // from "maps" (which BaseMap.tsx already loaded to get this far) —
+      // has to be imported here too before it's usable.
+      const { importLibrary } = await import("@googlemaps/js-api-loader");
+      await importLibrary("marker");
       if (cancelled) return;
 
-      const el = document.createElement("div");
-      el.style.cssText =
-        "width:22px;height:22px;border-radius:50%;cursor:grab;" +
-        `background:${PORTAL_ACCENT};border:3px solid #fff;` +
-        "box-shadow:0 2px 8px rgba(0,0,0,.35)";
-
-      const marker = new Marker({ element: el, draggable: true })
-        .setLngLat([lng, lat])
-        .addTo(map);
-
-      marker.on("dragstart", () => {
-        el.style.cursor = "grabbing";
+      marker = new google.maps.Marker({
+        position: { lat, lng },
+        map,
+        draggable: true,
+        cursor: "grab",
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 11,
+          fillColor: PORTAL_ACCENT,
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 3,
+        },
       });
-      marker.on("dragend", () => {
-        el.style.cursor = "grab";
-        const { lng: nLng, lat: nLat } = marker.getLngLat();
-        onMoveRef.current({ lng: nLng, lat: nLat });
+
+      marker.addListener("dragend", () => {
+        const next = marker?.getPosition();
+        if (!next) return;
+        onMoveRef.current({ lng: next.lng(), lat: next.lat() });
       });
 
       markerRef.current = marker;
@@ -127,7 +145,7 @@ function DraggablePin({
 
     return () => {
       cancelled = true;
-      markerRef.current?.remove();
+      marker?.setMap(null);
       markerRef.current = null;
     };
     // Intentionally only on `map`: the marker is created once and then
@@ -139,7 +157,7 @@ function DraggablePin({
   // Keeps the pin in sync when the coordinate changes from the outside
   // (a new search result picked), without disturbing a drag in progress.
   useEffect(() => {
-    markerRef.current?.setLngLat([lng, lat]);
+    markerRef.current?.setPosition({ lat, lng });
   }, [lng, lat]);
 
   return null;

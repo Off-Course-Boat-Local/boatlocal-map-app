@@ -34,6 +34,7 @@ import { DEFAULT_BRAND } from "./brand";
 import {
   getActiveCompanyRecord,
   getCompanyBrand,
+  getCompanyByCustomDomain,
   getGuide,
   getPlatformDefaultCompany,
   toBrand,
@@ -63,6 +64,7 @@ const NEUTRAL_FALLBACK_BRAND: Brand = {
   // PhoneFrame's own `var(--brand-surround, ...)` fallback carries the same
   // value.
   surround: "#F6F6F3",
+  logoUrl: null,
 };
 
 export interface GuestContext {
@@ -100,10 +102,27 @@ export async function getGuestContext(): Promise<GuestContext> {
     return { brandId, guideSlug, brand: brandFromSource ?? toBrand(companyRecord), companyId, guide };
   }
 
-  // brandId named no real, active company (the "no ?company= at all" case
-  // this file was fixed for, but also any genuinely unknown or inactive
-  // id) — see this file's header comment for why the fallback is the
-  // platform default company, not src/lib/brand.ts's preview swatches.
+  // No real company behind the query-param brandId (including the common
+  // case of no `?company=` at all). Before falling back to the shared
+  // platform default, check whether this REQUEST'S OWN HOSTNAME belongs to
+  // one company specifically — e.g. a visit to map.offcourseamsterdam.com
+  // with no query param at all should show Off Course Amsterdam, not
+  // whichever company Admin happens to have flagged as the platform-wide
+  // default for the shared boatlocal.nl domain. `host` is a standard
+  // incoming header Next.js already exposes here with no proxy.ts changes
+  // needed — see getCompanyByCustomDomain's own comment for the RLS/lookup
+  // side of this.
+  const host = requestHeaders.get("host");
+  const byDomain = host ? await getCompanyByCustomDomain(host) : null;
+  if (byDomain) {
+    const companyId = byDomain.id;
+    const guide = await getGuide(companyId, guideSlug);
+    return { brandId, guideSlug, brand: toBrand(byDomain), companyId, guide };
+  }
+
+  // Still nothing company-specific — see this file's header comment for why
+  // the fallback is the shared platform default company, not
+  // src/lib/brand.ts's preview swatches.
   const platformDefault = await getPlatformDefaultCompany();
   if (platformDefault && platformDefault.status === "active") {
     const companyId = platformDefault.id;

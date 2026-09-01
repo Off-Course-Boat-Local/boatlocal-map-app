@@ -161,16 +161,29 @@ function cardStyle(emphasized: boolean) {
   };
 }
 
+/**
+ * Below this many collected ratings, the social-proof line stays hidden —
+ * "join 2 guests" reads as weak evidence, not strong. Every guest sees the
+ * same number regardless of their own (or any) rating, so raising/lowering
+ * this only changes when the line appears, never who sees what.
+ */
+const MIN_REVIEWS_FOR_SOCIAL_PROOF = 5;
+
 export interface GuestReviewScreenProps {
   companyName: string;
   companyId: string | null;
   reviewOptions: ReviewOption[];
+  logoUrl?: string | null;
+  /** How many guests have rated so far (this app's own guest_reviews, not a public platform's rating) — see getCompanyReviewStats in src/lib/data/source.ts. */
+  reviewCount?: number;
 }
 
 export default function GuestReviewScreen({
   companyName,
   companyId,
   reviewOptions,
+  logoUrl,
+  reviewCount = 0,
 }: GuestReviewScreenProps) {
   const searchParams = useSearchParams();
   const mapHref = withGuestQuery("/map", guestQueryString(searchParams));
@@ -266,10 +279,20 @@ export default function GuestReviewScreen({
         eyebrow={t.review.eyebrow}
         title={t.review.title}
         subtitle={t.review.subtitle(companyName)}
+        logoUrl={logoUrl}
       />
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6">
         <div className="flex flex-col gap-5">
+        {/* Social proof — a real count from this app's own guest_reviews
+            (see getCompanyReviewStats), not a fabricated number. Shown to
+            every guest identically regardless of rating: this is a trust
+            signal, not a gating mechanism. */}
+        {reviewCount >= MIN_REVIEWS_FOR_SOCIAL_PROOF && (
+          <p className="text-center text-[0.8125rem]" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
+            {t.review.socialProof(reviewCount)}
+          </p>
+        )}
         {/* Star rating — emphasis + copy only, never gating (see header).
             Wrapped in the reference's white shadow-card section. */}
         <section
@@ -284,7 +307,7 @@ export default function GuestReviewScreen({
             className="text-center text-base font-semibold"
             style={{ color: INK, fontFamily: displayFontFamily }}
           >
-            {t.review.rateTitle}
+            {t.review.rateTitle(companyName)}
           </h2>
           <div className="mt-4 flex justify-center gap-1.5">
             {[1, 2, 3, 4, 5].map((n) => {

@@ -74,3 +74,25 @@ body {
     cursor: not-allowed;
   }
 }
+
+/* A selected map pin's ring — deliberately NOT Tailwind's stock
+   `animate-ping` (scale(2) over 1s, looping). On an already-large ring
+   (src/components/map/Pin.tsx sizes it ~1.95x the pin itself) that reads as
+   a fast, oversized flash rather than a quiet "this one's selected" cue —
+   founder feedback, 2026-09-01: "the pulsating effect is too intense."
+   Slower and a smaller scale delta keeps the same signal without the
+   flashing. */
+@keyframes pin-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.28;
+  }
+  75%,
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+.animate-pin-pulse {
+  animation: pin-pulse 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}

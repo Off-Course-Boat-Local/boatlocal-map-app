@@ -17,6 +17,7 @@ const METRICS: MetricDefinition[] = [
   { metric: "App opens", types: ["app_open"] },
   { metric: "Places & tips viewed", types: ["tip_viewed"] },
   { metric: "Directions requested", types: ["directions_requested"] },
+  { metric: "Guests who arrived", types: ["directions_arrived"] },
   { metric: "Boat tour booking clicks", types: ["boat_book_click"] },
   { metric: "Review link clicks", types: ["review_click_google", "review_click_tripadvisor", "review_private_feedback"] },
   { metric: "Places saved by guests", types: ["tip_saved"] },

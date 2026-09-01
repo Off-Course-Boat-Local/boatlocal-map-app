@@ -2,9 +2,11 @@
 
 // The card that slides up over the map when a pin is selected.
 //
-// DELIBERATE OMISSION: there are no star ratings, review counts or score
-// badges anywhere in this component, and none should be added. The guide's
-// note is the endorsement — that is the product. See PRD.
+// RATING: a small Google rating/review-count badge (RatingBadge) renders
+// under the title when the item has a googleRating — reverses what used
+// to be a hard "no rating anywhere" rule (founder call, 2026-09-01). The
+// guide's own note is still the primary endorsement and still required
+// regardless of whether a rating is present.
 //
 // Brand colour reaches this component only through --brand-primary
 // (the "Book this tour" fill, the directions arrow, and the saved-heart
@@ -17,6 +19,7 @@ import type { CategoryId } from "@/lib/types";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { PhotoGallery } from "./PhotoGallery";
+import RatingBadge from "./RatingBadge";
 
 /* Neutral chrome — never re-skins. */
 const INK = "#0B1421";
@@ -40,6 +43,8 @@ export interface PlaceCardItem {
   photos: string[];
   isBoat: boolean;
   bookingUrl?: string;
+  googleRating: number | null;
+  googleReviewCount: number | null;
 }
 
 export interface PlaceCardProps {
@@ -58,8 +63,28 @@ export interface PlaceCardProps {
    * nearest positioned ancestor — i.e. the map container.
    */
   floating?: boolean;
-  /** Gap from the bottom edge, leaving room for the bottom nav. Default 88. */
+  /** Gap from the bottom edge, leaving room for the bottom nav. Default 88. Ignored when `asDrawer` is set. */
   bottomOffset?: number;
+  /**
+   * Drawer chrome: full-width, only its top corners rounded, safe-area
+   * padding for the home indicator, no scroll/refresh hand-off, a snappier
+   * slide-up entrance, a plainer/bigger close X, and no decorative drag
+   * handle. Renders at `position: relative` regardless of `floating` — the
+   * CALLER is expected to pin it to the viewport bottom (see GuestMapScreen)
+   * so it can stack a distance pill above the card without measuring its
+   * dynamic height.
+   *
+   * Guest map only (founder request, 2026-09-01): the guest map's own
+   * bottom nav sits BELOW the map's own container, so the old
+   * absolute-within-the-map-box card could never cover it, no matter how
+   * small `bottomOffset` got — the caller now escapes that box entirely
+   * with its own `position: fixed` wrapper instead. The drag handle is also
+   * dropped: it implied a swipe-to-dismiss gesture this card never actually
+   * implemented, and swiping down on it with nothing to catch the gesture
+   * fell through to the page and triggered the mobile browser's own
+   * pull-to-refresh. Closing is via the (now more visible) X only.
+   */
+  asDrawer?: boolean;
   className?: string;
   style?: CSSProperties;
 }
@@ -74,6 +99,7 @@ export function PlaceCard({
   onToggleGallery,
   floating = true,
   bottomOffset = 88,
+  asDrawer = false,
   className,
   style,
 }: PlaceCardProps) {
@@ -105,14 +131,24 @@ export function PlaceCard({
   // Optional-chained because jsdom does not implement Element.animate().
   const rootRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    rootRef.current?.animate?.(
-      [
-        { opacity: 0, transform: "translateY(12px)" },
-        { opacity: 1, transform: "translateY(0)" },
-      ],
-      { duration: 300, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-    );
-  }, [item.id]);
+    // A drawer slides up from off-screen — snappy and quick (180ms, a steep
+    // ease-out) rather than the subtler 12px settle a card that's already
+    // basically in place uses. Re-plays on every pin tap, drawer or not.
+    if (asDrawer) {
+      rootRef.current?.animate?.(
+        [{ transform: "translateY(100%)" }, { transform: "translateY(0)" }],
+        { duration: 180, easing: "cubic-bezier(0.16, 1, 0.3, 1)" },
+      );
+    } else {
+      rootRef.current?.animate?.(
+        [
+          { opacity: 0, transform: "translateY(12px)" },
+          { opacity: 1, transform: "translateY(0)" },
+        ],
+        { duration: 300, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+      );
+    }
+  }, [item.id, asDrawer]);
 
   // The guide's note is the endorsement, and the endorsement is the whole
   // product — it is what we chose instead of a crowd-sourced star rating.
@@ -135,15 +171,38 @@ export function PlaceCard({
     onToggleGallery?.(next);
   };
 
-  const positioning: CSSProperties = floating
-    ? {
+  // A drawer's fixed-to-the-viewport positioning is owned by its caller (so
+  // it can stack a distance pill above it without measuring the card's own
+  // dynamic height — see GuestMapScreen) — this only ever renders "relative"
+  // itself for asDrawer, and contributes the drawer's other chrome (rounded
+  // top corners, safe-area padding, no scroll/refresh hand-off) as plain
+  // style below instead.
+  const positioning: CSSProperties = asDrawer || !floating
+    ? { position: "relative" }
+    : {
         position: "absolute",
         left: 12,
         right: 12,
         bottom: bottomOffset,
         zIndex: 20,
+      };
+
+  const drawerChrome: CSSProperties = asDrawer
+    ? {
+        // Escaping to the viewport edge means this card now owns the bottom
+        // safe area itself — there's no bottom nav under it here to already
+        // be absorbing the home indicator.
+        paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)",
+        borderRadius: "28px 28px 0 0",
+        // Swiping down on this card must scroll/close nothing — it has no
+        // scrollable content of its own, and without this a drag here can
+        // still be read as the page's own overscroll and hand off to the
+        // browser's pull-to-refresh, the exact gesture this mode exists to
+        // avoid relying on.
+        overscrollBehavior: "none",
+        touchAction: "none",
       }
-    : { position: "relative" };
+    : {};
 
   const actionBase: CSSProperties = {
     height: 44,
@@ -166,29 +225,34 @@ export function PlaceCard({
       className={className}
       aria-labelledby={titleId}
       style={{
-        ...positioning,
         background: "#FFFFFF",
-        borderRadius: 28, // rounded-3xl — bottom-sheet corners
+        borderRadius: 28, // rounded-3xl — bottom-sheet corners; positioning overrides this to top-only for a drawer
         border: `1px solid ${BORDER}`,
         padding: 20, // ~p-5
         fontFamily: bodyFontFamily,
         color: INK,
         boxShadow: FLOAT_SHADOW,
+        ...positioning,
+        ...drawerChrome,
         ...style,
       }}
     >
-      {/* Drag-handle bar — purely decorative bottom-sheet affordance. */}
-      <span
-        aria-hidden="true"
-        style={{
-          display: "block",
-          margin: "0 auto 12px",
-          height: 4,
-          width: 40,
-          borderRadius: 9999,
-          background: BORDER,
-        }}
-      />
+      {/* Drag-handle bar — purely decorative bottom-sheet affordance,
+          dropped for a drawer: it implied a swipe-to-dismiss gesture this
+          card never actually implemented (see asDrawer's doc comment). */}
+      {!asDrawer && (
+        <span
+          aria-hidden="true"
+          style={{
+            display: "block",
+            margin: "0 auto 12px",
+            height: 4,
+            width: 40,
+            borderRadius: 9999,
+            background: BORDER,
+          }}
+        />
+      )}
 
       {/* Close ------------------------------------------------------ */}
       {onClose && (
@@ -198,22 +262,26 @@ export function PlaceCard({
           aria-label={t.placeDetail.closeItem(item.name)}
           style={{
             position: "absolute",
-            top: 6,
-            right: 6,
-            width: 44,
-            height: 44,
+            top: asDrawer ? 12 : 6,
+            right: asDrawer ? 12 : 6,
+            width: asDrawer ? 36 : 44,
+            height: asDrawer ? 36 : 44,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             border: 0,
-            background: "transparent",
+            borderRadius: 9999,
+            // A drawer's X is the ONLY way to close it (no more drag handle
+            // hinting a gesture this card never had), so it needs to read
+            // as an obvious button rather than bare chrome.
+            background: asDrawer ? "#F1F3F6" : "transparent",
             color: MUTED,
             cursor: "pointer",
             WebkitTapHighlightColor: "transparent",
             touchAction: "manipulation",
           }}
         >
-          <X size={17} strokeWidth={2.1} aria-hidden />
+          <X size={asDrawer ? 18 : 17} strokeWidth={2.1} aria-hidden />
         </button>
       )}
 
@@ -318,6 +386,14 @@ export function PlaceCard({
           >
             {item.name}
           </h2>
+          {item.googleRating != null && (
+            <RatingBadge
+              rating={item.googleRating}
+              reviewCount={item.googleReviewCount}
+              size={12}
+              style={{ marginTop: 3, fontSize: 12 }}
+            />
+          )}
           {/* No locator text (e.g. a BoatLocal-synced cruise, whose feed has
               no location name — area is "") means no row at all: an orphaned
               icon with nothing after it reads as a glitch. */}

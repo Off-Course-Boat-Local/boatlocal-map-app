@@ -10,11 +10,7 @@
 //   4. the dotted line reads as "approximate", not "follow this".
 
 import { useSyncExternalStore } from "react";
-import {
-  DIRECTION_LINE_DASHARRAY,
-  DIRECTION_LINE_WIDTH,
-  readBrandPrimary,
-} from "@/components/map/DirectionLine";
+import { DIRECTION_LINE_WIDTH, readBrandPrimary } from "@/components/map/DirectionLine";
 import { guestPoint, useGuestLocation } from "@/hooks/useGuestLocation";
 import { DEFAULT_BRAND, brandCssVars } from "@/lib/brand";
 import { CATEGORY_MAP } from "@/lib/categories";
@@ -34,6 +30,16 @@ import {
   directionsButtonLabel,
   googleMapsWalkingUrl,
 } from "@/lib/mapsHandoff";
+
+/**
+ * Dash pattern, in multiples of the line width — used only by this page's
+ * own SVG illustration of the dotted line, never by the real map (which
+ * switched to a Google Maps Polyline's `icons` dash recipe, see
+ * DirectionLine.tsx). Kept as the exact value the old MapLibre
+ * `line-dasharray` paint property used, so this mockup still matches how
+ * the dots actually used to look.
+ */
+const DIRECTION_LINE_DASHARRAY = [0, 2] as const;
 import type { LocationState } from "@/lib/types";
 
 /* ------------------------------------------------------------------ */

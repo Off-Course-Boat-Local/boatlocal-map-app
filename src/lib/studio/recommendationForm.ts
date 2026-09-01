@@ -112,8 +112,38 @@ export function parseRecommendationForm(formData: FormData): ParseRecommendation
 
   const visible = formData.get("visible") != null;
 
+  // Optional — only present when this came from Google Places enrichment
+  // (see GooglePlaceSearchField.tsx / VoiceAddPlaces.tsx). Absent (rather
+  // than an empty string) for a manually-typed place, so `undefined` here
+  // is what tells saveRecommendation "leave whatever snapshot already
+  // exists on an edit alone" (see that function's own comment).
+  const googleRatingRaw = formData.get("googleRating");
+  const googleReviewCountRaw = formData.get("googleReviewCount");
+  const googleRating =
+    googleRatingRaw != null && String(googleRatingRaw).trim() !== ""
+      ? Number(googleRatingRaw)
+      : undefined;
+  const googleReviewCount =
+    googleReviewCountRaw != null && String(googleReviewCountRaw).trim() !== ""
+      ? Number(googleReviewCountRaw)
+      : undefined;
+
   return {
     ok: true,
-    value: { id, categories, name, area, address, lng, lat, note, hours, photos, visible },
+    value: {
+      id,
+      categories,
+      name,
+      area,
+      address,
+      lng,
+      lat,
+      note,
+      hours,
+      photos,
+      visible,
+      googleRating,
+      googleReviewCount,
+    },
   };
 }

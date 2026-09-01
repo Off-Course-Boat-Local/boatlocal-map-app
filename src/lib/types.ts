@@ -7,8 +7,10 @@ export type CategoryId =
   | "boats"
   | "breakfast"
   | "lunch"
+  | "dinner"
   | "coffee"
   | "drinks"
+  | "wine"
   | "dancing"
   | "see"
   | "photo"
@@ -38,6 +40,15 @@ export interface Brand {
   accent: string;
   /** Page surround behind the phone frame on desktop. */
   surround: string;
+  /**
+   * Uploaded via Studio > Branding, shown in every guest header (see
+   * GuestScreenHeader.tsx, GuestMapScreen.tsx, GuestWelcomeScreen.tsx) —
+   * this used to live only in Studio's own live-preview context
+   * (StudioPreviewContext.tsx), never reaching a real guest, on the
+   * grounds that "no guest component renders a logo today". That's the
+   * gap this closes (founder request, 2026-09-01).
+   */
+  logoUrl: string | null;
 }
 
 export interface Place {
@@ -56,6 +67,15 @@ export interface Place {
   hours: string;
   /** Guide-uploaded. Multiple, swipeable. First is the card thumbnail. */
   photos: string[];
+  /**
+   * A Google Places rating/review-count snapshot captured when this place
+   * was added via Google enrichment — null for anything typed in by hand.
+   * Shown to guests alongside (never instead of) the guide's own note —
+   * see recommendations.google_rating's migration comment for why this is
+   * a point-in-time snapshot, not live data.
+   */
+  googleRating: number | null;
+  googleReviewCount: number | null;
 }
 
 export interface BoatTour {

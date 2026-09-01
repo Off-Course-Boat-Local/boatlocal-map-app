@@ -1,208 +1,181 @@
 "use client";
 
-// The dotted "it's that way" line.
+// The "it's that way" line — now a REAL walking route, drawn solid.
 //
-// This renders no DOM. It imperatively owns exactly one GeoJSON source and one
-// line layer on a MapLibre map, and removes both when the selection changes or
-// the component unmounts. Tapping five pins in a row must leave five removed
-// layers behind, not five live ones.
+// HISTORY: this used to draw a dotted straight-line bearing between the
+// guest and the selected place, deliberately never solid and never routed
+// — "a straight line means follow this", and a straight line in Amsterdam
+// happily crosses a gracht with no bridge, so a dotted "roughly this way"
+// was the honest thing to show while the app's map was MapLibre +
+// OpenFreeMap.
 //
-// WHY DOTTED
-// ----------
-// A solid line means "follow this". In Amsterdam a straight line between two
-// pins will happily cross a gracht where there is no bridge, so "follow this"
-// would be a lie. Dots read as a bearing and a rough distance — "that way,
-// about this far" — which is exactly what we actually know. Do not make this
-// solid, and do not add an arrowhead, without changing what the product
-// promises. Real routing lives behind the Google Maps hand-off button.
+// That changed 2026-09-01: Google's Routes API can now legally render here,
+// because the map itself switched to the Google Maps JavaScript API (see
+// BaseMap.tsx's header comment) — Google's Routes API policy requires
+// results DISPLAYED ON A MAP to be shown on a Google Map, which a
+// MapLibre/OpenStreetMap canvas never satisfied no matter how the line was
+// drawn. With a real route available, a real solid line is now the honest
+// thing to show instead — see src/lib/walkingRoute.ts for the fetch and
+// its own cost/compliance notes.
+//
+// STILL DASHED, ON PURPOSE, WHEN THERE'S NO REAL ROUTE: a route fetch can
+// fail (network hiccup, no path found) — the straight-line fallback below
+// stays dashed specifically so it never LOOKS like a real route when it
+// isn't one. Same honesty principle the original dotted line encoded, just
+// narrowed to the one case it's still needed for.
 
-import { useEffect } from "react";
-import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import { useEffect, useRef, useState } from "react";
+
 import { DEFAULT_BRAND } from "@/lib/brand";
-
-export const DIRECTION_LINE_SOURCE_ID = "boatlocal-direction-line";
-export const DIRECTION_LINE_LAYER_ID = "boatlocal-direction-line-layer";
-
-/**
- * Dash pattern, in multiples of the line width.
- *
- * A dash of length 0 with a round cap renders as a circle, so [0, 2] gives
- * true dots with a gap of two line-widths between them — not dashes. Widen
- * the gap and it reads as sparse/unfinished; close it and it starts to read
- * as a solid route.
- */
-export const DIRECTION_LINE_DASHARRAY = [0, 2];
-
-/** Line width in px. Dot diameter equals this. */
-export const DIRECTION_LINE_WIDTH = 4;
-
-export const DIRECTION_LINE_OPACITY = 0.85;
 
 export interface Coordinate {
   lng: number;
   lat: number;
 }
 
+export interface RouteInfo {
+  distanceMeters: number;
+  durationSeconds: number;
+}
+
 export interface DirectionLineProps {
-  /** The MapLibre instance. Null while the map is still initialising. */
-  map: MapLibreMap | null | undefined;
+  /** The Google Map instance. Null while the map is still initialising. */
+  map: google.maps.Map | null | undefined;
   /** Guest position. Null when location is denied/unavailable — renders nothing. */
   from: Coordinate | null | undefined;
   /** Selected place. Null when nothing is selected — renders nothing. */
   to: Coordinate | null | undefined;
-  /** Insert the line below this layer id (e.g. the pin layer). */
-  beforeId?: string;
-  /** Override the source id, if you ever need two lines at once. */
-  sourceId?: string;
-  /** Override the layer id. */
-  layerId?: string;
   /**
-   * Line colour. Defaults to reading `--brand-primary` off the map container.
-   * Pass it explicitly when the brand can change while the map stays mounted
-   * (a tenant switcher, a live preview in the Studio) — the CSS variable is
-   * only sampled when the layer is first created, so a stale layer would keep
-   * the previous brand's colour.
+   * Line colour. Defaults to reading `--brand-primary` off the map
+   * container. Pass it explicitly when the brand can change while the map
+   * stays mounted (a tenant switcher, a live preview in the Studio).
    */
   color?: string;
+  /** Fired with the real route's distance/duration once fetched, or null when there's no real route (nothing selected, or the fetch failed and the fallback straight line is showing instead). */
+  onRouteInfo?: (info: RouteInfo | null) => void;
 }
 
-/**
- * Reads the live brand colour from CSS custom properties.
- *
- * Deliberately not a hard-coded hex: the app is white-label and the brand is
- * set by `brandCssVars()` at the document (or container) level. We read from
- * the map container first so a brand scoped to a subtree still wins.
- */
+/** Reads the live brand colour from CSS custom properties (unchanged from the MapLibre version — this was never map-library-specific). */
 export function readBrandPrimary(el?: HTMLElement | null): string {
   if (typeof window === "undefined") return DEFAULT_BRAND.primary;
   const target = el ?? document.documentElement;
-  const value = getComputedStyle(target)
-    .getPropertyValue("--brand-primary")
-    .trim();
+  const value = getComputedStyle(target).getPropertyValue("--brand-primary").trim();
   return value || DEFAULT_BRAND.primary;
 }
 
-function lineFeature(
-  from: Coordinate,
-  to: Coordinate,
-): GeoJSON.Feature<GeoJSON.LineString> {
-  return {
-    type: "Feature",
-    properties: {},
-    geometry: {
-      type: "LineString",
-      coordinates: [
-        [from.lng, from.lat],
-        [to.lng, to.lat],
-      ],
+export const DIRECTION_LINE_WIDTH = 4;
+export const DIRECTION_LINE_OPACITY = 0.85;
+
+/** Google's documented recipe for a dashed Polyline: an invisible stroke plus a repeating dash symbol. */
+function dashedLineIcons(color: string): google.maps.IconSequence[] {
+  return [
+    {
+      icon: {
+        path: "M 0,-1 0,1",
+        strokeOpacity: DIRECTION_LINE_OPACITY,
+        strokeColor: color,
+        scale: 3,
+      },
+      offset: "0",
+      repeat: "16px",
     },
-  };
+  ];
 }
 
-export function DirectionLine({
-  map,
-  from,
-  to,
-  beforeId,
-  color,
-  sourceId = DIRECTION_LINE_SOURCE_ID,
-  layerId = DIRECTION_LINE_LAYER_ID,
-}: DirectionLineProps) {
-  // Primitive deps only. `from`/`to` are usually fresh object literals, and
-  // depending on their identity would re-add the layer on every render.
+export function DirectionLine({ map, from, to, color, onRouteInfo }: DirectionLineProps) {
+  // Primitive deps only — from/to are usually fresh object literals every
+  // render, and depending on their identity would refetch/redraw on every
+  // GPS tick (the exact bug fixed on the old dotted-line version — see git
+  // history on this file from 2026-09-01 if that regression ever comes
+  // back in a different shape).
   const fromLng = from?.lng ?? null;
   const fromLat = from?.lat ?? null;
   const toLng = to?.lng ?? null;
   const toLat = to?.lat ?? null;
+  const hasLine = fromLng !== null && fromLat !== null && toLng !== null && toLat !== null;
 
+  const [route, setRoute] = useState<{ path: Coordinate[]; info: RouteInfo } | null>(null);
+
+  const onRouteInfoRef = useRef(onRouteInfo);
   useEffect(() => {
-    // NOTE: `color` is in this effect's dependency array on purpose. Sampling
-    // the CSS variable once when the layer is created is not enough — the
-    // layer already exists by the time a tenant's brand changes, so the line
-    // would keep the previous company's colour while everything else re-skins.
-    if (!map) return;
-    if (fromLng === null || fromLat === null) return; // no permission → no line
-    if (toLng === null || toLat === null) return; // nothing selected
+    onRouteInfoRef.current = onRouteInfo;
+  });
 
-    const data = lineFeature(
-      { lng: fromLng, lat: fromLat },
-      { lng: toLng, lat: toLat },
-    );
+  // Fetch a real route once per (guest, destination) pair — NOT on every
+  // GPS tick. This is the one network/billed call this component makes;
+  // see walkingRoute.ts's cost note for why that bound matters.
+  useEffect(() => {
+    // Cleared immediately on every change — including switching from one
+    // selected place to another while hasLine stays true — so a caller
+    // never shows the PREVIOUS place's distance/duration while the new
+    // fetch is still in flight.
+    setRoute(null);
+    onRouteInfoRef.current?.(null);
 
-    let disposed = false;
+    if (!hasLine) return;
 
-    const paintLine = () => {
-      if (disposed) return;
-      try {
-        const paintColor = color ?? readBrandPrimary(map.getContainer());
+    let cancelled = false;
 
-        const existing = map.getSource(sourceId) as GeoJSONSource | undefined;
-        if (existing) {
-          existing.setData(data);
-        } else {
-          map.addSource(sourceId, { type: "geojson", data });
-        }
+    const params = new URLSearchParams({
+      originLng: String(fromLng),
+      originLat: String(fromLat),
+      destLng: String(toLng),
+      destLat: String(toLat),
+    });
 
-        if (map.getLayer(layerId)) {
-          map.setPaintProperty(layerId, "line-color", paintColor);
-        } else {
-          map.addLayer(
-            {
-              id: layerId,
-              type: "line",
-              source: sourceId,
-              layout: {
-                "line-cap": "round",
-                "line-join": "round",
-              },
-              paint: {
-                "line-color": paintColor,
-                "line-width": DIRECTION_LINE_WIDTH,
-                "line-opacity": DIRECTION_LINE_OPACITY,
-                "line-dasharray": DIRECTION_LINE_DASHARRAY,
-              },
-            },
-            // Only pass beforeId if that layer actually exists; MapLibre
-            // throws otherwise, and layer order is owned by another module.
-            beforeId && map.getLayer(beforeId) ? beforeId : undefined,
-          );
-        }
-      } catch {
-        // The map can be torn down mid-flight (route change, fast unmount).
-        // A missing style is not an error worth crashing a card over.
-      }
-    };
-
-    // setStyle() wipes user layers. Re-add whenever the style settles and our
-    // layer has gone missing.
-    const onStyleData = () => {
-      if (disposed) return;
-      try {
-        if (!map.getLayer(layerId)) paintLine();
-      } catch {
-        /* torn down */
-      }
-    };
-
-    if (map.isStyleLoaded()) {
-      paintLine();
-    } else {
-      map.once("load", paintLine);
-    }
-    map.on("styledata", onStyleData);
+    void fetch(`/api/guest/walking-route?${params.toString()}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { route?: { distanceMeters: number; durationSeconds: number; path: Coordinate[] } } | null) => {
+        if (cancelled || !body?.route) return;
+        const info = { distanceMeters: body.route.distanceMeters, durationSeconds: body.route.durationSeconds };
+        setRoute({ path: body.route.path, info });
+        onRouteInfoRef.current?.(info);
+      })
+      .catch(() => {
+        // Swallowed — the fallback straight line (drawn below) covers this,
+        // and a flaky network shouldn't surface as an app error over a map
+        // line.
+      });
 
     return () => {
-      disposed = true;
-      try {
-        map.off("styledata", onStyleData);
-        map.off("load", paintLine);
-        if (map.getLayer(layerId)) map.removeLayer(layerId);
-        if (map.getSource(sourceId)) map.removeSource(sourceId);
-      } catch {
-        // Map already destroyed — nothing left to clean up.
-      }
+      cancelled = true;
     };
-  }, [map, fromLng, fromLat, toLng, toLat, beforeId, sourceId, layerId, color]);
+  }, [hasLine, fromLng, fromLat, toLng, toLat]);
+
+  // Draw whichever line is current: the real route once it lands, else the
+  // dashed straight-line fallback — never both, never neither while
+  // hasLine is true.
+  useEffect(() => {
+    if (!map || !hasLine) return;
+
+    const paintColor = color ?? readBrandPrimary(map.getDiv());
+    const path: Coordinate[] = route?.path ?? [
+      { lng: fromLng as number, lat: fromLat as number },
+      { lng: toLng as number, lat: toLat as number },
+    ];
+
+    const polyline = new google.maps.Polyline(
+      route
+        ? {
+            path,
+            strokeColor: paintColor,
+            strokeOpacity: DIRECTION_LINE_OPACITY,
+            strokeWeight: DIRECTION_LINE_WIDTH,
+            clickable: false,
+          }
+        : {
+            path,
+            strokeOpacity: 0,
+            icons: dashedLineIcons(paintColor),
+            clickable: false,
+          },
+    );
+    polyline.setMap(map);
+
+    return () => {
+      polyline.setMap(null);
+    };
+  }, [map, hasLine, fromLng, fromLat, toLng, toLat, color, route]);
 
   return null;
 }

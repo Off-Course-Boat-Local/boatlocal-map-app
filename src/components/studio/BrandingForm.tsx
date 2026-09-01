@@ -21,6 +21,10 @@ export interface BrandingFormProps {
   companyId: string;
   initialBrand: Brand;
   initialLogoUrl: string | null;
+  initialGoogleReviewUrl?: string | null;
+  initialTripadvisorReviewUrl?: string | null;
+  /** Which link the guest Review screen actually shows/redirects to. Defaults "google". */
+  initialReviewPlatform?: "google" | "tripadvisor";
   saveAction?: (
     companyId: string,
     input: UpdateCompanyBrandingInput,
@@ -103,6 +107,9 @@ export default function BrandingForm({
   companyId,
   initialBrand,
   initialLogoUrl,
+  initialGoogleReviewUrl = null,
+  initialTripadvisorReviewUrl = null,
+  initialReviewPlatform = "google",
   saveAction = saveCompanyBrandingAction,
 }: BrandingFormProps) {
   const preview = useStudioPreview();
@@ -113,6 +120,9 @@ export default function BrandingForm({
   const [accent, setAccent] = useState(initialBrand.accent);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [googleReviewUrl, setGoogleReviewUrl] = useState(initialGoogleReviewUrl ?? "");
+  const [tripadvisorReviewUrl, setTripadvisorReviewUrl] = useState(initialTripadvisorReviewUrl ?? "");
+  const [reviewPlatform, setReviewPlatform] = useState<"google" | "tripadvisor">(initialReviewPlatform);
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -127,6 +137,10 @@ export default function BrandingForm({
       primary: next.primary !== undefined ? next.primary : primary,
       primaryDark: next.primaryDark !== undefined ? next.primaryDark : primaryDark,
       accent: next.accent !== undefined ? next.accent : accent,
+      // The live logo state has its own setter (preview.setLogoUrl, called
+      // separately from the upload/remove handlers below) — this call site
+      // only needs to satisfy Brand's now-required field, not drive it.
+      logoUrl,
     });
   }
 
@@ -187,6 +201,9 @@ export default function BrandingForm({
     setAccent(initialBrand.accent);
     setLogoUrl(initialLogoUrl);
     setLogoError(null);
+    setGoogleReviewUrl(initialGoogleReviewUrl ?? "");
+    setTripadvisorReviewUrl(initialTripadvisorReviewUrl ?? "");
+    setReviewPlatform(initialReviewPlatform);
     setSaveState("idle");
     setSaveError(null);
     preview.setBrand(initialBrand);
@@ -214,6 +231,9 @@ export default function BrandingForm({
         brandPrimaryDark: primaryDark,
         brandAccent: accent,
         logoUrl,
+        googleReviewUrl: googleReviewUrl.trim() || null,
+        tripadvisorReviewUrl: tripadvisorReviewUrl.trim() || null,
+        reviewPlatform,
       });
       setSaveState("saved");
     } catch (err) {
@@ -316,6 +336,90 @@ export default function BrandingForm({
         <span className="font-mono">{primaryDark}</span>) is generated automatically from the
         primary colour.
       </p>
+
+      <section className={`space-y-4 rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] p-5 ${CARD_SHADOW}`}>
+        <div>
+          <label className={labelClass}>Review links</label>
+          <p className="text-xs text-[var(--studio-ink-soft)]">
+            Where the &ldquo;Leave a review&rdquo; screen sends guests — pick which one below.
+            Google falls back to BoatLocal&apos;s own listing if left blank.
+          </p>
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="branding-google-review-url">
+            Google review link
+          </label>
+          <input
+            id="branding-google-review-url"
+            type="url"
+            value={googleReviewUrl}
+            onChange={(e) => {
+              markDirty();
+              setGoogleReviewUrl(e.target.value);
+            }}
+            placeholder="https://g.page/r/…/review"
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="branding-tripadvisor-review-url">
+            Tripadvisor review link
+          </label>
+          <input
+            id="branding-tripadvisor-review-url"
+            type="url"
+            value={tripadvisorReviewUrl}
+            onChange={(e) => {
+              markDirty();
+              setTripadvisorReviewUrl(e.target.value);
+              // A platform picked below with no URL behind it is a
+              // misconfigured state, not a broken link (guestReview.ts
+              // falls back to Google either way) — but the picker shouldn't
+              // let someone walk into that from here: clearing the one
+              // link currently selected quietly falls back with it.
+              if (!e.target.value.trim() && reviewPlatform === "tripadvisor") {
+                setReviewPlatform("google");
+              }
+            }}
+            placeholder="https://www.tripadvisor.com/UserReview…"
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Redirect guests to</label>
+          <p className="text-xs text-[var(--studio-ink-soft)]">
+            The Review screen shows this ONE link — never a choice between platforms.
+          </p>
+          <div className="mt-2 flex gap-2">
+            {(["google", "tripadvisor"] as const).map((platform) => {
+              const disabled = platform === "tripadvisor" && !tripadvisorReviewUrl.trim();
+              const active = reviewPlatform === platform;
+              return (
+                <button
+                  key={platform}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    markDirty();
+                    setReviewPlatform(platform);
+                  }}
+                  title={disabled ? "Add a Tripadvisor review link above first." : undefined}
+                  className={`rounded-xl border px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                    active
+                      ? "border-[var(--studio-accent)] bg-[var(--studio-accent)]/10 text-[var(--studio-accent)]"
+                      : "border-[var(--studio-border)] text-[var(--studio-ink)] hover:bg-[var(--studio-bg)]"
+                  }`}
+                >
+                  {platform === "google" ? "Google" : "Tripadvisor"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
       <div className="flex items-center gap-3">
         <PrimaryButton onClick={handleSave} disabled={saveState === "saving"}>

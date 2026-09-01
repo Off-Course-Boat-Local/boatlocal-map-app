@@ -24,8 +24,10 @@ const nl: Dictionary = {
     boats: "Boten",
     breakfast: "Ontbijt",
     lunch: "Lunch",
+    dinner: "Diner",
     coffee: "Koffie",
     drinks: "Borrel",
+    wine: "Wijn",
     dancing: "Uitgaan",
     see: "Zien",
     photo: "Fotospot",
@@ -65,6 +67,10 @@ const nl: Dictionary = {
     noTripDetails: "Nog geen reisgegevens ingesteld om te boeken",
     edit: "Bewerken",
     addDetails: "Vul gegevens in",
+    arrivedTitle: (name) => `Je bent aangekomen bij ${name}`,
+    arrivedBody: (company) => `${company} stuurde je hierheen — hoe doen ze het?`,
+    arrivedCta: "Beoordeel je gids",
+    arrivedDismiss: "Sluiten",
   },
 
   placeDetail: {
@@ -76,6 +82,19 @@ const nl: Dictionary = {
     closePhotos: "Foto's sluiten",
     viewPhotosFullScreen: (n, name) =>
       `Bekijk ${n} foto${n === 1 ? "" : "'s"} van ${name} op volledig scherm`,
+  },
+
+  navigation: {
+    title: (name) => `Route naar ${name}`,
+    loading: "Beste route zoeken…",
+    loadError: "Kon de route nu niet laden.",
+    openExternally: "Openen in Google Maps",
+    arrivedTitle: (name) => `Je bent aangekomen bij ${name}`,
+    stepDistance: (distance) => `Over ${distance}`,
+    remaining: (minutes, distance) => `${minutes} min · nog ${distance}`,
+    enableCompass: "Kompas inschakelen",
+    recenter: "Centreren",
+    overview: "Hele route",
   },
 
   saved: {
@@ -95,7 +114,8 @@ const nl: Dictionary = {
     title: "Hoe was het?",
     subtitle: (company) =>
       `${company} leest ze stuk voor stuk — het kost je zo'n 20 seconden.`,
-    rateTitle: "Beoordeel je ervaring",
+    socialProof: (n) => `Sluit je aan bij ${n} gasten die al hebben gedeeld`,
+    rateTitle: (company) => `Beoordeel ${company}`,
     starLabel: (n) => `${n} ster${n > 1 ? "ren" : ""}`,
     positiveCaption: "Fijn dat het in de smaak viel.",
     negativeCaption: "Jammer dat het tegenviel — vertel ons wat er gebeurde.",

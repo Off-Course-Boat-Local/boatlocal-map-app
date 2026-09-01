@@ -23,8 +23,10 @@ const es: Dictionary = {
     boats: "Barcos",
     breakfast: "Desayuno",
     lunch: "Almuerzo",
+    dinner: "Cena",
     coffee: "Café",
     drinks: "Bebidas",
+    wine: "Vino",
     dancing: "Baile",
     see: "Qué ver",
     photo: "Fotos",
@@ -64,6 +66,10 @@ const es: Dictionary = {
     noTripDetails: "Aún no has guardado los datos del viaje",
     edit: "Editar",
     addDetails: "Añadir datos",
+    arrivedTitle: (name) => `Has llegado a ${name}`,
+    arrivedBody: (company) => `${company} te ha enviado aquí — ¿qué tal lo hacen?`,
+    arrivedCta: "Valora tu guía",
+    arrivedDismiss: "Cerrar",
   },
 
   placeDetail: {
@@ -75,6 +81,19 @@ const es: Dictionary = {
     closePhotos: "Cerrar fotos",
     viewPhotosFullScreen: (n, name) =>
       `Ver ${n} foto${n === 1 ? "" : "s"} de ${name} a pantalla completa`,
+  },
+
+  navigation: {
+    title: (name) => `Cómo llegar a ${name}`,
+    loading: "Buscando la mejor ruta…",
+    loadError: "No se ha podido cargar la ruta ahora mismo.",
+    openExternally: "Abrir en Google Maps",
+    arrivedTitle: (name) => `Has llegado a ${name}`,
+    stepDistance: (distance) => `En ${distance}`,
+    remaining: (minutes, distance) => `${minutes} min · quedan ${distance}`,
+    enableCompass: "Activar brújula",
+    recenter: "Centrar",
+    overview: "Ruta completa",
   },
 
   saved: {
@@ -94,7 +113,8 @@ const es: Dictionary = {
     title: "¿Qué tal ha ido?",
     subtitle: (company) =>
       `${company} lee todas las opiniones, una por una — te llevará unos 20 segundos.`,
-    rateTitle: "Valora tu experiencia",
+    socialProof: (n) => `Únete a ${n} viajeros que ya han compartido la suya`,
+    rateTitle: (company) => `Valora a ${company}`,
     starLabel: (n) => `${n} estrella${n > 1 ? "s" : ""}`,
     positiveCaption: "Nos alegra que lo hayas disfrutado.",
     negativeCaption: "Sentimos que no estuviera a la altura — cuéntanos qué pasó.",

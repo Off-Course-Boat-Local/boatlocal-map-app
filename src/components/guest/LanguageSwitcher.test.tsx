@@ -18,9 +18,11 @@ beforeEach(() => {
 });
 
 describe("LanguageSwitcher", () => {
-  it("shows the current locale code on the pill (EN without a provider)", () => {
+  // The trigger is a globe icon with no visible text — the current language
+  // rides entirely on its accessible name, so that name IS the contract.
+  it("names the current locale on the trigger (English without a provider)", () => {
     render(<LanguageSwitcher />);
-    expect(screen.getByRole("button", { name: /language/i })).toHaveTextContent("EN");
+    expect(screen.getByRole("button", { name: "Language: English" })).toBeInTheDocument();
   });
 
   it("lists every supported language by its native name (with flags) when opened", async () => {
@@ -66,8 +68,7 @@ describe("LanguageSwitcher", () => {
       </LocaleProvider>,
     );
 
-    const trigger = screen.getByRole("button", { name: /sprache/i });
-    expect(trigger).toHaveTextContent("DE");
+    const trigger = screen.getByRole("button", { name: "Sprache: Deutsch" });
 
     await userEvent.click(trigger);
     expect(screen.getByRole("option", { name: "Deutsch" })).toHaveAttribute(

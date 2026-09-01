@@ -8,9 +8,25 @@ import {
 } from "./guestReview";
 
 describe("getReviewOptions", () => {
-  it("returns only Google when just googleReviewUrl is configured", () => {
+  it("always returns exactly one option — never a choice between platforms", () => {
     const options = getReviewOptions(
-      { googleReviewUrl: "https://g.page/r/example/review", tripadvisorReviewUrl: null },
+      {
+        googleReviewUrl: "https://g.page/r/example/review",
+        tripadvisorReviewUrl: "https://tripadvisor.com/example",
+        reviewPlatform: "google",
+      },
+      "Boat & Bike Co.",
+    );
+    expect(options).toHaveLength(1);
+  });
+
+  it("returns Google when reviewPlatform is google and googleReviewUrl is configured", () => {
+    const options = getReviewOptions(
+      {
+        googleReviewUrl: "https://g.page/r/example/review",
+        tripadvisorReviewUrl: "https://tripadvisor.com/example",
+        reviewPlatform: "google",
+      },
       "Boat & Bike Co.",
     );
 
@@ -24,19 +40,17 @@ describe("getReviewOptions", () => {
     ]);
   });
 
-  it("returns Google (BoatLocal default) and Tripadvisor when only tripadvisorReviewUrl is configured", () => {
+  it("returns Tripadvisor when reviewPlatform is tripadvisor and tripadvisorReviewUrl is configured", () => {
     const options = getReviewOptions(
-      { googleReviewUrl: null, tripadvisorReviewUrl: "https://tripadvisor.com/example" },
+      {
+        googleReviewUrl: "https://g.page/r/example/review",
+        tripadvisorReviewUrl: "https://tripadvisor.com/example",
+        reviewPlatform: "tripadvisor",
+      },
       "Boat & Bike Co.",
     );
 
     expect(options).toEqual([
-      {
-        platform: "google",
-        label: "Google",
-        url: DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL,
-        isPlaceholder: false,
-      },
       {
         platform: "tripadvisor",
         label: "Tripadvisor",
@@ -46,22 +60,29 @@ describe("getReviewOptions", () => {
     ]);
   });
 
-  it("returns Google first, then Tripadvisor, when both are configured", () => {
+  it("falls back to Google when reviewPlatform is tripadvisor but no tripadvisorReviewUrl is set — a misconfigured pick, not a broken link", () => {
     const options = getReviewOptions(
       {
         googleReviewUrl: "https://g.page/r/example/review",
-        tripadvisorReviewUrl: "https://tripadvisor.com/example",
+        tripadvisorReviewUrl: null,
+        reviewPlatform: "tripadvisor",
       },
       "Boat & Bike Co.",
     );
 
-    expect(options.map((o) => o.platform)).toEqual(["google", "tripadvisor"]);
-    expect(options.every((o) => o.isPlaceholder === false)).toBe(true);
+    expect(options).toEqual([
+      {
+        platform: "google",
+        label: "Google",
+        url: "https://g.page/r/example/review",
+        isPlaceholder: false,
+      },
+    ]);
   });
 
-  it("defaults Google to BoatLocal official review URL when neither is configured", () => {
+  it("flags isPlaceholder when Google falls back to BoatLocal's own review URL", () => {
     const options = getReviewOptions(
-      { googleReviewUrl: null, tripadvisorReviewUrl: null },
+      { googleReviewUrl: null, tripadvisorReviewUrl: null, reviewPlatform: "google" },
       "Boat & Bike Co.",
     );
 
@@ -70,7 +91,7 @@ describe("getReviewOptions", () => {
         platform: "google",
         label: "Google",
         url: DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL,
-        isPlaceholder: false,
+        isPlaceholder: true,
       },
     ]);
   });
@@ -82,7 +103,7 @@ describe("getReviewOptions", () => {
         platform: "google",
         label: "Google",
         url: DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL,
-        isPlaceholder: false,
+        isPlaceholder: true,
       },
     ]);
   });

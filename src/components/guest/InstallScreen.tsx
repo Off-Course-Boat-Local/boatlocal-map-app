@@ -137,6 +137,7 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
         eyebrow={t.install.eyebrow}
         title={t.install.title}
         subtitle={t.install.subtitle(brand.appName)}
+        logoUrl={brand.logoUrl}
       />
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6">

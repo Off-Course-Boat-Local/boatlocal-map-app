@@ -66,6 +66,7 @@ export type EventType =
   | "tip_saved"
   | "tip_unsaved"
   | "directions_requested"
+  | "directions_arrived"
   | "boat_book_click"
   | "review_click_google"
   | "review_click_tripadvisor"
@@ -86,6 +87,23 @@ export interface CompanyRecord {
   campaignParams: string | null;
   googleReviewUrl: string | null;
   tripadvisorReviewUrl: string | null;
+  /**
+   * Which ONE of the two links above the guest Review screen actually shows
+   * and redirects to — never both at once (founder call, 2026-09-01: a
+   * guest picking between two competing review sites is worse than the
+   * company just choosing). Defaults to "google". Picking "tripadvisor"
+   * with no `tripadvisorReviewUrl` set falls back to Google — see
+   * getReviewOptions in src/lib/guestReview.ts.
+   */
+  reviewPlatform: "google" | "tripadvisor";
+  /**
+   * Hostname (e.g. "map.offcourseamsterdam.com") that resolves straight to
+   * this company's guest app with no `?company=` param at all — see
+   * getCompanyByCustomDomain in src/lib/data/source.ts and its use in
+   * src/lib/guestServerContext.ts. Null for every tenant using the default
+   * boatlocal.nl + query-param routing (i.e. almost all of them).
+   */
+  customDomain: string | null;
   status: CompanyStatus;
   /** The company's first Studio user (role=company). Null for rows created before this existed. */
   ownerEmail: string | null;
@@ -137,12 +155,20 @@ export interface RecommendationRecord {
   address: string;
   lng: number;
   lat: number;
-  /** The guide's personal endorsement. This is the trust signal — never a rating. */
+  /** The guide's personal endorsement — the primary trust signal, still required even when googleRating is present. */
   note: string;
   /** Guide-entered free text, e.g. "Tue–Sun 11:00–18:00, closed Mondays". */
   hours: string;
   photos: string[];
   visible: boolean;
+  /**
+   * A Google Places rating (0-5) / review-count snapshot captured at
+   * add-time via Google enrichment — null for a manually-typed place.
+   * Shown to guests alongside, never instead of, the note above (see
+   * supabase/migrations/20260901155246_recommendations_google_rating.sql).
+   */
+  googleRating: number | null;
+  googleReviewCount: number | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -382,6 +408,9 @@ export interface SaveRecommendationInput {
   hours: string;
   photos: string[];
   visible?: boolean;
+  /** Optional — only set when this row came from Google Places enrichment. */
+  googleRating?: number | null;
+  googleReviewCount?: number | null;
 }
 
 export interface SaveBoatTourInput {

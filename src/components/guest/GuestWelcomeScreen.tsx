@@ -52,7 +52,24 @@ export interface GuestWelcomeScreenProps {
   qs: string;
 }
 
-function GuideAvatar({ initial }: { initial: string }) {
+function GuideAvatar({ initial, logoUrl }: { initial: string; logoUrl?: string | null }) {
+  // The uploaded company logo (Studio > Branding) takes this circle over
+  // when set — it's a stronger, more recognisable "face" for the brand
+  // than a bare initial, and this is the first thing a guest sees. Falls
+  // back to the initial exactly as before when no logo is set.
+  if (logoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        aria-hidden="true"
+        src={logoUrl}
+        alt=""
+        className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white object-contain p-2"
+        style={{ boxShadow: "0 6px 16px -6px rgba(0,0,0,0.35)" }}
+      />
+    );
+  }
+
   return (
     <div
       aria-hidden="true"
@@ -61,7 +78,7 @@ function GuideAvatar({ initial }: { initial: string }) {
         fontFamily: displayFontFamily,
         fontSize: 26,
         fontWeight: 700,
-        color: "var(--brand-primary)",
+        color: "var(--brand-accent)",
         boxShadow: "0 6px 16px -6px rgba(0,0,0,0.35)",
       }}
     >
@@ -312,7 +329,7 @@ export default function GuestWelcomeScreen({
           paddingTop: "calc(env(safe-area-inset-top) + 32px)",
         }}
       >
-        <GuideAvatar initial={guideAvatarInitial} />
+        <GuideAvatar initial={guideAvatarInitial} logoUrl={brand.logoUrl} />
         <p className="mt-3 text-[11px] font-semibold uppercase tracking-widest opacity-80">
           {brand.companyName}
         </p>

@@ -11,9 +11,12 @@
 // GuestPlaceDetail (see onOpenDetail) — the full description + photo grid,
 // with the same primary action repeated near the top for a quick tap.
 //
-// DELIBERATE OMISSION, same as PlaceCard: no star rating, no review count,
-// anywhere. The guide's note is the endorsement (that's what the blurb is);
-// the full note lives on GuestPlaceDetail, this is the index of it.
+// RATING: a small Google rating/review-count badge (RatingBadge) renders
+// next to the title when googleRating is set — reverses what used to be a
+// hard "no rating anywhere" rule (founder call, 2026-09-01). The guide's
+// note is still the primary endorsement and is still required regardless
+// (that's what the blurb below is); the full note lives on
+// GuestPlaceDetail, this is the index of it.
 //
 // DATA MAPPING (reference → MapPin): image → photos[0] (brand-tint
 // placeholder with the category glyph when a place has no photo yet);
@@ -24,10 +27,12 @@
 import { Clock, MapPin as MapPinIcon } from "lucide-react";
 
 import { CategoryGlyph } from "@/components/map/Pin";
+import RatingBadge from "@/components/map/RatingBadge";
 import { categoryColor } from "@/lib/categories";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { BORDER, BRAND_TINT, INK, MUTED, SHADOW_CARD } from "@/lib/guestTheme";
+import { relativeHoursLabel } from "@/lib/hoursFormat";
 import type { MapPin } from "@/lib/data";
 import { SaveHeartButton } from "./SaveHeartButton";
 
@@ -131,6 +136,14 @@ export function GuestPlaceRow({
         >
           {item.name}
         </h3>
+        {item.googleRating != null && (
+          <RatingBadge
+            rating={item.googleRating}
+            reviewCount={item.googleReviewCount}
+            className="mt-1"
+            style={{ fontSize: "0.75rem" }}
+          />
+        )}
         {item.note && (
           <p
             className="mt-1.5 text-[0.8125rem] leading-relaxed"
@@ -171,7 +184,13 @@ export function GuestPlaceRow({
             {(item.durationLabel || item.meta) && (
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" aria-hidden />
-                {item.durationLabel || item.meta}
+                {/* Boats: item.meta is a duration/price string, shown
+                    verbatim. Places: item.meta is opening hours — reduced
+                    to a single relative-to-now line ("Closes in 45m")
+                    instead of the whole week, falling back to the raw
+                    text unchanged for anything relativeHoursLabel can't
+                    parse (guide-entered free text like "Always open"). */}
+                {item.durationLabel || relativeHoursLabel(item.meta)}
               </span>
             )}
           </div>

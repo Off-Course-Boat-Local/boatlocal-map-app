@@ -37,8 +37,10 @@ const en = {
     boats: "Boats",
     breakfast: "Breakfast",
     lunch: "Lunch",
+    dinner: "Dinner",
     coffee: "Coffee",
     drinks: "Drinks",
+    wine: "Wine",
     dancing: "Dancing",
     see: "See",
     photo: "Photo spot",
@@ -79,6 +81,11 @@ const en = {
     noTripDetails: "No trip details set for booking yet",
     edit: "Edit",
     addDetails: "Add details",
+    /** Arrival-triggered review-prompt banner — see ARRIVAL_THRESHOLD_METERS in GuestMapScreen.tsx. */
+    arrivedTitle: (name: string) => `You've arrived at ${name}`,
+    arrivedBody: (company: string) => `${company} sent you here — how did they do?`,
+    arrivedCta: "Rate your guide",
+    arrivedDismiss: "Dismiss",
   },
 
   placeDetail: {
@@ -90,6 +97,21 @@ const en = {
     closePhotos: "Close photos",
     viewPhotosFullScreen: (n: number, name: string) =>
       `View ${n} photo${n === 1 ? "" : "s"} of ${name} full-screen`,
+  },
+
+  /** In-app turn-by-turn walking directions — GuestNavigationScreen.tsx. */
+  navigation: {
+    title: (name: string) => `Directions to ${name}`,
+    loading: "Finding the best route…",
+    loadError: "Couldn't load directions right now.",
+    openExternally: "Open in Google Maps",
+    arrivedTitle: (name: string) => `You've arrived at ${name}`,
+    stepDistance: (distance: string) => `In ${distance}`,
+    remaining: (minutes: number, distance: string) =>
+      `${minutes} min · ${distance} remaining`,
+    enableCompass: "Enable compass",
+    recenter: "Recenter",
+    overview: "Overview",
   },
 
   saved: {
@@ -109,7 +131,9 @@ const en = {
     title: "How was it?",
     subtitle: (company: string) =>
       `${company} reads every single one — it takes about 20 seconds.`,
-    rateTitle: "Rate your experience",
+    /** Shown only past a minimum review count — see MIN_REVIEWS_FOR_SOCIAL_PROOF in GuestReviewScreen.tsx. Same count for every guest, regardless of their own rating — not a gating signal. */
+    socialProof: (n: number) => `Join ${n} guests who've already shared theirs`,
+    rateTitle: (company: string) => `Rate ${company}`,
     starLabel: (n: number) => `${n} star${n > 1 ? "s" : ""}`,
     positiveCaption: "Glad it landed well.",
     negativeCaption: "Sorry it fell short — tell us what happened.",

@@ -154,6 +154,19 @@ export interface PlaceDetails {
   suggestedCategories: string[];
   /** Data-URL strings, ready to feed straight into AdminBoatPhotosField. */
   photos: string[];
+  /**
+   * Google's own rating (out of 5) and review count — "Atmosphere Data"
+   * tier, a step up in cost from the plain lookup this module used before.
+   * DELIBERATELY NEVER written to a `recommendations` row or shown to a
+   * guest — see GuestPlaceRow.tsx / PlaceCard.tsx's own "no star rating,
+   * no review count, anywhere" comments. This exists only as curation
+   * context for whoever is deciding whether to add the place (see
+   * VoiceAddPlaces.tsx), same spirit as reviewSnippets/vibeSummary below.
+   */
+  rating: number | null;
+  reviewCount: number | null;
+  /** Up to a handful of review excerpts, for summarizeVibe() to read — never shown verbatim to a guest. */
+  reviewSnippets: string[];
 }
 
 interface PlaceDetailsResponseBody {
@@ -164,6 +177,9 @@ interface PlaceDetailsResponseBody {
   regularOpeningHours?: { weekdayDescriptions?: string[] };
   types?: string[];
   photos?: Array<{ name?: string }>;
+  rating?: number;
+  userRatingCount?: number;
+  reviews?: Array<{ text?: { text?: string } }>;
 }
 
 const MAX_PHOTOS = 8;
@@ -199,12 +215,16 @@ async function fetchPhotoAsDataUrl(photoName: string): Promise<string | null> {
  * Everything this returns is shaped to drop straight into
  * AdminRecommendationForm's existing fields.
  */
+const MAX_REVIEW_SNIPPETS = 5;
+const REVIEW_SNIPPET_MAX_CHARS = 500;
+
 export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
   const res = await fetch(`${PLACES_BASE}/places/${encodeURIComponent(placeId)}`, {
     headers: {
       "X-Goog-Api-Key": apiKey(),
       "X-Goog-FieldMask":
-        "displayName,formattedAddress,addressComponents,location,regularOpeningHours,types,photos",
+        "displayName,formattedAddress,addressComponents,location,regularOpeningHours,types,photos," +
+        "rating,userRatingCount,reviews",
     },
   });
 
@@ -222,6 +242,12 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
     (p): p is string => p !== null,
   );
 
+  const reviewSnippets = (body.reviews ?? [])
+    .map((r) => r.text?.text?.trim())
+    .filter((t): t is string => Boolean(t))
+    .slice(0, MAX_REVIEW_SNIPPETS)
+    .map((t) => (t.length > REVIEW_SNIPPET_MAX_CHARS ? `${t.slice(0, REVIEW_SNIPPET_MAX_CHARS)}…` : t));
+
   return {
     name: body.displayName?.text?.trim() || "",
     address: body.formattedAddress?.trim() || "",
@@ -231,5 +257,8 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
     hours: (body.regularOpeningHours?.weekdayDescriptions ?? []).join("; "),
     suggestedCategories: guessCategories(body.types ?? []),
     photos,
+    rating: body.rating ?? null,
+    reviewCount: body.userRatingCount ?? null,
+    reviewSnippets,
   };
 }

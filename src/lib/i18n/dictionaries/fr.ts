@@ -26,8 +26,10 @@ const fr: Dictionary = {
     boats: "Bateaux",
     breakfast: "Petit-déj",
     lunch: "Déjeuner",
+    dinner: "Dîner",
     coffee: "Café",
     drinks: "Apéro",
+    wine: "Vin",
     dancing: "Danser",
     see: "À voir",
     photo: "Spot photo",
@@ -67,6 +69,10 @@ const fr: Dictionary = {
     noTripDetails: "Pas encore de détails de sortie pour réserver",
     edit: "Modifier",
     addDetails: "Ajouter des détails",
+    arrivedTitle: (name) => `Tu es arrivé à ${name}`,
+    arrivedBody: (company) => `${company} t'a envoyé ici — alors, ils assurent ?`,
+    arrivedCta: "Note ton guide",
+    arrivedDismiss: "Fermer",
   },
 
   placeDetail: {
@@ -78,6 +84,19 @@ const fr: Dictionary = {
     closePhotos: "Fermer les photos",
     viewPhotosFullScreen: (n, name) =>
       `Voir ${n} photo${n === 1 ? "" : "s"} de ${name} en plein écran`,
+  },
+
+  navigation: {
+    title: (name) => `Itinéraire vers ${name}`,
+    loading: "Recherche du meilleur itinéraire…",
+    loadError: "Impossible de charger l'itinéraire pour le moment.",
+    openExternally: "Ouvrir dans Google Maps",
+    arrivedTitle: (name) => `Tu es arrivé à ${name}`,
+    stepDistance: (distance) => `Dans ${distance}`,
+    remaining: (minutes, distance) => `${minutes} min · ${distance} restants`,
+    enableCompass: "Activer la boussole",
+    recenter: "Recentrer",
+    overview: "Itinéraire complet",
   },
 
   saved: {
@@ -97,7 +116,8 @@ const fr: Dictionary = {
     title: "C'était comment ?",
     subtitle: (company) =>
       `${company} lit tout, un par un — ça prend environ 20 secondes.`,
-    rateTitle: "Note ton expérience",
+    socialProof: (n) => `Rejoins ${n} voyageurs qui ont déjà partagé le leur`,
+    rateTitle: (company) => `Note ${company}`,
     starLabel: (n) => `${n} étoile${n > 1 ? "s" : ""}`,
     positiveCaption: "Ravi que ça t'ait plu.",
     negativeCaption: "Désolé que ça n'ait pas été à la hauteur — dis-nous ce qui s'est passé.",

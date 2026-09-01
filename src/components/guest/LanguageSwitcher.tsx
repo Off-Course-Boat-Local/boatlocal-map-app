@@ -95,7 +95,7 @@ export function LanguageSwitcher({ tone = "header" }: LanguageSwitcherProps) {
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={`${t.common.languageLabel}: ${LOCALE_NAMES[locale]}`}
-        className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[0.75rem] font-semibold${
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-full${
           tone === "floating" ? " backdrop-blur" : ""
         }`}
         style={{
@@ -106,7 +106,6 @@ export function LanguageSwitcher({ tone = "header" }: LanguageSwitcherProps) {
         }}
       >
         <Globe className="h-4 w-4" strokeWidth={2} aria-hidden />
-        {locale.toUpperCase()}
       </button>
 
       {open && (

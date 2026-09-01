@@ -34,6 +34,7 @@
 import { useActionState, useEffect, useState } from "react";
 
 import PortalToggle from "@/components/PortalToggle";
+import RatingBadge from "@/components/map/RatingBadge";
 import type { CategoryId } from "@/lib/types";
 import type { RecommendationRecord } from "@/lib/data/types";
 import type { PlaceDetails } from "@/lib/admin/googlePlaces";
@@ -96,6 +97,12 @@ export default function RecommendationForm({
   } | null>(null);
   const [photosInjectKey, setPhotosInjectKey] = useState(0);
   const [photosInject, setPhotosInject] = useState<string[]>([]);
+  const [googleRating, setGoogleRating] = useState<number | null>(
+    recommendation?.googleRating ?? null,
+  );
+  const [googleReviewCount, setGoogleReviewCount] = useState<number | null>(
+    recommendation?.googleReviewCount ?? null,
+  );
 
   function toggleCategory(id: CategoryId) {
     setCategories((prev) =>
@@ -130,6 +137,8 @@ export default function RecommendationForm({
       setPhotosInject(details.photos);
       setPhotosInjectKey((k) => k + 1);
     }
+    setGoogleRating(details.rating);
+    setGoogleReviewCount(details.reviewCount);
   }
 
   // useActionState re-renders this component with the new state as soon as
@@ -169,6 +178,17 @@ export default function RecommendationForm({
       </label>
 
       <GooglePlaceSearchField query={name} onApply={applyGooglePlace} />
+
+      {googleRating != null ? (
+        <div className="flex items-center gap-2 rounded-xl bg-[var(--studio-bg)] px-3 py-2">
+          <RatingBadge rating={googleRating} reviewCount={googleReviewCount} size={14} />
+          <span className="text-xs text-[var(--studio-ink-soft)]">
+            from Google — shown to guests alongside your note
+          </span>
+        </div>
+      ) : null}
+      <input type="hidden" name="googleRating" value={googleRating ?? ""} />
+      <input type="hidden" name="googleReviewCount" value={googleReviewCount ?? ""} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>

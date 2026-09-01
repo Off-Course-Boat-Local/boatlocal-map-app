@@ -26,6 +26,7 @@ export default async function StudioBrandingPage() {
     primaryDark: company.brandPrimaryDark,
     accent: company.brandAccent,
     surround: company.brandSurround,
+    logoUrl: company.logoUrl,
   };
 
   return (
@@ -33,6 +34,9 @@ export default async function StudioBrandingPage() {
       companyId={company.id}
       initialBrand={initialBrand}
       initialLogoUrl={company.logoUrl}
+      initialGoogleReviewUrl={company.googleReviewUrl}
+      initialTripadvisorReviewUrl={company.tripadvisorReviewUrl}
+      initialReviewPlatform={company.reviewPlatform}
     />
   );
 }

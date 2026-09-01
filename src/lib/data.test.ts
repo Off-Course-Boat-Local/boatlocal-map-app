@@ -52,13 +52,27 @@ describe("recommendation data", () => {
     }
   });
 
-  it("carries no rating field anywhere", () => {
-    // Deliberate product decision: crowd ratings undercut the guide's
-    // endorsement and push guests toward high-volume tourist traps. If a
-    // rating ever reappears in the model, this should fail loudly.
-    const serialised = JSON.stringify(ALL_PINS);
-    for (const banned of ["rating", "userRatingCount", "reviewCount", "stars"]) {
-      expect(serialised.toLowerCase()).not.toContain(banned.toLowerCase());
+  it("every pin has a googleRating/googleReviewCount field, null when there's no Google snapshot", () => {
+    // Reverses the old "no rating anywhere" rule (founder call,
+    // 2026-09-01) — a rating is now allowed, but only ever a genuine
+    // Google Places snapshot captured at add-time, never a placeholder
+    // or invented value. None of these fixture pins came from Google
+    // enrichment, so both fields are null on every one of them; a
+    // non-null value here without a real Google-sourced place would be
+    // a sign something invented a rating.
+    for (const pin of ALL_PINS) {
+      expect(pin).toHaveProperty("googleRating");
+      expect(pin).toHaveProperty("googleReviewCount");
+      expect(pin.googleRating, pin.name).toBeNull();
+      expect(pin.googleReviewCount, pin.name).toBeNull();
+    }
+  });
+
+  it("every pin still has a required, non-empty note regardless of rating", () => {
+    // The rating (when present) is additive — the guide's own note stays
+    // the primary, always-required trust signal.
+    for (const pin of ALL_PINS) {
+      expect(pin.note.trim().length, pin.name).toBeGreaterThan(0);
     }
   });
 });

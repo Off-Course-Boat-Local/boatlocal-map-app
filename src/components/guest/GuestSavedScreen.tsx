@@ -117,6 +117,7 @@ export default function GuestSavedScreen({
             ? t.saved.emptySubtitle(brand.appName)
             : t.saved.countSubtitle(savedPins.length, brand.appName)
         }
+        logoUrl={brand.logoUrl}
       />
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white">

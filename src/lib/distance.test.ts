@@ -5,6 +5,7 @@ import {
   formatWalk,
   formatWalkFromMeters,
   haversineMeters,
+  walkEstimatePartsFromRoute,
   walkingDistanceMeters,
   walkingMinutes,
 } from "./distance";
@@ -129,5 +130,36 @@ describe("formatWalk over the real dataset", () => {
         8000,
       );
     }
+  });
+});
+
+describe("walkEstimatePartsFromRoute", () => {
+  it("uses the real duration for minutes, not the distance-derived estimate", () => {
+    // 824m would normally derive ~10 min at WALKING_SPEED_KMH (5 km/h), but
+    // a real route can walk it slower (more crossings/lights) or faster —
+    // this must reflect what Google actually said, not re-derive its own
+    // guess from the distance.
+    const parts = walkEstimatePartsFromRoute(824, 900); // 15 real minutes
+    expect(parts).toEqual({ kind: "walk", minutes: 15, distanceLabel: "800 m" });
+  });
+
+  it("rounds duration up to a whole minute, same as the straight-line estimate does", () => {
+    const parts = walkEstimatePartsFromRoute(500, 61); // just over 1 minute
+    expect(parts.kind === "walk" && parts.minutes).toBe(2);
+  });
+
+  it("never returns fewer than 1 minute even for a near-zero duration", () => {
+    const parts = walkEstimatePartsFromRoute(200, 5);
+    expect(parts.kind === "walk" && parts.minutes).toBe(1);
+  });
+
+  it("still applies the rightHere band below RIGHT_HERE_METERS, same as the straight-line estimate", () => {
+    expect(walkEstimatePartsFromRoute(40, 30)).toEqual({ kind: "rightHere", metersLabel: "50 m" });
+    expect(walkEstimatePartsFromRoute(10, 8)).toEqual({ kind: "rightHere", metersLabel: null });
+  });
+
+  it("labels distance in km at or above 1000m, same rounding as the straight-line estimate", () => {
+    const parts = walkEstimatePartsFromRoute(2140, 1500);
+    expect(parts.kind === "walk" && parts.distanceLabel).toBe("2.1 km");
   });
 });

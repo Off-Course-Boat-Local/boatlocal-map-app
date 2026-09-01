@@ -180,13 +180,16 @@ export function Pin({
       >
         {/* Pulsing selection ring — brand-coloured (not category-coloured):
             "you selected this pin" is an app-identity signal, same role as
-            the `animate-ping` dot on the guest's own location marker (see
-            src/app/spike/location/page.tsx). Mounted only while selected,
-            same as the reference guide's `{active && (...)}`. */}
+            the guest location dot's own halo. Uses the calmer
+            `animate-pin-pulse` keyframe (globals.css), not Tailwind's stock
+            `animate-ping` — on a ring this large, ping's scale(2)-over-1s
+            read as a fast, oversized flash rather than a quiet cue; see
+            that keyframe's own comment. Mounted only while selected, same
+            as the reference guide's `{active && (...)}`. */}
         {selected ? (
           <span
             aria-hidden="true"
-            className="animate-ping"
+            className="animate-pin-pulse"
             style={{
               position: "absolute",
               left: `${HEAD_CX_PCT}%`,
@@ -197,7 +200,6 @@ export function Pin({
               marginTop: -ringSize / 2,
               borderRadius: "50%",
               background: SELECTION_ACCENT,
-              opacity: 0.3,
             }}
           />
         ) : null}

@@ -126,8 +126,36 @@ export function parseAdminRecommendationForm(
 
   const visible = formData.get("visible") != null;
 
+  // Optional — same "only present when Google-sourced, undefined means
+  // 'leave an existing snapshot alone on edit'" rule as Studio's own
+  // recommendationForm.ts.
+  const googleRatingRaw = formData.get("googleRating");
+  const googleReviewCountRaw = formData.get("googleReviewCount");
+  const googleRating =
+    googleRatingRaw != null && String(googleRatingRaw).trim() !== ""
+      ? Number(googleRatingRaw)
+      : undefined;
+  const googleReviewCount =
+    googleReviewCountRaw != null && String(googleReviewCountRaw).trim() !== ""
+      ? Number(googleReviewCountRaw)
+      : undefined;
+
   return {
     ok: true,
-    value: { id, categories, name, area, address, lng, lat, note, hours, photos, visible },
+    value: {
+      id,
+      categories,
+      name,
+      area,
+      address,
+      lng,
+      lat,
+      note,
+      hours,
+      photos,
+      visible,
+      googleRating,
+      googleReviewCount,
+    },
   };
 }

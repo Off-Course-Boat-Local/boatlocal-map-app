@@ -2,8 +2,10 @@
 //
 // Coordinates are real Amsterdam locations so the custom map style can be
 // judged against actual geography. Notes and hours are written the way a
-// real guide would write them: hours are free text (guide-entered), and
-// there are no star ratings anywhere by design.
+// real guide would write them: hours are free text (guide-entered).
+// googleRating/googleReviewCount are null on every fixture place here —
+// none of these were added through Google enrichment, so there is nothing
+// to show alongside the guide's own note (see Place's own doc comment).
 //
 // Photos are placeholder URLs standing in for guide uploads.
 
@@ -38,6 +40,8 @@ export const PLACES: Place[] = [
     note: "Best pancakes in the city. Go before 9 or you'll queue for an hour.",
     hours: "Daily 08:30–16:00",
     photos: photo("bakers"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "mook-pancakes",
@@ -50,6 +54,8 @@ export const PLACES: Place[] = [
     note: "Dutch pancakes done properly. The apple one is the move.",
     hours: "Daily 09:00–17:00",
     photos: photo("mook"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "cafe-de-jaren",
@@ -62,6 +68,8 @@ export const PLACES: Place[] = [
     note: "Sit on the terrace over the Amstel. Worth it for the view alone.",
     hours: "Daily 10:00–01:00",
     photos: photo("jaren"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "pendergast",
@@ -74,6 +82,8 @@ export const PLACES: Place[] = [
     note: "Great sandwiches, no fuss. Where I actually eat on my day off.",
     hours: "Tue–Sun 11:00–18:00, closed Mondays",
     photos: photo("pender"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "foodhallen",
@@ -86,6 +96,8 @@ export const PLACES: Place[] = [
     note: "Old tram depot, twenty food stalls. Good when nobody can agree.",
     hours: "Sun–Thu 11:00–23:30, Fri–Sat till 01:00",
     photos: photo("foodhal"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "lot-sixty-one",
@@ -98,6 +110,8 @@ export const PLACES: Place[] = [
     note: "They roast their own. Small place, take it away and walk.",
     hours: "Mon–Fri 08:00–17:00, weekends from 09:00",
     photos: photo("lot61"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "screaming-beans",
@@ -110,6 +124,8 @@ export const PLACES: Place[] = [
     note: "Tiny, always busy, best flat white in the Nine Streets.",
     hours: "Daily 08:00–18:00",
     photos: photo("beans"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "brouwerij-ij",
@@ -122,6 +138,8 @@ export const PLACES: Place[] = [
     note: "Brewery under a windmill. Sit outside, order the Zatte.",
     hours: "Daily 14:00–20:00",
     photos: photo("brouwerij"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "cafe-papeneiland",
@@ -134,6 +152,8 @@ export const PLACES: Place[] = [
     note: "A proper brown café from 1642. Order a jenever, don't rush it.",
     hours: "Daily 10:00–01:00",
     photos: photo("papen"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "rijksmuseum",
@@ -146,6 +166,8 @@ export const PLACES: Place[] = [
     note: "Book online first. Go straight to the Night Watch, then wander back.",
     hours: "Daily 09:00–17:00",
     photos: photo("rijks"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "anne-frank",
@@ -158,6 +180,8 @@ export const PLACES: Place[] = [
     note: "Tickets sell out weeks ahead — book before you land, not here.",
     hours: "Daily 09:00–22:00",
     photos: photo("anne"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "ndsm-werf",
@@ -170,6 +194,8 @@ export const PLACES: Place[] = [
     note: "Free ferry from Centraal. Street art everywhere, best light at sunset.",
     hours: "Always open",
     photos: photo("ndsm"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "nine-streets",
@@ -182,6 +208,8 @@ export const PLACES: Place[] = [
     note: "Nine little streets of small shops. Just walk them, don't plan it.",
     hours: "Most shops 10:00–18:00",
     photos: photo("negen"),
+    googleRating: null,
+    googleReviewCount: null,
   },
   {
     id: "waterlooplein",
@@ -194,6 +222,8 @@ export const PLACES: Place[] = [
     note: "Flea market. Come early for the good stuff, haggle a little.",
     hours: "Mon–Sat 09:00–17:00, closed Sunday",
     photos: photo("waterloo"),
+    googleRating: null,
+    googleReviewCount: null,
   },
 ];
 
@@ -306,6 +336,9 @@ export interface MapPin {
   photos: string[];
   isBoat: boolean;
   bookingUrl?: string;
+  /** See Place's own doc comment — null for a boat (no Google rating concept here) and for anything typed in by hand. */
+  googleRating: number | null;
+  googleReviewCount: number | null;
 }
 
 export const ALL_PINS: MapPin[] = [
@@ -321,6 +354,8 @@ export const ALL_PINS: MapPin[] = [
     photos: b.photos,
     isBoat: true,
     bookingUrl: b.bookingUrl,
+    googleRating: null,
+    googleReviewCount: null,
   })),
   ...PLACES.map((p) => ({
     id: p.id,
@@ -333,5 +368,7 @@ export const ALL_PINS: MapPin[] = [
     meta: p.hours,
     photos: p.photos,
     isBoat: false,
+    googleRating: p.googleRating,
+    googleReviewCount: p.googleReviewCount,
   })),
 ];

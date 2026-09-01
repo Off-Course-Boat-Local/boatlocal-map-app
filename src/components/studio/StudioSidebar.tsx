@@ -52,6 +52,15 @@ export interface StudioSidebarProps {
   roleLabel: string;
   /** Company name, or the guide's own name for a guide session. */
   name: string;
+  /**
+   * "permanent" (default): the always-visible desktop rail, hidden below
+   * `lg` — StudioMobileNav.tsx's drawer is what narrower viewports get
+   * instead. "drawer": fills its container edge-to-edge with no border/
+   * fixed width of its own, for exactly that drawer.
+   */
+  variant?: "permanent" | "drawer";
+  /** Fired on every nav link tap — the drawer uses this to close itself; the permanent rail leaves it unset. */
+  onNavigate?: () => void;
 }
 
 function navLinkClass(active: boolean): string {
@@ -63,13 +72,23 @@ function navLinkClass(active: boolean): string {
   ].join(" ");
 }
 
-export default function StudioSidebar({ items, roleLabel, name }: StudioSidebarProps) {
+export default function StudioSidebar({
+  items,
+  roleLabel,
+  name,
+  variant = "permanent",
+  onNavigate,
+}: StudioSidebarProps) {
   const pathname = usePathname();
   const previewActive = pathname.startsWith(PREVIEW_HREF);
 
   return (
     <aside
-      className="flex w-64 shrink-0 flex-col justify-between border-r border-[var(--studio-sidebar-border)] bg-[var(--studio-sidebar-bg)] px-4 py-6 text-[var(--studio-sidebar-ink)]"
+      className={
+        variant === "permanent"
+          ? "hidden w-64 shrink-0 flex-col justify-between border-r border-[var(--studio-sidebar-border)] bg-[var(--studio-sidebar-bg)] px-4 py-6 text-[var(--studio-sidebar-ink)] lg:flex"
+          : "flex h-full w-full flex-col justify-between bg-[var(--studio-sidebar-bg)] px-4 py-6 text-[var(--studio-sidebar-ink)]"
+      }
       aria-label="Studio navigation"
     >
       <div>
@@ -96,6 +115,7 @@ export default function StudioSidebar({ items, roleLabel, name }: StudioSidebarP
                   aria-current={active ? "page" : undefined}
                   style={active ? { background: "var(--studio-nav-active-bg)" } : undefined}
                   className={navLinkClass(active)}
+                  onClick={onNavigate}
                 >
                   <Icon />
                   {item.label}
@@ -118,6 +138,7 @@ export default function StudioSidebar({ items, roleLabel, name }: StudioSidebarP
           aria-current={previewActive ? "page" : undefined}
           style={previewActive ? { background: "var(--studio-nav-active-bg)" } : undefined}
           className={navLinkClass(previewActive)}
+          onClick={onNavigate}
         >
           <PhoneIcon />
           Preview

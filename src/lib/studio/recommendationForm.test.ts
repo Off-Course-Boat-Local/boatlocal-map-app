@@ -37,7 +37,18 @@ describe("RECOMMENDATION_CATEGORIES", () => {
 
   it("includes every other fixed category", () => {
     expect(RECOMMENDATION_CATEGORIES.map((c) => c.id).sort()).toEqual(
-      ["breakfast", "coffee", "dancing", "drinks", "lunch", "photo", "see", "shop"].sort(),
+      [
+        "breakfast",
+        "coffee",
+        "dancing",
+        "dinner",
+        "drinks",
+        "lunch",
+        "photo",
+        "see",
+        "shop",
+        "wine",
+      ].sort(),
     );
   });
 });

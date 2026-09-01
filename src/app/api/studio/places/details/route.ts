@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getPlaceDetails } from "@/lib/admin/googlePlaces";
+import { summarizeVibe } from "@/lib/studio/voiceAssistant";
 import { getDevSession } from "@/lib/studio/devAuth";
 
 export async function GET(request: NextRequest) {
@@ -23,10 +24,16 @@ export async function GET(request: NextRequest) {
   if (!placeId.trim()) {
     return NextResponse.json({ error: "Missing placeId." }, { status: 400 });
   }
+  // Only "Talk to add places" swapping to an alternate/manually-searched
+  // place asks for this (an extra OpenAI call on top of Places Details) —
+  // the plain "Search Google Maps" enrichment on the regular form doesn't
+  // pass it, so that flow's cost/latency is unchanged.
+  const withVibe = searchParams.get("withVibe") === "1";
 
   try {
     const details = await getPlaceDetails(placeId.trim());
-    return NextResponse.json({ details });
+    const vibeSummary = withVibe ? await summarizeVibe(details.reviewSnippets).catch(() => null) : null;
+    return NextResponse.json({ details, vibeSummary });
   } catch {
     return NextResponse.json({ error: "Google details lookup is unavailable." }, { status: 502 });
   }

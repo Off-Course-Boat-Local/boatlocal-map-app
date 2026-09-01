@@ -48,13 +48,33 @@ export interface AdminSidebarProps {
   email: string;
   /** Server Action reference, passed down from the (protected) layout. */
   onLogoutAction: () => Promise<void>;
+  /**
+   * "permanent" (default): the always-visible desktop rail, hidden below
+   * `lg` — AdminMobileNav.tsx's drawer is what narrower viewports get
+   * instead, same pattern as StudioSidebar/StudioMobileNav. "drawer": fills
+   * its container edge-to-edge with no border/fixed width of its own.
+   */
+  variant?: "permanent" | "drawer";
+  /** Fired on every nav link tap — the drawer uses this to close itself. */
+  onNavigate?: () => void;
 }
 
-export default function AdminSidebar({ email, onLogoutAction }: AdminSidebarProps) {
+export default function AdminSidebar({
+  email,
+  onLogoutAction,
+  variant = "permanent",
+  onNavigate,
+}: AdminSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col justify-between gap-6 border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-bg)] p-5 text-[var(--admin-sidebar-ink)]">
+    <aside
+      className={
+        variant === "permanent"
+          ? "hidden h-full w-64 shrink-0 flex-col justify-between gap-6 border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-bg)] p-5 text-[var(--admin-sidebar-ink)] lg:flex"
+          : "flex h-full w-full flex-col justify-between gap-6 bg-[var(--admin-sidebar-bg)] p-5 text-[var(--admin-sidebar-ink)]"
+      }
+    >
       <div>
         <div className="px-1">
           <MapAppMark
@@ -82,6 +102,7 @@ export default function AdminSidebar({ email, onLogoutAction }: AdminSidebarProp
                     ? "font-semibold text-[var(--admin-sidebar-ink)]"
                     : "text-[var(--admin-sidebar-ink-dim)] hover:bg-[var(--admin-bg)] hover:text-[var(--admin-sidebar-ink)]",
                 ].join(" ")}
+                onClick={onNavigate}
               >
                 <Icon className="shrink-0" />
                 <span className="truncate">{item.label}</span>

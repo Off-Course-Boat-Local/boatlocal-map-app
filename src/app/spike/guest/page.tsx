@@ -8,7 +8,6 @@
 // component harness; this is the product.
 
 import { useMemo, useState, useSyncExternalStore } from "react";
-import type { MapLibreMap } from "maplibre-gl";
 
 import BaseMap from "@/components/map/BaseMap";
 import MapPins from "@/components/map/MapPins";
@@ -53,7 +52,7 @@ export default function GuestMapSpike() {
   const [brandId, setBrandId] = useState<keyof typeof BRANDS>("coastal");
   const [filter, setFilter] = useState<CategoryId | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [map, setMap] = useState<MapLibreMap | null>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
 
   const brand = BRANDS[brandId];

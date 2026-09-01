@@ -95,6 +95,7 @@ export default function GuestListScreen({
         title={brand.appName}
         subtitle={t.list.recommendationsFrom(allPins.length, guideName)}
         action={<LanguageSwitcher tone="header" />}
+        logoUrl={brand.logoUrl}
       />
 
       {/* Category filter chips — same shared filter state as the Map screen

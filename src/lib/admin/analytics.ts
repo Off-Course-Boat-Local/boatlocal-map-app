@@ -115,6 +115,11 @@ export async function platformEffectiveness(
       label: "Directions requested",
       value: sum(rows, ["directions_requested"]),
     },
+    {
+      key: "directions-arrived",
+      label: "Guests who arrived",
+      value: sum(rows, ["directions_arrived"]),
+    },
     { key: "tips-saved", label: "Tips saved", value: sum(rows, ["tip_saved"]) },
   ];
 }

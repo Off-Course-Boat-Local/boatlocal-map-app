@@ -32,6 +32,7 @@ const DEFAULT_BOATLOCAL_BRAND: Brand = {
   primaryDark: "#14449E",
   accent: "#FF7A45",
   surround: "#F6F6F3",
+  logoUrl: null,
 };
 
 export default async function AdminDefaultSettingsPage() {
@@ -52,6 +53,7 @@ export default async function AdminDefaultSettingsPage() {
         primaryDark: flagged.brandPrimaryDark,
         accent: flagged.brandAccent,
         surround: flagged.brandSurround,
+        logoUrl: flagged.logoUrl,
       }
     : DEFAULT_BOATLOCAL_BRAND;
 
@@ -75,6 +77,9 @@ export default async function AdminDefaultSettingsPage() {
                 companyId={companyId}
                 initialBrand={initialBrand}
                 initialLogoUrl={flagged?.logoUrl ?? null}
+                initialGoogleReviewUrl={flagged?.googleReviewUrl ?? null}
+                initialTripadvisorReviewUrl={flagged?.tripadvisorReviewUrl ?? null}
+                initialReviewPlatform={flagged?.reviewPlatform ?? "google"}
                 saveAction={saveDefaultCompanyBrandingAction}
               />
             </StudioPreviewProvider>

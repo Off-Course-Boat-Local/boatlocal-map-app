@@ -27,7 +27,7 @@
 // this component needs as plain props.
 
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Mic, Plus } from "lucide-react";
 
 import PortalModal from "@/components/PortalModal";
 import PortalSelect from "@/components/PortalSelect";
@@ -39,8 +39,9 @@ import {
   deleteRecommendationAction,
   setRecommendationVisibilityAction,
 } from "@/lib/studio/recommendationActions";
-import { PageHeader, PrimaryButton, TableShell } from "./primitives";
+import { GhostButton, PageHeader, PrimaryButton, TableShell } from "./primitives";
 import RecommendationForm, { type RecommendationFormProps } from "./RecommendationForm";
+import VoiceAddPlaces from "./VoiceAddPlaces";
 
 export interface RecommendationsManagerProps {
   recommendations: RecommendationRecord[];
@@ -72,6 +73,7 @@ export default function RecommendationsManager({
   saveAction,
 }: RecommendationsManagerProps) {
   const [editing, setEditing] = useState<EditingState>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");
@@ -170,10 +172,16 @@ export default function RecommendationsManager({
             : "The places your guests see. Anything you add here goes out under your company."
         }
         action={
-          <PrimaryButton onClick={() => setEditing({ mode: "new" })}>
-            <Plus className="size-4" strokeWidth={2} />
-            Add place
-          </PrimaryButton>
+          <div className="flex items-center gap-2">
+            <GhostButton onClick={() => setVoiceOpen(true)}>
+              <Mic className="size-4" strokeWidth={2} />
+              Talk to add places
+            </GhostButton>
+            <PrimaryButton onClick={() => setEditing({ mode: "new" })}>
+              <Plus className="size-4" strokeWidth={2} />
+              Add place
+            </PrimaryButton>
+          </div>
         }
       />
 
@@ -311,6 +319,15 @@ export default function RecommendationsManager({
             saveAction={saveAction}
           />
         ) : null}
+      </PortalModal>
+
+      <PortalModal
+        open={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        title="Talk to add places"
+        maxWidthClassName="max-w-2xl"
+      >
+        {voiceOpen ? <VoiceAddPlaces onAllDone={() => setVoiceOpen(false)} /> : null}
       </PortalModal>
     </div>
   );

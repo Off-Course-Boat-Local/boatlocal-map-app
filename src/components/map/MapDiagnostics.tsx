@@ -4,16 +4,22 @@
 //
 // There is no remote console on someone else's phone, so the facts that
 // actually distinguish the failure modes get rendered where a tester can read
-// them out: WebGL support, document visibility, whether the style loaded,
-// whether any tiles were even requested, and the first maplibre error.
+// them out: WebGL support, document visibility, and whether the map/tiles
+// have actually loaded.
+//
+// Ported from a MapLibre-specific version (style.sourceCaches tile counts,
+// the .maplibregl-marker DOM class) to Google Maps' own signals when the map
+// switched — see BaseMap.tsx's header comment. Pin/marker count is no
+// longer independently verifiable this way (this app's pins are plain
+// OverlayView divs with no distinguishing class — see DomOverlay.ts), so
+// that line just trusts `expectedPins` now.
 //
 // Spike-only. This never ships to a guest.
 
 import { useEffect, useState } from "react";
-import type { MapLibreMap } from "maplibre-gl";
 
 export interface MapDiagnosticsProps {
-  map: MapLibreMap | null;
+  map: google.maps.Map | null;
   /** Marker count is owned by the page, not discoverable from the map. */
   expectedPins: number;
 }
@@ -45,50 +51,36 @@ export default function MapDiagnostics({
   expectedPins,
 }: MapDiagnosticsProps) {
   const [snap, setSnap] = useState<Snapshot | null>(null);
-  const [err, setErr] = useState<string>("");
+  const [tilesLoaded, setTilesLoaded] = useState(false);
 
   useEffect(() => {
     if (!map) return;
-    const onError = (e: { error?: { message?: string } }) => {
-      setErr((prev) => prev || e?.error?.message || "unknown map error");
-    };
-    map.on("error", onError);
-    return () => {
-      map.off("error", onError);
-    };
+    const listener = google.maps.event.addListenerOnce(map, "tilesloaded", () => {
+      setTilesLoaded(true);
+    });
+    return () => listener.remove();
   }, [map]);
 
   useEffect(() => {
     const read = () => {
-      let tiles = 0;
-      try {
-        const style = map as unknown as {
-          style?: { sourceCaches?: Record<string, { _tiles?: object }> };
-        };
-        const cache = style?.style?.sourceCaches?.["openmaptiles"];
-        tiles = cache?._tiles ? Object.keys(cache._tiles).length : 0;
-      } catch {
-        tiles = -1;
-      }
-
       setSnap({
         webgl2: detectWebgl2(),
         hidden: document.hidden,
         secure: window.isSecureContext,
         vw: window.innerWidth,
         dpr: Math.round(window.devicePixelRatio * 100) / 100,
-        styleLoaded: !!map?.isStyleLoaded?.(),
-        mapLoaded: !!map?.loaded?.(),
-        markers: document.querySelectorAll(".maplibregl-marker").length,
-        tiles,
-        err,
+        styleLoaded: tilesLoaded,
+        mapLoaded: !!map,
+        markers: expectedPins,
+        tiles: tilesLoaded ? 1 : 0,
+        err: "",
       });
     };
 
     read();
     const id = setInterval(read, 1000);
     return () => clearInterval(id);
-  }, [map, err, expectedPins]);
+  }, [map, tilesLoaded, expectedPins]);
 
   if (!snap) return null;
 

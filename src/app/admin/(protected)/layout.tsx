@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminMobileNav from "@/components/admin/AdminMobileNav";
 import { requireAdminSession } from "@/lib/admin/devAuth";
 
 import { logout } from "./actions";
@@ -18,10 +19,13 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
   const session = await requireAdminSession();
 
   return (
-    <div className="admin-root flex h-dvh w-full overflow-hidden bg-[var(--admin-bg)] text-[var(--admin-ink)]">
+    <div className="admin-root flex h-dvh w-full flex-col overflow-hidden bg-[var(--admin-bg)] text-[var(--admin-ink)] lg:flex-row">
+      <AdminMobileNav email={session.email} onLogoutAction={logout} />
       <AdminSidebar email={session.email} onLogoutAction={logout} />
       <main className="min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-[1400px] px-6 py-8 md:px-10 md:py-10">{children}</div>
+        <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 md:px-10 md:py-10">
+          {children}
+        </div>
       </main>
     </div>
   );

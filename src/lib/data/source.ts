@@ -201,7 +201,7 @@ async function authedClient() {
 
 /**
  * Service-role client (src/lib/supabase/admin.ts) — bypasses RLS entirely.
- * Used only by findAttributedClick/recordBookingOutcome below, for the
+ * Used by findAttributedClick/recordBookingOutcome below, for the
  * BoatLocal conversion webhook: that caller is neither a guest (anon can
  * only INSERT events, never read them back — see "guest_insert_events" in
  * supabase/migrations/20260805063611_rls_policies.sql) nor a signed-in
@@ -209,6 +209,10 @@ async function authedClient() {
  * server calling ours directly, authenticated only by the HMAC signature
  * attributionWebhook.ts already verifies before either function below is
  * ever reached — there is no narrower real client to reach for here.
+ * Also used by getCompanyReviewStats, for the same reason: guest_reviews
+ * has no anon/authenticated SELECT policy at all (see that table's own
+ * migration comment), so an aggregate-only, PII-free rollup for the guest
+ * Review screen has nowhere narrower to read from either.
  * Dynamically imported for the same reason authedClient() is (see file
  * header): a static import would break source.test.ts.
  */
@@ -235,6 +239,8 @@ interface CompanyRow {
   campaign_params: string | null;
   google_review_url: string | null;
   tripadvisor_review_url: string | null;
+  review_platform: "google" | "tripadvisor";
+  custom_domain: string | null;
   status: CompanyStatus;
   owner_email: string | null;
   owner_status: "invited" | "active" | null;
@@ -264,6 +270,8 @@ function fromCompanyRow(row: CompanyRow): CompanyRecord {
     campaignParams: row.campaign_params,
     googleReviewUrl: row.google_review_url,
     tripadvisorReviewUrl: row.tripadvisor_review_url,
+    reviewPlatform: row.review_platform,
+    customDomain: row.custom_domain,
     status: row.status,
     ownerEmail: row.owner_email,
     ownerStatus: row.owner_status,
@@ -319,6 +327,8 @@ interface RecommendationRow {
   hours: string;
   photos: string[];
   visible: boolean;
+  google_rating: number | null;
+  google_review_count: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -340,6 +350,8 @@ function fromRecommendationRow(row: RecommendationRow): RecommendationRecord {
     hours: row.hours,
     photos: row.photos,
     visible: row.visible,
+    googleRating: row.google_rating,
+    googleReviewCount: row.google_review_count,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -431,6 +443,7 @@ export function toBrand(company: CompanyRecord): Brand {
     primaryDark: company.brandPrimaryDark,
     accent: company.brandAccent,
     surround: company.brandSurround,
+    logoUrl: company.logoUrl,
   };
 }
 
@@ -456,6 +469,8 @@ function toPlace(rec: RecommendationRecord): Place {
     note: rec.note,
     hours: rec.hours,
     photos: rec.photos,
+    googleRating: rec.googleRating,
+    googleReviewCount: rec.googleReviewCount,
   };
 }
 
@@ -575,6 +590,38 @@ export async function getActiveCompanyRecord(id: string): Promise<CompanyRecord 
     .from("companies")
     .select("*")
     .eq("id", id)
+    .eq("status", "active")
+    .maybeSingle();
+  if (error) throw error;
+  return data ? fromCompanyRow(data as CompanyRow) : null;
+}
+
+/**
+ * The company whose OWN domain (companies.custom_domain, e.g.
+ * "map.offcourseamsterdam.com") matches the incoming request's Host header —
+ * see src/lib/guestServerContext.ts for where this sits in the fallback
+ * chain (after an explicit `?company=`, before the shared platform default).
+ *
+ * Same anon/active contract as getActiveCompanyRecord just above: guest
+ * traffic on a custom domain is unauthenticated, and an inactive company's
+ * domain should read as "nothing here" (falls through to the platform
+ * default / neutral identity), not error.
+ */
+export async function getCompanyByCustomDomain(host: string): Promise<CompanyRecord | null> {
+  const normalized = host.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (isTestEnv) {
+    const company = fakeStore.companies.find(
+      (c) => c.customDomain === normalized && c.status === "active",
+    );
+    return company ?? null;
+  }
+
+  const { data, error } = await anonClient()
+    .from("companies")
+    .select("*")
+    .eq("custom_domain", normalized)
     .eq("status", "active")
     .maybeSingle();
   if (error) throw error;
@@ -741,6 +788,8 @@ interface MapPinRow {
   photos: string[];
   is_boat: boolean;
   booking_url: string | null;
+  google_rating: number | null;
+  google_review_count: number | null;
 }
 
 /**
@@ -784,6 +833,8 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
       photos: t.photos,
       isBoat: true,
       bookingUrl: t.bookingUrl,
+      googleRating: null,
+      googleReviewCount: null,
     }));
 
     const placePins: MapPin[] = places.map((p) => ({
@@ -797,6 +848,8 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
       meta: p.hours,
       photos: p.photos,
       isBoat: false,
+      googleRating: p.googleRating,
+      googleReviewCount: p.googleReviewCount,
     }));
 
     return [...boatPins, ...placePins];
@@ -821,6 +874,8 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
     photos: row.photos,
     isBoat: row.is_boat,
     bookingUrl: row.is_boat ? (row.booking_url ?? undefined) : undefined,
+    googleRating: row.google_rating,
+    googleReviewCount: row.google_review_count,
   }));
 }
 
@@ -918,6 +973,54 @@ export async function recordGuestReview(input: NewGuestReviewInput): Promise<voi
       is_test: isTest,
     });
   if (error) throw error;
+}
+
+export interface CompanyReviewStats {
+  /** Null when `count` is 0 — there is nothing to average. */
+  averageRating: number | null;
+  /** How many guests have picked a star so far (private-feedback-only rows, whose rating is null, don't count). */
+  count: number;
+}
+
+/**
+ * A real, aggregate-only rollup of this app's OWN guest_reviews ratings —
+ * the trust signal the Review screen shows guests considering leaving one
+ * ("join the N who already have"), sourced from data this app actually
+ * collected rather than a fabricated number. Founder-approved addition,
+ * 2026-09-01, alongside a round of review-conversion research; explicitly
+ * NOT a review-gating change — every guest still sees the exact same count
+ * regardless of their own (or any) star pick. See guest_reviews' migration
+ * comment for why this table has no anon/authenticated SELECT policy and
+ * why this function only ever touches the `rating` column: feedback_text/
+ * contact may carry PII and this rollup has no reason to read them.
+ *
+ * Public/guest-facing (no StudioActor) — same posture as
+ * getActiveCompanyRecord/getReviewOptions, which the Review page already
+ * calls with no auth check of its own.
+ */
+export async function getCompanyReviewStats(companyId: string): Promise<CompanyReviewStats> {
+  if (isTestEnv) {
+    const ratings = fakeStore.guestReviews
+      .filter((r) => r.companyId === companyId && !r.isTest && r.rating !== null)
+      .map((r) => r.rating as number);
+    return ratings.length === 0
+      ? { averageRating: null, count: 0 }
+      : { averageRating: ratings.reduce((a, b) => a + b, 0) / ratings.length, count: ratings.length };
+  }
+
+  const supabase = await adminClient();
+  const { data, error } = await supabase
+    .from("guest_reviews")
+    .select("rating")
+    .eq("company_id", companyId)
+    .eq("is_test", false)
+    .not("rating", "is", null);
+  if (error) throw error;
+
+  const ratings = (data ?? []).map((row) => row.rating as number);
+  return ratings.length === 0
+    ? { averageRating: null, count: 0 }
+    : { averageRating: ratings.reduce((a, b) => a + b, 0) / ratings.length, count: ratings.length };
 }
 
 // =============================================================================
@@ -2035,6 +2138,15 @@ export async function saveRecommendation(
         hours: input.hours,
         photos: input.photos,
         visible: input.visible ?? existing.visible,
+        // Preserve an existing Google snapshot unless the caller explicitly
+        // sends a new one — the ordinary edit form has no rating field at
+        // all, and undefined here must never silently null out a rating a
+        // Google-enriched add already captured.
+        googleRating: input.googleRating !== undefined ? input.googleRating : existing.googleRating,
+        googleReviewCount:
+          input.googleReviewCount !== undefined
+            ? input.googleReviewCount
+            : existing.googleReviewCount,
         updatedAt: new Date().toISOString(),
       });
       return existing;
@@ -2056,6 +2168,8 @@ export async function saveRecommendation(
       hours: input.hours,
       photos: input.photos,
       visible: input.visible ?? true,
+      googleRating: input.googleRating ?? null,
+      googleReviewCount: input.googleReviewCount ?? null,
       createdBy: null,
       createdAt: created,
       updatedAt: created,
@@ -2096,6 +2210,13 @@ export async function saveRecommendation(
         hours: input.hours,
         photos: input.photos,
         visible: input.visible ?? existing.visible,
+        // Same "don't clobber an unrelated snapshot" rule as the fakeStore
+        // branch above.
+        google_rating: input.googleRating !== undefined ? input.googleRating : existing.google_rating,
+        google_review_count:
+          input.googleReviewCount !== undefined
+            ? input.googleReviewCount
+            : existing.google_review_count,
       })
       .eq("id", input.id)
       .select("*")
@@ -2125,6 +2246,8 @@ export async function saveRecommendation(
       hours: input.hours,
       photos: input.photos,
       visible: input.visible ?? true,
+      google_rating: input.googleRating ?? null,
+      google_review_count: input.googleReviewCount ?? null,
     })
     .select("*")
     .single();
@@ -2678,6 +2801,7 @@ export interface UpdateCompanyBrandingInput {
   campaignParams?: string | null;
   googleReviewUrl?: string | null;
   tripadvisorReviewUrl?: string | null;
+  reviewPlatform?: "google" | "tripadvisor";
 }
 
 /**
@@ -2715,6 +2839,7 @@ export async function updateCompanyBranding(
   if (input.tripadvisorReviewUrl !== undefined) {
     updates.tripadvisor_review_url = input.tripadvisorReviewUrl;
   }
+  if (input.reviewPlatform !== undefined) updates.review_platform = input.reviewPlatform;
 
   if (Object.keys(updates).length === 0) {
     const { data, error } = await supabase
@@ -3332,6 +3457,8 @@ export async function createCompany(
       campaignParams: null,
       googleReviewUrl: null,
       tripadvisorReviewUrl: null,
+      reviewPlatform: "google",
+      customDomain: null,
       status: "setup",
       ownerEmail,
       ownerStatus: "invited",

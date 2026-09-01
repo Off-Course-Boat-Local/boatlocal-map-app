@@ -20,6 +20,7 @@ import {
   getCompanyAnalyticsSummary,
   getCompanyBrand,
   getCompanyRecord,
+  getCompanyReviewStats,
   getGuide,
   getGuideAnalyticsSummary,
   getGuidesForCompany,
@@ -106,11 +107,25 @@ describe("guest reads (unauthenticated / anon-equivalent)", () => {
     expect(tours[1].id).toBe(first.id);
   });
 
-  it("carries no rating field anywhere in the guest-facing shapes", async () => {
-    const [places, tours] = await Promise.all([getPlaces(COMPANY_ID), getBoatTours(COMPANY_ID)]);
-    const serialised = JSON.stringify([places, tours]).toLowerCase();
-    for (const banned of ["rating", "reviewcount", "stars"]) {
-      expect(serialised).not.toContain(banned);
+  it("every place carries a googleRating/googleReviewCount field, null for these fixture places", async () => {
+    // Reverses the old "no rating anywhere" rule (founder call,
+    // 2026-09-01) — a rating is now allowed on a Place, but only as a
+    // genuine Google Places snapshot from add-time, never invented. None
+    // of these fixtures came from Google enrichment, so both are null.
+    const places = await getPlaces(COMPANY_ID);
+    for (const place of places) {
+      expect(place).toHaveProperty("googleRating");
+      expect(place).toHaveProperty("googleReviewCount");
+      expect(place.googleRating, place.name).toBeNull();
+      expect(place.googleReviewCount, place.name).toBeNull();
+    }
+  });
+
+  it("a boat tour view has no rating field at all — Google ratings only apply to Place", async () => {
+    const tours = await getBoatTours(COMPANY_ID);
+    for (const tour of tours) {
+      expect(tour).not.toHaveProperty("googleRating");
+      expect(tour).not.toHaveProperty("googleReviewCount");
     }
   });
 
@@ -232,6 +247,39 @@ describe("recordGuestReview", () => {
       rating: null,
       feedbackText: "Not rating it, but wanted to say the crew was great.",
     });
+  });
+});
+
+describe("getCompanyReviewStats", () => {
+  it("returns a zero count when no ratings exist for this company", async () => {
+    expect(await getCompanyReviewStats(COMPANY_ID)).toEqual({ averageRating: null, count: 0 });
+  });
+
+  it("averages only rows with a real rating, ignoring bare private-feedback rows", async () => {
+    await recordGuestReview({ companyId: COMPANY_ID, rating: 5 });
+    await recordGuestReview({ companyId: COMPANY_ID, rating: 3 });
+    // A private-feedback submission with no star picked — must not count
+    // toward either the average or the count (its rating is null).
+    await recordGuestReview({ companyId: COMPANY_ID, rating: null, feedbackText: "No rating, just a note." });
+
+    expect(await getCompanyReviewStats(COMPANY_ID)).toEqual({ averageRating: 4, count: 2 });
+  });
+
+  it("never mixes another company's ratings into this one's stats", async () => {
+    await recordGuestReview({ companyId: COMPANY_ID, rating: 5 });
+    await recordGuestReview({ companyId: "some-other-company", rating: 1 });
+
+    expect(await getCompanyReviewStats(COMPANY_ID)).toEqual({ averageRating: 5, count: 1 });
+  });
+
+  // Mirrors recordGuestReview's own is_test regression test above: a
+  // staging/non-production rating must never inflate a real tenant's count.
+  it("excludes is_test rows from the rollup", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    await recordGuestReview({ companyId: COMPANY_ID, rating: 5 });
+    vi.unstubAllEnvs();
+
+    expect(await getCompanyReviewStats(COMPANY_ID)).toEqual({ averageRating: null, count: 0 });
   });
 });
 

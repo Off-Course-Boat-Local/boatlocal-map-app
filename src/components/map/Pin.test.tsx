@@ -45,15 +45,15 @@ describe("Pin", () => {
     const { container, rerender } = render(
       <Pin category="boats" label="Tour" selected={false} />,
     );
-    expect(container.querySelector(".animate-ping")).not.toBeInTheDocument();
+    expect(container.querySelector(".animate-pin-pulse")).not.toBeInTheDocument();
 
     rerender(<Pin category="boats" label="Tour" selected />);
-    expect(container.querySelector(".animate-ping")).toBeInTheDocument();
+    expect(container.querySelector(".animate-pin-pulse")).toBeInTheDocument();
   });
 
   it("colours the selection ring with the brand token, not the category colour", () => {
     const { container } = render(<Pin category="boats" label="Tour" selected />);
-    const ring = container.querySelector(".animate-ping") as HTMLElement | null;
+    const ring = container.querySelector(".animate-pin-pulse") as HTMLElement | null;
     expect(ring).not.toBeNull();
     expect(ring?.style.background).toBe("var(--brand-primary)");
   });

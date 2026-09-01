@@ -45,37 +45,44 @@ export function placeholderGoogleSearchUrl(companyName: string): string {
 }
 
 /**
- * Builds the list of public review options to show:
- * 1. Google: Uses the company's own `googleReviewUrl` if configured; otherwise defaults
- *    to BoatLocal's official direct Google review URL (`DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL`).
- * 2. Tripadvisor: Only included if the company has explicitly configured `tripadvisorReviewUrl`.
+ * Builds the (single) public review option to show — one link, never a
+ * choice between competing review sites (founder call, 2026-09-01). Which
+ * platform is `company.reviewPlatform` (Studio's "Review links" section):
+ * 1. "tripadvisor": uses `tripadvisorReviewUrl` if the company has actually
+ *    configured one; a platform picked with no URL set is a misconfigured
+ *    state, not a broken link, so this falls back to the Google case below.
+ * 2. "google" (the default, and the tripadvisor fallback): uses the
+ *    company's own `googleReviewUrl` if configured, otherwise BoatLocal's
+ *    own official direct Google review URL (`DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL`)
+ *    — flagged `isPlaceholder` so the UI can say so, since that's someone
+ *    else's listing, not this company's.
+ *
+ * Returns an array (rather than a single option) only because
+ * GuestReviewScreen renders `reviewOptions.map(...)` — always length 1.
  */
 export function getReviewOptions(
-  company: Pick<CompanyRecord, "googleReviewUrl" | "tripadvisorReviewUrl"> | null,
+  company: Pick<CompanyRecord, "googleReviewUrl" | "tripadvisorReviewUrl" | "reviewPlatform"> | null,
   companyName: string,
 ): ReviewOption[] {
-  const options: ReviewOption[] = [];
-
-  // Google review button is always present: company URL if set, else BoatLocal official review link
-  const googleUrl = company?.googleReviewUrl || DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL;
-  options.push({
-    platform: "google",
-    label: "Google",
-    url: googleUrl,
-    isPlaceholder: false,
-  });
-
-  // Tripadvisor review button: ONLY shown if explicitly configured
-  if (company?.tripadvisorReviewUrl) {
-    options.push({
-      platform: "tripadvisor",
-      label: "Tripadvisor",
-      url: company.tripadvisorReviewUrl,
-      isPlaceholder: false,
-    });
+  if (company?.reviewPlatform === "tripadvisor" && company.tripadvisorReviewUrl) {
+    return [
+      {
+        platform: "tripadvisor",
+        label: "Tripadvisor",
+        url: company.tripadvisorReviewUrl,
+        isPlaceholder: false,
+      },
+    ];
   }
 
-  return options;
+  return [
+    {
+      platform: "google",
+      label: "Google",
+      url: company?.googleReviewUrl || DEFAULT_BOATLOCAL_GOOGLE_REVIEW_URL,
+      isPlaceholder: !company?.googleReviewUrl,
+    },
+  ];
 }
 
 /** Event type fired when a guest taps through to a given public review platform. */

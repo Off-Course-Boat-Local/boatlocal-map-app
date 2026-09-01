@@ -2,16 +2,17 @@
 
 // The guest's own position — a blue dot with a soft halo.
 //
-// Same portal-into-a-Marker trick as MapPins: MapLibre owns the positioning,
-// React owns the pixels. The halo is a fixed size rather than an accuracy
-// circle: a true accuracy radius in a dense city is often 50m+, which draws
-// a dinner-plate-sized blob over half the canal ring and reads as an error.
+// Same portal-into-an-overlay trick as MapPins: the map owns the
+// positioning (DomOverlay.ts — Google Maps' OverlayView), React owns the
+// pixels. The halo is a fixed size rather than an accuracy circle: a true
+// accuracy radius in a dense city is often 50m+, which draws a
+// dinner-plate-sized blob over half the canal ring and reads as an error.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import type { Marker as MapLibreMarker } from "maplibre-gl";
 
 import { useMapInstance } from "./BaseMap";
+import { createDomOverlay } from "./DomOverlay";
 
 export interface GuestDotProps {
   position: { lng: number; lat: number } | null;
@@ -20,30 +21,23 @@ export interface GuestDotProps {
 export default function GuestDot({ position }: GuestDotProps) {
   const map = useMapInstance();
   const [container, setContainer] = useState<HTMLElement | null>(null);
-  const markerRef = useRef<MapLibreMarker | null>(null);
 
   useEffect(() => {
     if (!map || !position) return;
-    let cancelled = false;
 
-    (async () => {
-      const { Marker } = await import("maplibre-gl");
-      if (cancelled) return;
-      const el = document.createElement("div");
-      const marker = new Marker({ element: el, anchor: "center" })
-        .setLngLat([position.lng, position.lat])
-        .addTo(map);
-      markerRef.current = marker;
-      setContainer(el);
-    })();
+    const overlay = createDomOverlay(map, position, "center");
+    setContainer(overlay.element);
 
     return () => {
-      cancelled = true;
-      markerRef.current?.remove();
-      markerRef.current = null;
+      overlay.remove();
       setContainer(null);
     };
-  }, [map, position]);
+    // Re-creates the overlay on every position tick rather than moving an
+    // existing one — GuestDot updates at most once per GPS fix, nowhere
+    // near often enough for that churn to matter, and it keeps this
+    // component as simple as MapPins' equivalent effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, position?.lng, position?.lat]);
 
   if (!container) return null;
 

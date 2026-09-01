@@ -27,6 +27,7 @@ import "../studio-theme.css";
 import StudioPreviewRail from "@/components/studio/StudioPreviewRail";
 import { StudioPreviewProvider } from "@/components/studio/StudioPreviewContext";
 import StudioSidebar from "@/components/studio/StudioSidebar";
+import StudioMobileNav from "@/components/studio/StudioMobileNav";
 import { getCompanyForStudio, getMapPins } from "@/lib/data/source";
 import { navForRole } from "@/lib/studio/nav";
 import { actorFromSession, requireDevSession } from "@/lib/studio/devAuth";
@@ -54,6 +55,7 @@ export default async function StudioLayout({ children }: { children: ReactNode }
         primaryDark: company.brandPrimaryDark,
         accent: company.brandAccent,
         surround: company.brandSurround,
+        logoUrl: company.logoUrl,
       }
     : DEFAULT_BRAND;
 
@@ -71,10 +73,11 @@ export default async function StudioLayout({ children }: { children: ReactNode }
     <StudioPreviewProvider initialBrand={brand} initialLogoUrl={company?.logoUrl ?? null}>
       <div
         style={{ fontFamily: bodyFontFamily }}
-        className="studio-root flex h-dvh w-full overflow-hidden bg-[var(--studio-bg)] text-[var(--studio-ink)]"
+        className="studio-root flex h-dvh w-full flex-col overflow-hidden bg-[var(--studio-bg)] text-[var(--studio-ink)] lg:flex-row"
       >
+        <StudioMobileNav items={navItems} roleLabel={roleLabel} name={name} />
         <StudioSidebar items={navItems} roleLabel={roleLabel} name={name} />
-        <main className="min-w-0 flex-1 overflow-y-auto p-6 lg:p-10">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">{children}</main>
         {isGuide ? null : <StudioPreviewRail pins={pins} subtitle={subtitle} />}
       </div>
     </StudioPreviewProvider>

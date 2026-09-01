@@ -24,8 +24,10 @@ import { Expand } from "lucide-react";
 // nothing this screen actually needs (no deep-linking requirement was
 // asked for).
 //
-// DELIBERATE OMISSION, same as PlaceCard/GuestPlaceRow: no star rating, no
-// review count. The guide's note is the endorsement.
+// RATING: a small Google rating/review-count badge (RatingBadge) renders
+// under the title when the item has a googleRating — same reversal of the
+// old "no rating anywhere" rule as PlaceCard/GuestPlaceRow (founder call,
+// 2026-09-01). The guide's note is still the primary endorsement.
 
 import { ArrowLeft, Clock, MapPin as MapPinIcon, X } from "lucide-react";
 import { useState } from "react";
@@ -34,6 +36,7 @@ import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import type { MapPin } from "@/lib/data";
 import { PhotoGallery } from "@/components/map/PhotoGallery";
+import RatingBadge from "@/components/map/RatingBadge";
 import { SaveHeartButton } from "./SaveHeartButton";
 
 const INK = "#0B1421";
@@ -206,6 +209,14 @@ export function GuestPlaceDetail({
           >
             {item.name}
           </h1>
+          {item.googleRating != null && (
+            <RatingBadge
+              rating={item.googleRating}
+              reviewCount={item.googleReviewCount}
+              size={13}
+              style={{ marginTop: 4, fontSize: 13 }}
+            />
+          )}
           {/* No locator text (e.g. a BoatLocal-synced cruise, whose feed has
               no location name — area is "") means no row at all: an orphaned
               icon with nothing after it reads as a glitch. */}

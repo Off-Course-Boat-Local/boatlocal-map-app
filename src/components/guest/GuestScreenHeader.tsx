@@ -22,6 +22,8 @@ export interface GuestScreenHeaderProps {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  /** Uploaded via Studio > Branding (Brand.logoUrl) — null shows nothing, not a placeholder. */
+  logoUrl?: string | null;
   /**
    * Optional top-right slot — e.g. the LanguageSwitcher on the List screen
    * (per the founder's annotation). A slot rather than a hardcoded switcher
@@ -35,6 +37,7 @@ export function GuestScreenHeader({
   eyebrow,
   title,
   subtitle,
+  logoUrl,
   action,
   children,
 }: GuestScreenHeaderProps) {
@@ -47,29 +50,39 @@ export function GuestScreenHeader({
       }}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {eyebrow && (
-            <p
-              className="text-[0.6875rem] font-semibold uppercase tracking-[0.18em] opacity-75"
-              style={{ fontFamily: bodyFontFamily }}
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt=""
+              className="mt-0.5 size-9 shrink-0 rounded-full bg-white/95 object-contain p-1 shadow-sm"
+            />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            {eyebrow && (
+              <p
+                className="text-[0.6875rem] font-semibold uppercase tracking-[0.18em] opacity-75"
+                style={{ fontFamily: bodyFontFamily }}
+              >
+                {eyebrow}
+              </p>
+            )}
+            <h1
+              className="mt-1.5 text-[1.75rem] font-semibold leading-tight"
+              style={{ fontFamily: displayFontFamily, letterSpacing: "-0.02em" }}
             >
-              {eyebrow}
-            </p>
-          )}
-          <h1
-            className="mt-1.5 text-[1.75rem] font-semibold leading-tight"
-            style={{ fontFamily: displayFontFamily, letterSpacing: "-0.02em" }}
-          >
-            {title}
-          </h1>
-          {subtitle && (
-            <p
-              className="mt-1.5 text-sm leading-snug opacity-85"
-              style={{ fontFamily: bodyFontFamily }}
-            >
-              {subtitle}
-            </p>
-          )}
+              {title}
+            </h1>
+            {subtitle && (
+              <p
+                className="mt-1.5 text-sm leading-snug opacity-85"
+                style={{ fontFamily: bodyFontFamily }}
+              >
+                {subtitle}
+              </p>
+            )}
+          </div>
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>

@@ -66,7 +66,16 @@ export default async function GuestLayout({
     // `lang` on the guest shell (the root <html> is shared with
     // Studio/Admin, which stay English — so the attribute lives here, on
     // the outermost element this layout owns).
-    <main lang={locale} style={brandCssVars(brand) as CSSProperties}>
+    <main
+      lang={locale}
+      // Guards the new map-screen bottom drawer (GuestMapScreen/PlaceCard's
+      // `asDrawer`, founder request 2026-09-01): a touch drag on it has
+      // nothing of its own to scroll, and without this it can still be read
+      // as the page's own overscroll and hand off to the mobile browser's
+      // native pull-to-refresh/rubber-band — which is what a guide trying to
+      // swipe the drawer down actually hit.
+      style={{ ...(brandCssVars(brand) as CSSProperties), overscrollBehaviorY: "none" }}
+    >
       {/* public/sw.js — see that file's header comment for exactly what it
           caches (the app shell + the last-loaded guide tip data) and what it
           deliberately doesn't. Guest routes only: never mounted under

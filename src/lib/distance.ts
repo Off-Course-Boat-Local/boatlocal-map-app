@@ -156,6 +156,35 @@ export function walkEstimateParts(meters: number): WalkEstimateParts {
 }
 
 /**
+ * Same shape and banding as {@link walkEstimateParts}, but for a REAL
+ * routed distance/duration (src/lib/walkingRoute.ts's Routes API result)
+ * rather than a padded straight-line guess — the guest map prefers this
+ * once a route has actually loaded (see GuestMapScreen.tsx), falling back
+ * to walkEstimateParts while it's still in flight or if the fetch failed.
+ *
+ * The one real difference from walkEstimateParts: minutes come from
+ * Google's own walking-time model (durationSeconds), not this file's fixed
+ * WALKING_SPEED_KMH assumption — that assumption exists specifically to
+ * approximate what a real route would say, so a real route's own answer is
+ * strictly more accurate than re-deriving one from its distance.
+ */
+export function walkEstimatePartsFromRoute(
+  distanceMeters: number,
+  durationSeconds: number,
+): WalkEstimateParts {
+  if (distanceMeters < RIGHT_HERE_METERS) {
+    if (distanceMeters < 25) return { kind: "rightHere", metersLabel: null };
+    const close = Math.min(75, Math.round(distanceMeters / 25) * 25);
+    return { kind: "rightHere", metersLabel: `${close} m` };
+  }
+
+  const rounded = roundMeters(distanceMeters);
+  const minutes = Math.max(1, Math.ceil(durationSeconds / 60));
+  const distanceLabel = rounded < 1000 ? `${rounded} m` : `${(rounded / 1000).toFixed(1)} km`;
+  return { kind: "walk", minutes, distanceLabel };
+}
+
+/**
  * The string shown on a place card: padded straight-line distance rendered as
  * an approximate walking time.
  *
@@ -193,4 +222,19 @@ export function walkCaveat(meters: number): string {
 /** Caveat for a pair of points, using the padded distance. */
 export function walkCaveatFor(a: LngLat, b: LngLat): string {
   return walkCaveat(walkingDistanceMeters(a, b));
+}
+
+/**
+ * Initial compass bearing from a to b, in degrees clockwise from true north
+ * (0–360). Feeds the direction-to-walk arrow in GuestNavigationScreen —
+ * unlike the distance helpers above this drives a rotation, not a number a
+ * guest reads, so it is never padded or rounded.
+ */
+export function bearingDegrees(a: LngLat, b: LngLat): number {
+  const lat1 = toRadians(a.lat);
+  const lat2 = toRadians(b.lat);
+  const dLng = toRadians(b.lng - a.lng);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }

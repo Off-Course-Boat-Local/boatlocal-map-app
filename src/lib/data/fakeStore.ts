@@ -53,6 +53,8 @@ function seedCompany(): CompanyRecord {
     campaignParams: "utm_source=boatlocal&utm_medium=studio",
     googleReviewUrl: "https://g.page/r/example-boat-and-bike/review",
     tripadvisorReviewUrl: null,
+    reviewPlatform: "google",
+    customDomain: null,
     status: "active",
     // Seeded before the owner-invite feature existed — matches the "every
     // pre-existing row has no owner account" note on
@@ -101,6 +103,8 @@ function seedRecommendations(): RecommendationRecord[] {
       hours: p.hours,
       photos: [...p.photos],
       visible: true,
+      googleRating: p.googleRating,
+      googleReviewCount: p.googleReviewCount,
       createdBy: null,
       createdAt: created,
       updatedAt: created,

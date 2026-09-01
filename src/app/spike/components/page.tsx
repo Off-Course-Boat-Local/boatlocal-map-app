@@ -141,6 +141,8 @@ export default function ComponentsSpikePage() {
     categories: ["boats"],
     meta: BOAT_TOURS[0].meta,
     isBoat: true,
+    googleRating: null,
+    googleReviewCount: null,
   };
 
   const placeSample: PlaceCardItem = {
@@ -152,6 +154,8 @@ export default function ComponentsSpikePage() {
     meta: PLACES[2].hours,
     photos: PLACES[2].photos,
     isBoat: false,
+    googleRating: PLACES[2].googleRating,
+    googleReviewCount: PLACES[2].googleReviewCount,
   };
 
   const toggleSaved = (id: string, next: boolean) =>

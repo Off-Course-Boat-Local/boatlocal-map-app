@@ -21,7 +21,7 @@
 // src/app/(guest)/map/page.tsx, and hands the client component plain props.
 
 import GuestReviewScreen from "@/components/guest/GuestReviewScreen";
-import { getActiveCompanyRecord } from "@/lib/data/source";
+import { getActiveCompanyRecord, getCompanyReviewStats } from "@/lib/data/source";
 import { getReviewOptions } from "@/lib/guestReview";
 import { getGuestContext } from "@/lib/guestServerContext";
 
@@ -44,12 +44,20 @@ export default async function ReviewPage() {
   const company = await getActiveCompanyRecord(brandId);
   const companyName = company?.name ?? brand.companyName;
   const reviewOptions = getReviewOptions(company, companyName);
+  // Real social-proof count (this app's own collected ratings) — null
+  // companyId (no real tenant resolved) skips the query entirely rather
+  // than asking for stats on nothing. See getCompanyReviewStats' own doc
+  // comment for why this is safe (aggregate-only, no PII, same count shown
+  // to every guest — not a gating signal).
+  const reviewStats = companyId ? await getCompanyReviewStats(companyId) : null;
 
   return (
     <GuestReviewScreen
       companyName={companyName}
       companyId={companyId}
       reviewOptions={reviewOptions}
+      logoUrl={brand.logoUrl}
+      reviewCount={reviewStats?.count ?? 0}
     />
   );
 }

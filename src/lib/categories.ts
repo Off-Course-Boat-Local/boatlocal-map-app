@@ -22,6 +22,7 @@
 
 import {
   Camera,
+  ChefHat,
   Coffee,
   Croissant,
   Landmark,
@@ -30,6 +31,7 @@ import {
   Sailboat,
   ShoppingBag,
   UtensilsCrossed,
+  Wine,
 } from "lucide-react";
 
 import type { Category, CategoryId } from "./types";
@@ -38,8 +40,10 @@ export const CATEGORIES: Category[] = [
   { id: "boats", label: "Boats", color: "#0F6FA6", glyph: Sailboat },
   { id: "breakfast", label: "Breakfast", color: "#B5741A", glyph: Croissant },
   { id: "lunch", label: "Lunch", color: "#D9552B", glyph: UtensilsCrossed },
+  { id: "dinner", label: "Dinner", color: "#8A2828", glyph: ChefHat },
   { id: "coffee", label: "Coffee", color: "#7A5230", glyph: Coffee },
   { id: "drinks", label: "Drinks", color: "#8E2F8F", glyph: Martini },
+  { id: "wine", label: "Wine", color: "#631D40", glyph: Wine },
   { id: "dancing", label: "Dancing", color: "#D6259C", glyph: Music },
   { id: "see", label: "See", color: "#5B4BC4", glyph: Landmark },
   { id: "photo", label: "Photo spot", color: "#54A81E", glyph: Camera },
