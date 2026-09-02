@@ -39,7 +39,7 @@
 // src/components/map/DirectionLine.tsx before touching the dotted line.
 
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Compass, X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -437,7 +437,18 @@ export default function GuestMapScreen({
                 : t.map.locationUnavailable}
               <button
                 type="button"
-                onClick={request}
+                // Asks for the compass in the SAME tap, not a second one:
+                // iOS gates deviceorientation behind its own user-gesture
+                // prompt, and a guest who just asked for their location is
+                // plainly willing to be located — making them hunt for a
+                // second, separate "enable compass" control after this is
+                // how the heading cone ended up never being switched on at
+                // all (founder, 2026-09-02: "the directional cone is still
+                // not working"). Harmless no-op off iOS.
+                onClick={() => {
+                  request();
+                  requestCompass();
+                }}
                 className="ml-2 font-semibold underline"
                 style={{ color: "var(--brand-primary)" }}
               >
