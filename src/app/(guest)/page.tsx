@@ -43,7 +43,12 @@ export default async function WelcomePage({
     <GuestWelcomeScreen
       brand={brand}
       guideName={guide?.name ?? dict.common.yourGuide}
-      guideAvatarInitial={guide?.avatarInitial ?? "?"}
+      // No guide assigned (the platform-default company has none) — the
+      // company's own initial reads as a normal identity mark; a bare "?"
+      // read as a broken avatar (founder screenshot, 2026-09-02: it looked
+      // exactly like a broken image, sitting in the same circle a logo
+      // image would render in).
+      guideAvatarInitial={guide?.avatarInitial ?? (brand.companyName.trim().charAt(0).toUpperCase() || "?")}
       guideWelcome={guide?.welcome ?? dict.welcome.defaultWelcome}
       placeCount={placeCount}
       topPick={topPick}

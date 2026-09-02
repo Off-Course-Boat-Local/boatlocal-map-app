@@ -12,13 +12,21 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* NO dark-mode override here on purpose. This was create-next-app's
+   default boilerplate (`--background: #0a0a0a` under prefers-color-scheme:
+   dark) — leftover, not a real feature: every portal in this app (guest,
+   Studio, Admin) paints its own full-height background explicitly (guest:
+   PhoneFrame's `--brand-surround`; Studio: `--studio-bg`; Admin: its own
+   root), so `body`'s own colour is never meant to be seen except in a
+   brief gap. On iOS Safari a `100dvh` element measured before the browser
+   chrome (address bar) finishes settling is briefly shorter than the
+   REAL viewport — an inherent dvh/chrome-settle quirk, not something this
+   app's layout can prevent outright (founder report, 2026-09-02: "on
+   first load it bumps up a bit"). With this override in place, a phone in
+   dark mode showed that gap as a jarring solid-black bar UNDER the guest
+   bottom nav on first load. Without it, the same brief gap shows plain
+   white — the gap itself is very likely unavoidable, but invisible is
+   strictly better than black. */
 body {
   background: var(--background);
   color: var(--foreground);
@@ -121,4 +129,22 @@ body {
 }
 .animate-pin-pulse {
   animation: pin-pulse 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Skeleton "scaffolding" placeholders — src/app/(guest)/list/loading.tsx.
+   A gentle opacity breathe rather than Tailwind's stock `animate-pulse`
+   (0.5 <-> 1 opacity, 2s) for the same reason pin-pulse above isn't
+   Tailwind's `animate-ping`: this app's own tuned animations read calmer
+   than the stock utility defaults. */
+@keyframes skeleton-breathe {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.animate-skeleton {
+  animation: skeleton-breathe 1.6s ease-in-out infinite;
 }
