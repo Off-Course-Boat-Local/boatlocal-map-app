@@ -310,7 +310,15 @@ export default function GuestMapScreen({
       <DirectionLine
         map={map}
         from={guest}
-        to={selected && !selected.isBoat ? selected : null}
+        // Only once the guest has actually pressed "Walking directions"
+        // for THIS selection — not merely tapped a pin to preview it.
+        // Founder report, 2026-09-02: the line (and the routed distance
+        // it feeds into walkLine below) was drawing itself the instant a
+        // pin was selected, before any request to go there. Reusing
+        // directionsTappedFor (already the exact "did they ask for
+        // directions" signal the arrival-detection effect below uses)
+        // rather than adding a second flag.
+        to={selected && !selected.isBoat && directionsTappedFor === selected.id ? selected : null}
         color={brand.primary}
         onRouteInfo={setRouteInfo}
       />
