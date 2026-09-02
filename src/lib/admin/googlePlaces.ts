@@ -19,7 +19,24 @@
 
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
+import { createAdminClient } from "@/lib/supabase/admin";
+
 const PLACES_BASE = "https://places.googleapis.com/v1";
+
+/**
+ * Where every photo this module fetches ends up — see
+ * scripts/migrate-photos-to-storage.mjs for why: `recommendations.photos`
+ * used to hold full base64 data URLs inline in the row, which meant every
+ * guest visiting /list or /saved downloaded the ENTIRE photo set for every
+ * recommendation as part of the page's own HTML on every navigation
+ * (15–28 MB per load — founder report, 2026-09-02: "loading is very very
+ * slow"). Photos now live here as ordinary Storage objects, and a
+ * recommendation row holds a short public URL instead — a normal,
+ * independently-cacheable image request rather than page payload.
+ */
+const PHOTO_BUCKET = "recommendation-photos";
 
 /** Amsterdam — every search is biased here, per "always around or in Amsterdam". */
 const AMSTERDAM_CENTER = { lat: 52.3702, lng: 4.8952 };
@@ -152,7 +169,7 @@ export interface PlaceDetails {
   lng: number;
   hours: string;
   suggestedCategories: string[];
-  /** Data-URL strings, ready to feed straight into AdminBoatPhotosField. */
+  /** Public Storage URLs (PHOTO_BUCKET), ready to feed straight into AdminBoatPhotosField — never data URLs, see PHOTO_BUCKET's own comment. */
   photos: string[];
   /**
    * Google's own rating (out of 5) and review count — "Atmosphere Data"
@@ -195,8 +212,19 @@ function guessArea(components: PlaceDetailsResponseBody["addressComponents"]): s
   return "";
 }
 
-/** Fetches one Places photo's bytes and returns it as a data URL. Never throws — a failed photo is just dropped, since 7 good photos beats a 500 for the whole form. */
-async function fetchPhotoAsDataUrl(photoName: string): Promise<string | null> {
+/**
+ * Fetches one Places photo's bytes, uploads it to PHOTO_BUCKET, and returns
+ * its public URL. Never throws — a failed photo is just dropped, since 7
+ * good photos beats a 500 for the whole form.
+ *
+ * Keyed by a fresh random id, not a recommendation id: enrichment runs
+ * BEFORE a recommendation row exists (the founder is still previewing the
+ * form, or a "Talk to add places" draft hasn't been confirmed yet), so
+ * there's nothing to key the path on yet. An abandoned enrichment leaves a
+ * few orphaned small image objects in Storage — a trivial, low-volume cost
+ * next to the problem this replaces.
+ */
+async function fetchAndStorePlacePhoto(photoName: string): Promise<string | null> {
   try {
     const res = await fetch(
       `${PLACES_BASE}/${photoName}/media?maxWidthPx=${PHOTO_MAX_WIDTH_PX}&key=${apiKey()}`,
@@ -204,7 +232,18 @@ async function fetchPhotoAsDataUrl(photoName: string): Promise<string | null> {
     if (!res.ok) return null;
     const contentType = res.headers.get("content-type") || "image/jpeg";
     const buffer = Buffer.from(await res.arrayBuffer());
-    return `data:${contentType};base64,${buffer.toString("base64")}`;
+
+    const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+    const path = `google-places/${randomUUID()}.${ext}`;
+    const { error } = await createAdminClient()
+      .storage.from(PHOTO_BUCKET)
+      .upload(path, buffer, { contentType, upsert: false });
+    if (error) return null;
+
+    const {
+      data: { publicUrl },
+    } = createAdminClient().storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    return publicUrl;
   } catch {
     return null;
   }
@@ -238,7 +277,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
     .map((p) => p.name)
     .filter((n): n is string => Boolean(n))
     .slice(0, MAX_PHOTOS);
-  const photos = (await Promise.all(photoNames.map(fetchPhotoAsDataUrl))).filter(
+  const photos = (await Promise.all(photoNames.map(fetchAndStorePlacePhoto))).filter(
     (p): p is string => p !== null,
   );
 

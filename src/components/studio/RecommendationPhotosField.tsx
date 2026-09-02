@@ -1,15 +1,22 @@
 "use client";
 
-// Multiple-photo picker for the Studio "Add / edit place" form.
+// Multiple-photo picker for the Studio "Add / edit place" form (also used,
+// unmodified, by Admin's — see /api/recommendations/photos/upload's own
+// header for why that route isn't nested under either portal).
 //
-// There is no Supabase Storage yet (see project rules), so uploads are read
-// client-side into data: URLs and submitted as ordinary hidden form fields
-// (name="photos", one per photo) — RecommendationRow.photos is already just
-// string[], and the guest-facing PhotoGallery component already renders any
-// URL, data: or otherwise, so nothing downstream needs to know the
-// difference. When real Storage exists, only handleFiles' body changes
-// (upload -> get a public URL -> push that instead of the data: URL); the
-// hidden-input wiring and the rest of the form stay identical.
+// A picked file is uploaded via /api/recommendations/photos/upload
+// (Supabase Storage, `recommendation-photos` bucket) and the resulting
+// public URL is what gets pushed into state / submitted as an ordinary
+// hidden form field (name="photos", one per photo) — RecommendationRow.
+// photos is just string[], and the guest-facing PhotoGallery component
+// already renders any URL, so nothing downstream needs to know a photo
+// came from an upload vs. Google Places enrichment vs. anywhere else.
+//
+// NOT base64-in-the-row anymore (2026-09-02 fix): that used to mean every
+// guest visiting /list or /saved downloaded the ENTIRE photo set for every
+// recommendation as part of the page's own HTML payload on every single
+// navigation — 15–28 MB per load. See scripts/migrate-photos-to-storage.mjs
+// for the one-time migration of everything that predates this.
 //
 // ENFORCES:
 //   - max 5 photos per place (silently drops any beyond that if multiple
@@ -46,17 +53,19 @@ export interface RecommendationPhotosFieldProps {
   injectKey?: number;
 }
 
-function readAsDataUrl(file: File): Promise<string | null> {
-  return new Promise((resolve) => {
-    if (!file.type.startsWith("image/") || file.size > MAX_FILE_BYTES) {
-      resolve(null);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
+/** Uploads one file to Storage and resolves its public URL, or null if the file is invalid or the upload failed — either way it's just dropped, same "don't fail the whole batch over one bad file" contract the old data-URL version had. */
+async function uploadPhoto(file: File): Promise<string | null> {
+  if (!file.type.startsWith("image/") || file.size > MAX_FILE_BYTES) return null;
+  try {
+    const body = new FormData();
+    body.set("file", file);
+    const res = await fetch("/api/recommendations/photos/upload", { method: "POST", body });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { url?: string };
+    return data.url ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export default function RecommendationPhotosField({
@@ -66,6 +75,11 @@ export default function RecommendationPhotosField({
 }: RecommendationPhotosFieldProps) {
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
   const [notice, setNotice] = useState<string | null>(null);
+  // Uploads are a real network round-trip now (Storage, not an instant
+  // client-side FileReader) — this disables the picker mid-upload so a
+  // second click can't fire a race against the first batch, and gives the
+  // button something to say while a guide is staring at a spinner-less gap.
+  const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = useId();
   // Tracks the last-applied `injectKey` so an external batch (Google Places
@@ -95,7 +109,9 @@ export default function RecommendationPhotosField({
     const files = Array.from(fileList).slice(0, room);
     const skippedForRoom = fileList.length - files.length;
 
-    const results = await Promise.all(files.map(readAsDataUrl));
+    setUploading(true);
+    const results = await Promise.all(files.map(uploadPhoto));
+    setUploading(false);
     const good = results.filter((r): r is string => r !== null);
     const skippedForType = results.length - good.length;
 
@@ -105,7 +121,7 @@ export default function RecommendationPhotosField({
     if (skippedForRoom > 0) {
       setNotice(`Only added ${files.length} — the limit is ${MAX_PHOTOS} photos per place.`);
     } else if (skippedForType > 0) {
-      setNotice("Some files were skipped — only images under 4MB are supported.");
+      setNotice("Some files were skipped — only images under 4MB are supported, and uploads can fail on a slow connection.");
     } else {
       setNotice(null);
     }
@@ -176,11 +192,12 @@ export default function RecommendationPhotosField({
       <div className="flex items-center gap-3">
         <button
           type="button"
+          disabled={uploading}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[var(--studio-accent)] px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-all hover:opacity-90 active:scale-98"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[var(--studio-accent)] px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-all hover:opacity-90 active:scale-98 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Upload className="size-3.5" strokeWidth={2.25} />
-          Choose Photos
+          {uploading ? "Uploading…" : "Choose Photos"}
         </button>
         <span className="text-xs text-[var(--studio-ink-soft)]">
           PNG, JPG, WEBP up to 4MB each

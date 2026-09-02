@@ -27,6 +27,7 @@
 // companyId, so every guest screen's recommendations/boat tours/guide
 // naturally resolve to an empty state rather than fabricated content.
 
+import { cache } from "react";
 import { headers } from "next/headers";
 
 import { PORTAL_ACCENT } from "../components/MapAppMark";
@@ -81,12 +82,18 @@ export interface GuestContext {
  * Reads the brand id / guide slug proxy.ts attached to this request, then
  * resolves them to real data through src/lib/data/source.ts.
  *
- * Safe to call more than once per request (e.g. once from the (guest)
- * layout for chrome, again from a leaf page for its own data) — every call
- * is cheap today (in-memory fake store); once Supabase exists this is the
- * one place to add request-level memoisation (React `cache()`) if needed.
+ * Wrapped in React `cache()` below: every guest route calls this at least
+ * twice per request (once from the (guest) layout for chrome, again from
+ * the leaf page for its own data), and on a `?company=`-less visit (e.g.
+ * every real visit to a company's own custom domain — see
+ * getCompanyByCustomDomain's own comment) that means the custom-domain
+ * lookup, getGuide, etc. all ran twice per navigation, un-deduplicated —
+ * a real, measured contributor to guest-app load time (founder report,
+ * 2026-09-02: "loading is very very slow"). `cache()` makes every call
+ * within the same request share one in-flight resolution; a different
+ * request (the next navigation) still resolves fresh, exactly as before.
  */
-export async function getGuestContext(): Promise<GuestContext> {
+async function getGuestContextUncached(): Promise<GuestContext> {
   const requestHeaders = await headers();
   const brandId = requestHeaders.get(GUEST_BRAND_HEADER) ?? DEFAULT_BRAND.id;
   const guideSlug = requestHeaders.get(GUEST_GUIDE_HEADER) ?? DEFAULT_GUIDE_SLUG;
@@ -137,3 +144,6 @@ export async function getGuestContext(): Promise<GuestContext> {
   // content.
   return { brandId, guideSlug, brand: NEUTRAL_FALLBACK_BRAND, companyId: null, guide: null };
 }
+
+/** See getGuestContextUncached's doc comment — this is the one every caller should use. */
+export const getGuestContext = cache(getGuestContextUncached);

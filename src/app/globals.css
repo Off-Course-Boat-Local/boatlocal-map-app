@@ -73,6 +73,32 @@ body {
   [role="button"][aria-disabled="true"] {
     cursor: not-allowed;
   }
+
+  /* Every custom button in this app disables the OS's native tap
+     highlight (WebkitTapHighlightColor: transparent — search the
+     codebase, it's everywhere) so a fast double-tap doesn't leave a grey
+     flash behind. That's correct, but it also means a tap gives NO
+     feedback at all until whatever the button does actually finishes —
+     founder feedback, 2026-09-02: taps needed "a more tactile feel."
+     A tiny, fast press-scale restores that at the one place it can cover
+     every button at once, the same reasoning as the cursor-pointer rule
+     above. `active:scale` (Tailwind) is intentionally not used here: this
+     needs to apply to plain, unstyled <button>s too, not just ones that
+     opted into a utility class.
+     Opt out with data-no-tap-feedback on a button that already animates
+     its own press state with something more considered (currently just
+     Pin.tsx — its inner SVG already scales from the pin's tip on press;
+     layering a second, differently-timed scale on the outer <button> on
+     top of that reads as jittery, not tactile). */
+  button:not(:disabled):not([data-no-tap-feedback]):active,
+  [role="button"]:not([aria-disabled="true"]):not([data-no-tap-feedback]):active {
+    transform: scale(0.96);
+  }
+
+  button:not([data-no-tap-feedback]),
+  [role="button"]:not([data-no-tap-feedback]) {
+    transition: transform 100ms ease-out;
+  }
 }
 
 /* A selected map pin's ring — deliberately NOT Tailwind's stock

@@ -313,6 +313,12 @@ export function Pin({
       onPointerCancel={handlePointerUp}
       aria-pressed={selected}
       aria-label={label ?? CATEGORY_MAP[category]?.label}
+      // Opts out of globals.css's app-wide tap-feedback rule — this
+      // button already has its own tuned press animation (the inner SVG
+      // scaling from the pin's tip via `pressed`/`bodyScale` above); a
+      // second, differently-timed scale on this outer element on top of
+      // that would read as jittery, not tactile.
+      data-no-tap-feedback
       className={className}
       style={{
         ...rootStyle,
