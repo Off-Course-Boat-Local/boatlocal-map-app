@@ -56,7 +56,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${hankenGrotesk.variable} ${fontVariables} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      {/* h-full, not min-h-full: a floor lets body grow past html's own
+          100% (exactly the room iOS Safari's dvh-settle overshoot needs to
+          turn into a real document scroll) — see globals.css's html,body
+          rule for the fuller story. A cap gives that overflow nowhere to
+          go, which is what actually makes the overflow:hidden lock there
+          effective rather than just decorative. */}
+      <body className="h-full flex flex-col">
         {children}
         {devSwitchCompanies.length > 0 ? (
           <DevCompanySwitcher companies={devSwitchCompanies} />

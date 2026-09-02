@@ -51,7 +51,6 @@ import { PlaceCard } from "@/components/map/PlaceCard";
 import GuestDot from "@/components/map/GuestDot";
 import BoatBookingPicker from "@/components/guest/BoatBookingPicker";
 import GuestNavigationScreen from "@/components/guest/GuestNavigationScreen";
-import { LanguageSwitcher } from "@/components/guest/LanguageSwitcher";
 
 import { useGuestLocation, guestPoint } from "@/hooks/useGuestLocation";
 import { useCompassHeading } from "@/hooks/useCompassHeading";
@@ -343,10 +342,15 @@ export default function GuestMapScreen({
         // standalone/notched phones, env() is 0 in a browser tab.
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
       >
-        {/* Header pill — with the language switcher floating top-right
-            beside it (founder's annotation), in the same white/95
-            backdrop-blur pill language as the header pill itself. */}
-        <div className="flex items-start justify-between gap-2 px-4">
+        {/* Header pill — trimmed to just the logo + recommendation count
+            (founder, 2026-09-02: the company name and the language switcher
+            "take up too much screen real estate" on the one screen that
+            most wants its vertical space given to the map). The app name
+            (brand.appName) and the language switcher still exist on every
+            other guest screen (GuestScreenHeader's gradient band on List/
+            Saved/Review/Install), so language switching stays reachable —
+            just not from this specific floating pill. */}
+        <div className="flex items-start px-4">
           <div
             className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/95 px-5 py-2 backdrop-blur"
             style={{ boxShadow: CARD_SHADOW }}
@@ -360,20 +364,9 @@ export default function GuestMapScreen({
                 style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.06)" }}
               />
             ) : null}
-            <div className="min-w-0">
-              <h1
-                className="truncate text-[15px] font-semibold leading-5"
-                style={{ fontFamily: displayFontFamily, color: INK }}
-              >
-                {brand.appName}
-              </h1>
-              <p className="truncate text-[11px] leading-4" style={{ color: MUTED_TEXT }}>
-                {t.list.recommendationsFrom(allPins.length, guideName)}
-              </p>
-            </div>
-          </div>
-          <div className="pointer-events-auto shrink-0">
-            <LanguageSwitcher tone="floating" />
+            <p className="truncate text-[13px] font-medium leading-5" style={{ color: INK }}>
+              {t.list.recommendationsFrom(allPins.length, guideName)}
+            </p>
           </div>
         </div>
 

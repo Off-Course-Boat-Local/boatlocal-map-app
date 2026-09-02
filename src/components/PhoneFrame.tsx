@@ -18,6 +18,8 @@
 
 import type { ReactNode } from "react";
 
+import { usePhoneViewportHeight } from "@/hooks/usePhoneViewportHeight";
+
 export interface PhoneFrameProps {
   children: ReactNode;
   /** Rendered in the surround beside the frame. Desktop only. */
@@ -31,12 +33,23 @@ export default function PhoneFrame({
   aside,
   className,
 }: PhoneFrameProps) {
+  // Harmless to call unconditionally, including on the desktop breakpoint
+  // where the --app-vh it writes is simply never read (md:h-dvh below
+  // wins there regardless — see the hook's own header comment for why
+  // this exists at all).
+  usePhoneViewportHeight();
+
   return (
     <div
       className={[
-        // Phone: plain full-bleed app, no frame, no surround.
-        "h-dvh w-full",
-        // Desktop: centre the frame on the brand surround.
+        // Phone: plain full-bleed app, no frame, no surround. Falls back
+        // to plain 100dvh wherever usePhoneViewportHeight is a no-op
+        // (desktop, or any browser without visualViewport).
+        "h-[var(--app-vh,100dvh)] w-full",
+        // Desktop: centre the frame on the brand surround. Tailwind emits
+        // md: utilities in a later @media block, so this wins over the
+        // base h-[var(--app-vh,...)] class above at that breakpoint
+        // regardless of source order.
         "md:flex md:h-dvh md:items-center md:justify-center md:gap-12 md:p-10",
         className ?? "",
       ].join(" ")}

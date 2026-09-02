@@ -37,6 +37,31 @@ body {
     "Segoe UI", Roboto, Arial, sans-serif;
 }
 
+/* Hard lock on the DOCUMENT's own scroll — every portal (guest, Studio,
+   Admin) already scrolls internally, via its own `overflow-y-auto`
+   container nested inside an `h-dvh`-bounded shell (see
+   src/components/guest/GuestListScreen.tsx and friends, or Studio's
+   `studio-root` in src/app/studio/(protected)/layout.tsx) — html/body
+   scrolling is never the mechanism anywhere in this app, only ever a
+   liability.
+   The liability: iOS Safari's `100dvh` briefly disagrees with the real
+   visible viewport while its own chrome (address bar) is mid-collapse —
+   see PhoneFrame's usePhoneViewportHeight comment for the fuller story.
+   Without this lock, that brief overshoot gave `body` room to grow past
+   `html`, which iOS then treated as a legitimate scroll target — for a
+   touch that leaked past the map's `gestureHandling: "greedy"` recogniser
+   before it committed, or for Safari's own chrome-collapse content shift.
+   That single document-level scroll dragged the ENTIRE guest layout with
+   it: the filter-pill row clipped at the top, the bottom nav carried
+   below the fold — founder report, 2026-09-02, screenshotted live on an
+   iPhone: "both menu items disappear behind the mobile browsers UI." */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 /* Hides scrollbar chrome without disabling scrolling — the element stays
    fully scrollable (wheel, trackpad, touch, keyboard), just without the
    visible OS-drawn bar. The guest app is meant to read as a real phone app,
