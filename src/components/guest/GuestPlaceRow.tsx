@@ -35,6 +35,7 @@ import { BORDER, BRAND_TINT, INK, MUTED, SHADOW_CARD } from "@/lib/guestTheme";
 import { relativeHoursLabel } from "@/lib/hoursFormat";
 import type { MapPin } from "@/lib/data";
 import { SaveHeartButton } from "./SaveHeartButton";
+import { photoUrl } from "@/lib/photoUrl";
 
 const CLAMP_2 = {
   display: "-webkit-box",
@@ -94,7 +95,7 @@ export function GuestPlaceRow({
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={photo}
+            src={photoUrl(photo, { width: 160 })}
             alt=""
             loading="lazy"
             className="h-44 w-full object-cover"

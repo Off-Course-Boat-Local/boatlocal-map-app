@@ -138,6 +138,10 @@ const fr: Dictionary = {
     send: "Envoyer le retour",
     thanks: (company) => `Merci — c'est transmis à ${company}.`,
     maybeLater: "Peut-être plus tard",
+    promptTitle: "Nos adresses te plaisent ?",
+    promptBody:
+      "Un petit avis aiderait énormément notre petite entreprise — ça ne prend qu'un instant.",
+    promptSignature: (name) => `— ${name}`,
   },
 
   install: {

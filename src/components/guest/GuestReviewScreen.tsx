@@ -7,15 +7,21 @@
 //   - This is flow (a) of the two SEPARATE review flows: the company's own
 //     Google/Tripadvisor link. The boat-tour review flow is different and
 //     out of scope here.
-//   - A 5-star rating widget IS shown, and DOES drive visual EMPHASIS (which
-//     option is bordered/tinted in the brand colour, plus a "Best" badge)
-//     and the surrounding eyebrow/caption copy — this supersedes the screen's
-//     old rule against rendering any tap-to-rate control at all. What still
-//     hasn't changed, and remains a HARD rule: both options must stay
-//     rendered, fully clickable, and never `disabled`, at EVERY rating value
-//     including rating === 0 (before any star is picked). The rating may
-//     only ever change which option LOOKS emphasized — never which one
-//     exists in the DOM, never which one can be tapped. See
+//   - A 5-star rating widget IS shown. Founder, 2026-09-02: "lets not do the
+//     5 stars. or when people click the 5 stars, automatically go to the set
+//     review link set in the dashboard by the studio owner" — so a tap on
+//     ANY star (via the shared ReviewStars component, see ReviewStars.tsx's
+//     own header comment for the non-gating rule) now records the rating
+//     AND immediately opens the company's configured review link in a new
+//     tab, same as tapping the explicit option card below. When there's no
+//     real link yet (only a placeholder — see `placeholderNotice`), the
+//     stars fall back to a plain tap-to-rate control that just drives
+//     emphasis, since there's nowhere real to send the guest.
+//     What still hasn't changed, and remains a HARD rule: both options below
+//     the stars must stay rendered, fully clickable, and never `disabled`,
+//     at EVERY rating value including rating === 0 (before any star is
+//     picked) — the rating may only ever change which option LOOKS
+//     emphasized, never which one exists in the DOM or can be tapped. See
 //     GuestReviewScreen.test.tsx for the test that actually enforces this,
 //     not just documents it.
 //   - "Share private feedback instead" is rendered with the SAME visual
@@ -29,6 +35,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { Lock, Star } from "lucide-react";
 
 import { GuestScreenHeader } from "./GuestScreenHeader";
+import ReviewStars from "./ReviewStars";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { recordGuestEvent, recordGuestReview } from "@/lib/guestEvents";
@@ -270,6 +277,19 @@ export default function GuestReviewScreen({
   };
 
   const placeholderNotice = reviewOptions.find((option) => option.isPlaceholder);
+  // The first real (non-placeholder) review link — where a star tap sends
+  // the guest. Null only when the company hasn't configured a real link
+  // yet, in which case the stars fall back to tap-to-rate-only (see header
+  // comment).
+  const starOption = reviewOptions.find((option) => !option.isPlaceholder) ?? null;
+
+  const handleStarRate = (n: number) => {
+    handleRate(n);
+    // Same analytics event as the explicit review card below — a star tap
+    // is just a faster path to the identical hand-off, so it should roll up
+    // the same way.
+    if (starOption) handleReviewClick(starOption);
+  };
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -309,26 +329,34 @@ export default function GuestReviewScreen({
           >
             {t.review.rateTitle(companyName)}
           </h2>
-          <div className="mt-4 flex justify-center gap-1.5">
-            {[1, 2, 3, 4, 5].map((n) => {
-              const filled = n <= rating;
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  aria-label={t.review.starLabel(n)}
-                  onClick={() => handleRate(n)}
-                  className="p-1 transition-transform active:scale-90"
-                  style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
-                >
-                  <Star
-                    className="h-9 w-9"
-                    style={{ color: filled ? "var(--brand-primary)" : BORDER }}
-                    fill={filled ? "var(--brand-primary)" : "none"}
-                  />
-                </button>
-              );
-            })}
+          <div className="mt-4">
+            {starOption ? (
+              <ReviewStars reviewUrl={starOption.url} onRate={handleStarRate} />
+            ) : (
+              // No real review link configured yet — stars can only drive
+              // emphasis below, there's nowhere real to send the guest.
+              <div className="flex justify-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const filled = n <= rating;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-label={t.review.starLabel(n)}
+                      onClick={() => handleRate(n)}
+                      className="p-1 transition-transform active:scale-90"
+                      style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
+                    >
+                      <Star
+                        className="h-9 w-9"
+                        style={{ color: filled ? "var(--brand-primary)" : BORDER }}
+                        fill={filled ? "var(--brand-primary)" : "none"}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           {rating > 0 && (
             <p

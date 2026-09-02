@@ -51,6 +51,7 @@ import { PlaceCard } from "@/components/map/PlaceCard";
 import GuestDot from "@/components/map/GuestDot";
 import BoatBookingPicker from "@/components/guest/BoatBookingPicker";
 import GuestNavigationScreen from "@/components/guest/GuestNavigationScreen";
+import ReviewPromptDrawer from "@/components/guest/ReviewPromptDrawer";
 
 import { useGuestLocation, guestPoint } from "@/hooks/useGuestLocation";
 import { useCompassHeading } from "@/hooks/useCompassHeading";
@@ -71,13 +72,21 @@ import {
 } from "@/lib/boatBookingHandoff";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
-import { hasShownArrivalPrompt, markArrivalPromptShown } from "@/lib/reviewPrompt";
+import {
+  PLACES_VIEWED_BEFORE_PROMPT,
+  hasShownArrivalPrompt,
+  hasShownBrowsePrompt,
+  markBrowsePromptShown,
+  markArrivalPromptShown,
+  markPlaceViewed,
+} from "@/lib/reviewPrompt";
 import { useGuestFilter } from "@/lib/guestFilterContext";
 import { CATEGORIES } from "@/lib/categories";
 import { AMSTERDAM_CENTER } from "@/lib/data";
 import type { MapPin } from "@/lib/data";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import type { Brand, CategoryId } from "@/lib/types";
+import { photoUrl } from "@/lib/photoUrl";
 
 /* Neutral chrome — never re-skins (brand colour only via --brand-primary). */
 const INK = "#0B1421";
@@ -111,6 +120,10 @@ export interface GuestMapScreenProps {
   guideId?: string | null;
   /** The resolved tenant's real company id — folded into "boat_book_click" analytics. */
   companyId?: string | null;
+  /** Where the browse-triggered review drawer's stars lead. Null when no tenant resolved. */
+  reviewUrl?: string | null;
+  /** Who that drawer is signed by — the guide, else the company. */
+  reviewSignature?: string;
   pins: MapPin[];
 }
 
@@ -120,6 +133,8 @@ export default function GuestMapScreen({
   guideSlug,
   guideId,
   companyId,
+  reviewUrl,
+  reviewSignature,
   pins: allPins,
 }: GuestMapScreenProps) {
   const { filter, setFilter } = useGuestFilter();
@@ -151,6 +166,21 @@ export default function GuestMapScreen({
 
   // Same category set, LABELS swapped for the guest's language — ids and
   // colours never change (see src/lib/categories.ts).
+
+  // Browse-triggered review ask: once the guest has opened
+  // PLACES_VIEWED_BEFORE_PROMPT distinct places this visit, they've used
+  // enough of the guide to have an opinion worth asking for. See
+  // src/lib/reviewPrompt.ts for why this counts distinct ids rather than
+  // taps, and why it latches per visit.
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+  function notePlaceViewed(placeId: string) {
+    if (!reviewUrl || hasShownBrowsePrompt()) return;
+    if (markPlaceViewed(placeId) >= PLACES_VIEWED_BEFORE_PROMPT) {
+      markBrowsePromptShown();
+      setShowReviewPrompt(true);
+    }
+  }
+
   const localizedCategories = useMemo(
     () => CATEGORIES.map((cat) => ({ ...cat, label: t.categories[cat.id] })),
     [t],
@@ -311,6 +341,7 @@ export default function GuestMapScreen({
             // never render stacked on top of each other.
             setShowBookingPicker(false);
             setSelectedId(id);
+            notePlaceViewed(id);
           }}
         />
         <GuestDot position={guest} />
@@ -358,9 +389,9 @@ export default function GuestMapScreen({
             {brand.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={brand.logoUrl}
+                src={photoUrl(brand.logoUrl, { width: 28 })}
                 alt=""
-                className="size-7 shrink-0 rounded-full bg-white object-contain p-0.5"
+                className="size-8 shrink-0 rounded-full bg-white object-contain p-[2px]"
                 style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.06)" }}
               />
             ) : null}
@@ -615,6 +646,15 @@ export default function GuestMapScreen({
           value={bookingSelection}
           onChange={setBookingSelection}
           onClose={() => setShowBookingPicker(false)}
+        />
+      )}
+
+
+      {showReviewPrompt && reviewUrl && (
+        <ReviewPromptDrawer
+          reviewUrl={reviewUrl}
+          signature={reviewSignature ?? brand.companyName}
+          onClose={() => setShowReviewPrompt(false)}
         />
       )}
 

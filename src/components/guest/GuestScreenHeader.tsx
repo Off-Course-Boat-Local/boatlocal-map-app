@@ -17,10 +17,19 @@ import type { ReactNode } from "react";
 
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { BRAND_GRADIENT } from "@/lib/guestTheme";
+import { photoUrl } from "@/lib/photoUrl";
 
 export interface GuestScreenHeaderProps {
   eyebrow?: string;
-  title: string;
+  /**
+   * Optional: the List screen deliberately omits it, because there the
+   * eyebrow ALREADY carries the company name and the title carried the
+   * app name — two near-identical lines stacked on top of each other
+   * (founder, 2026-09-02: "remove that title as the company name is
+   * already there"). Saved/Review/Install still pass a real screen
+   * title, which is not a duplicate of anything.
+   */
+  title?: string;
   subtitle?: string;
   /** Uploaded via Studio > Branding (Brand.logoUrl) — null shows nothing, not a placeholder. */
   logoUrl?: string | null;
@@ -54,9 +63,9 @@ export function GuestScreenHeader({
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={logoUrl}
+              src={photoUrl(logoUrl, { width: 40 })}
               alt=""
-              className="mt-0.5 size-9 shrink-0 rounded-full bg-white/95 object-contain p-1 shadow-sm"
+              className="mt-0.5 size-11 shrink-0 rounded-full bg-white object-contain p-[3px] shadow-sm"
             />
           ) : null}
           <div className="min-w-0 flex-1">
@@ -68,12 +77,14 @@ export function GuestScreenHeader({
                 {eyebrow}
               </p>
             )}
-            <h1
-              className="mt-1.5 text-[1.75rem] font-semibold leading-tight"
-              style={{ fontFamily: displayFontFamily, letterSpacing: "-0.02em" }}
-            >
-              {title}
-            </h1>
+            {title && (
+              <h1
+                className="mt-1.5 text-[1.75rem] font-semibold leading-tight"
+                style={{ fontFamily: displayFontFamily, letterSpacing: "-0.02em" }}
+              >
+                {title}
+              </h1>
+            )}
             {subtitle && (
               <p
                 className="mt-1.5 text-sm leading-snug opacity-85"

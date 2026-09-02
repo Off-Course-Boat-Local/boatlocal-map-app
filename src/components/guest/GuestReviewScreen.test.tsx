@@ -55,7 +55,7 @@ describe("GuestReviewScreen — star rating never gates either option", () => {
   it("keeps both options rendered and clickable at a low (1-star) rating", async () => {
     renderScreen();
 
-    await userEvent.click(screen.getByRole("button", { name: "1 star" }));
+    await userEvent.click(screen.getByRole("link", { name: "1 star" }));
 
     const publicLink = screen.getByRole("link", { name: /review us on google/i });
     const privateButton = screen.getByRole("button", { name: /share private feedback instead/i });
@@ -76,7 +76,7 @@ describe("GuestReviewScreen — star rating never gates either option", () => {
   it("keeps both options rendered and clickable at a high (5-star) rating", async () => {
     renderScreen();
 
-    await userEvent.click(screen.getByRole("button", { name: "5 stars" }));
+    await userEvent.click(screen.getByRole("link", { name: "5 stars" }));
 
     const publicLink = screen.getByRole("link", { name: /review us on google/i });
     const privateButton = screen.getByRole("button", { name: /share private feedback instead/i });
@@ -102,8 +102,28 @@ describe("GuestReviewScreen — star rating never gates either option", () => {
     renderScreen();
     expect(screen.queryByText(/best/i)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "5 stars" }));
+    await userEvent.click(screen.getByRole("link", { name: "5 stars" }));
     expect(screen.getByText(/best/i)).toBeInTheDocument();
+  });
+
+  // Founder, 2026-09-02: tapping any star should hand the guest straight to
+  // the configured review link, same as tapping the explicit option card.
+  it("sends every star straight to the configured review link, not just the top one", async () => {
+    renderScreen();
+
+    const oneStar = screen.getByRole("link", { name: "1 star" });
+    const fiveStars = screen.getByRole("link", { name: "5 stars" });
+    expect(oneStar).toHaveAttribute("href", REVIEW_OPTIONS[0].url);
+    expect(fiveStars).toHaveAttribute("href", REVIEW_OPTIONS[0].url);
+
+    await userEvent.click(oneStar);
+    expect(recordGuestReview).toHaveBeenCalledWith({
+      companyId: "11111111-1111-1111-1111-111111111111",
+      rating: 1,
+    });
+    expect(recordGuestEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "review_click_google" }),
+    );
   });
 
   // REGRESSION: "Share private feedback instead" is reachable and clickable

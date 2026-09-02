@@ -136,6 +136,10 @@ const nl: Dictionary = {
     send: "Verstuur feedback",
     thanks: (company) => `Bedankt — dit is doorgegeven aan ${company}.`,
     maybeLater: "Misschien later",
+    promptTitle: "Bevallen de tips?",
+    promptBody:
+      "Een korte review helpt ons kleine bedrijf enorm — het kost je maar een momentje.",
+    promptSignature: (name) => `— ${name}`,
   },
 
   install: {

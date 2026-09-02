@@ -14,6 +14,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { photoUrl } from "@/lib/photoUrl";
 
 export interface PhotoGalleryProps {
   photos: string[];
@@ -132,7 +133,7 @@ export function PhotoGallery({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={src}
+              src={photoUrl(src, { width: 540 })}
               alt={`${alt} ${i + 1} of ${count}`}
               draggable={false}
               style={{

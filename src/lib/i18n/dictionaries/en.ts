@@ -155,6 +155,10 @@ const en = {
     send: "Send feedback",
     thanks: (company: string) => `Thanks — that’s been passed along to ${company}.`,
     maybeLater: "Maybe later",
+    promptTitle: "Enjoying the recommendations?",
+    promptBody:
+      "A quick review would genuinely help our small business — it only takes a moment.",
+    promptSignature: (name: string) => `— ${name}`,
   },
 
   install: {

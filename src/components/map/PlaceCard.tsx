@@ -20,6 +20,7 @@ import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { PhotoGallery } from "./PhotoGallery";
 import RatingBadge from "./RatingBadge";
+import { photoUrl } from "@/lib/photoUrl";
 
 /* Neutral chrome — never re-skins. */
 const INK = "#0B1421";
@@ -334,7 +335,7 @@ export function PlaceCard({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={item.photos[0]}
+              src={photoUrl(item.photos[0], { width: 96 })}
               alt=""
               style={{
                 width: "100%",

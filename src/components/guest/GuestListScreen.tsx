@@ -15,6 +15,13 @@ import { useMemo, useState } from "react";
 import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
 import { GuestScreenHeader } from "./GuestScreenHeader";
+import ReviewPromptDrawer from "./ReviewPromptDrawer";
+import {
+  PLACES_VIEWED_BEFORE_PROMPT,
+  hasShownBrowsePrompt,
+  markBrowsePromptShown,
+  markPlaceViewed,
+} from "@/lib/reviewPrompt";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { CategoryGlyph } from "@/components/map/Pin";
 import { useGuestFilter } from "@/lib/guestFilterContext";
@@ -38,6 +45,10 @@ export interface GuestListScreenProps {
   guideId?: string | null;
   /** The resolved tenant's real company id — folded into "boat_book_click" analytics. */
   companyId?: string | null;
+  /** Where the browse-triggered review drawer's stars lead. Null when no tenant resolved. */
+  reviewUrl?: string | null;
+  /** Who that drawer is signed by — the guide, else the company. */
+  reviewSignature?: string;
   pins: MapPin[];
 }
 
@@ -47,12 +58,27 @@ export default function GuestListScreen({
   guideSlug,
   guideId,
   companyId,
+  reviewUrl,
+  reviewSignature,
   pins: allPins,
 }: GuestListScreenProps) {
   const { filter, setFilter } = useGuestFilter();
   const { isSaved, toggle } = useSavedPlaces();
   const { t } = useI18n();
   const [detailItem, setDetailItem] = useState<MapPin | null>(null);
+
+  // See GuestMapScreen for the same hook and src/lib/reviewPrompt.ts for
+  // why it counts distinct places. Both screens share the sessionStorage
+  // tally, so four places across map AND list still counts as four.
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+  function openDetail(item: MapPin) {
+    setDetailItem(item);
+    if (!reviewUrl || hasShownBrowsePrompt()) return;
+    if (markPlaceViewed(item.id) >= PLACES_VIEWED_BEFORE_PROMPT) {
+      markBrowsePromptShown();
+      setShowReviewPrompt(true);
+    }
+  }
 
   const pins = useMemo(
     () => (filter ? allPins.filter((p) => p.categories.includes(filter)) : allPins),
@@ -92,7 +118,6 @@ export default function GuestListScreen({
     <div className="flex h-full w-full flex-col">
       <GuestScreenHeader
         eyebrow={brand.companyName}
-        title={brand.appName}
         subtitle={t.list.recommendationsFrom(allPins.length, guideName)}
         action={<LanguageSwitcher tone="header" />}
         logoUrl={brand.logoUrl}
@@ -171,7 +196,7 @@ export default function GuestListScreen({
                 saved={isSaved(item.id)}
                 onToggleSaved={() => toggle(item.id)}
                 onAction={() => openAction(item)}
-                onOpenDetail={() => setDetailItem(item)}
+                onOpenDetail={() => openDetail(item)}
               />
             ))}
           </ul>
@@ -185,6 +210,14 @@ export default function GuestListScreen({
           onToggleSaved={() => toggle(detailItem.id)}
           onAction={() => openAction(detailItem)}
           onClose={() => setDetailItem(null)}
+        />
+      )}
+
+      {showReviewPrompt && reviewUrl && (
+        <ReviewPromptDrawer
+          reviewUrl={reviewUrl}
+          signature={reviewSignature ?? brand.companyName}
+          onClose={() => setShowReviewPrompt(false)}
         />
       )}
     </div>

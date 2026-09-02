@@ -30,6 +30,7 @@ import { guestPinAction } from "@/lib/guestActions";
 import { withGuestQuery } from "@/lib/guestLinks";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import type { Brand } from "@/lib/types";
+import { photoUrl } from "@/lib/photoUrl";
 
 /* Neutral chrome — never re-skins. Matches PlaceCard's palette. */
 const INK = "#17181C";
@@ -62,9 +63,15 @@ function GuideAvatar({ initial, logoUrl }: { initial: string; logoUrl?: string |
       // eslint-disable-next-line @next/next/no-img-element
       <img
         aria-hidden="true"
-        src={logoUrl}
+        src={photoUrl(logoUrl, { width: 64 })}
         alt=""
-        className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white object-contain p-2"
+        // object-contain + minimal padding: the whole logo, wordmark
+        // included, scaled to fit inside the circle rather than cropped by
+        // it (founder, 2026-09-02: "make sure the software neatly puts the
+        // logo in the full circle, so all text is included and is resized
+        // accordingly"). A tenant's logo is any aspect ratio, so `contain`
+        // is the only rule that can promise nothing is cut off.
+        className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white object-contain p-[3px]"
         style={{ boxShadow: "0 6px 16px -6px rgba(0,0,0,0.35)" }}
       />
     );
