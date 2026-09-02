@@ -54,6 +54,7 @@ import GuestNavigationScreen from "@/components/guest/GuestNavigationScreen";
 import { LanguageSwitcher } from "@/components/guest/LanguageSwitcher";
 
 import { useGuestLocation, guestPoint } from "@/hooks/useGuestLocation";
+import { useCompassHeading } from "@/hooks/useCompassHeading";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import {
   LONG_WALK_METERS,
@@ -173,6 +174,15 @@ export default function GuestMapScreen({
 
   const { location, request } = useGuestLocation();
   const guest = guestPoint(location);
+  // iOS gates deviceorientation behind an explicit per-page-load tap
+  // (see useCompassHeading's own header comment) — without a button
+  // somewhere on THIS screen, GuestDot's heading cone would only ever
+  // start working if the guest happened to open the "Walking directions"
+  // full-screen nav first and granted it there. Founder, 2026-09-02:
+  // wanted the cone on the location dot itself, not tucked away in a
+  // screen most selections never reach.
+  const { permissionNeeded: compassPermissionNeeded, requestPermission: requestCompass } =
+    useCompassHeading();
 
   const pins = useMemo(
     () => (filter ? allPins.filter((p) => p.categories.includes(filter)) : allPins),
@@ -441,6 +451,25 @@ export default function GuestMapScreen({
                 {t.map.tryAgain}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Compass permission — iOS only (see the hook above); every other
+            browser fires deviceorientation with no gate at all, so
+            compassPermissionNeeded just stays false there and this never
+            renders. Only worth asking once location itself is on — a
+            heading arrow on a dot that isn't shown yet has nothing to
+            orient. */}
+        {compassPermissionNeeded && location.status === "granted" && (
+          <div className="mt-2 flex px-4">
+            <button
+              type="button"
+              onClick={requestCompass}
+              className="pointer-events-auto rounded-full bg-white/95 px-3.5 py-1.5 text-[11px] font-semibold backdrop-blur"
+              style={{ boxShadow: CARD_SHADOW, color: "var(--brand-primary)" }}
+            >
+              {t.navigation.enableCompass}
+            </button>
           </div>
         )}
 
