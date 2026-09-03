@@ -16,6 +16,7 @@ const fr: Dictionary = {
     cancel: "Annuler",
     bookTour: "Réserver cette balade",
     walkingDirections: "Itinéraire à pied",
+    publicTransport: "Transports en commun",
     savePlace: (name) => `Ajouter ${name} à tes favoris`,
     removeSaved: (name) => `Retirer ${name} de tes favoris`,
     scanAside: "Scanne le code pour l’ouvrir sur ton téléphone — c’est là qu’il est le plus utile.",
@@ -97,6 +98,9 @@ const fr: Dictionary = {
     enableCompass: "Activer la boussole",
     recenter: "Recentrer",
     overview: "Itinéraire complet",
+    board: (line, headsign) => `Prends ${line} direction ${headsign}`,
+    alight: (stop) => `Descends à ${stop}`,
+    stopsCount: (n) => `${n} ${n === 1 ? "arrêt" : "arrêts"}`,
   },
 
   saved: {

@@ -162,6 +162,8 @@ export default function GuestMapScreen({
     lng: number;
     lat: number;
     name: string;
+    /** Which way the guest asked to travel — both open the same in-app screen, which branches its own route fetch and step rendering. */
+    mode: "walk" | "transit";
   } | null>(null);
 
   // Same category set, LABELS swapped for the guest's language — ids and
@@ -317,6 +319,28 @@ export default function GuestMapScreen({
       setDirectionsTappedFor(null);
     }
   }, [directionsTappedFor, selected, guest, routeInfo, companyId, guideId]);
+
+  // Both directions buttons on the drawer run this: same intent signal, same
+  // analytics row, only the travel mode differs. "Walking directions" (never
+  // "Book this tour") is the real intent-to-go signal the arrival effect
+  // above watches for — merely tapping a pin to preview it must never count.
+  function startDirections(pin: MapPin, mode: "walk" | "transit") {
+    setDirectionsTappedFor(pin.id);
+    // Real data for the "Directions requested" row Report/Platform analytics
+    // have both had defined since before this screen existed, with nothing
+    // ever actually firing it — see directions_arrived's own comment above
+    // for the matching other half of this funnel.
+    recordGuestEvent({
+      eventType: "directions_requested",
+      companyId,
+      guideId,
+      recommendationId: pin.id,
+      platform: installPlatformToEventPlatform(
+        detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
+      ),
+    }).catch(() => {});
+    setNavigationTarget({ id: pin.id, lng: pin.lng, lat: pin.lat, name: pin.name, mode });
+  }
 
   return (
     <div className="relative h-full w-full">
@@ -570,37 +594,16 @@ export default function GuestMapScreen({
             onClose={() => setSelectedId(null)}
             className="w-full"
             onAction={() => {
-              // PlaceCard's onAction hands back a reduced PlaceCardItem
-              // (no lat/lng — see src/components/map/PlaceCard.tsx), so
-              // the coordinates come from `selected`, the full MapPin
-              // already in scope, exactly as before this screen used
-              // guestPinAction.
-              const { url, clickId } = guestPinAction(selected, {
-                selection: bookingSelection,
-                companySlug: brand.id,
-                guideSlug: guideSlug ?? undefined,
-              });
-              // "Walking directions" (never "Book this tour") is the real
-              // intent-to-go signal the arrival effect above watches for —
-              // merely tapping a pin to preview it must never count.
-              if (!selected.isBoat) {
-                setDirectionsTappedFor(selected.id);
-                // Real data for the "Directions requested" row Report/
-                // Platform analytics have both had defined since before
-                // this screen existed, with nothing ever actually firing
-                // it — see directions_arrived's own comment below for the
-                // matching other half of this funnel.
-                recordGuestEvent({
-                  eventType: "directions_requested",
-                  companyId,
-                  guideId,
-                  recommendationId: selected.id,
-                  platform: installPlatformToEventPlatform(
-                    detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
-                  ),
-                }).catch(() => {});
-              }
               if (selected.isBoat) {
+                // PlaceCard's onAction hands back a reduced PlaceCardItem
+                // (no lat/lng — see src/components/map/PlaceCard.tsx), so
+                // the booking URL is built from `selected`, the full MapPin
+                // already in scope.
+                const { url, clickId } = guestPinAction(selected, {
+                  selection: bookingSelection,
+                  companySlug: brand.id,
+                  guideSlug: guideSlug ?? undefined,
+                });
                 // Fire-and-forget: a failed analytics write must never
                 // block the guest from actually booking. See
                 // src/lib/guestEvents.ts.
@@ -618,8 +621,7 @@ export default function GuestMapScreen({
                   metadata: clickId ? { clickId } : undefined,
                 }).catch(() => {});
                 // Booking still hands off externally — BoatLocal owns that
-                // checkout flow, this app was never going to reimplement
-                // it. Only "Walking directions" changes below.
+                // checkout flow, this app was never going to reimplement it.
                 window.open(url, "_blank", "noopener,noreferrer");
                 return;
               }
@@ -627,16 +629,12 @@ export default function GuestMapScreen({
               // old hand-off to an external Maps app — founder request,
               // 2026-09-01: "asking for directions still leads to an
               // external google maps link, i want to build something
-              // internal". `url` (the Google Maps deep link built above)
-              // isn't thrown away: GuestNavigationScreen keeps it as its
-              // own "Open in Google Maps instead" escape hatch.
-              setNavigationTarget({
-                id: selected.id,
-                lng: selected.lng,
-                lat: selected.lat,
-                name: selected.name,
-              });
+              // internal".
+              startDirections(selected, "walk");
             }}
+            // Same screen, transit itinerary — founder request, 2026-09-04.
+            // Boats never reach this (PlaceCard hides the button for them).
+            onSecondaryAction={() => startDirections(selected, "transit")}
           />
         </div>
       ) : null}
@@ -661,6 +659,7 @@ export default function GuestMapScreen({
       {navigationTarget && (
         <GuestNavigationScreen
           destination={navigationTarget}
+          mode={navigationTarget.mode}
           companyId={companyId}
           guideId={guideId}
           companyName={brand.companyName}

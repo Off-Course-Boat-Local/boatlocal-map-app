@@ -13,6 +13,7 @@ const es: Dictionary = {
     cancel: "Cancelar",
     bookTour: "Reservar este tour",
     walkingDirections: "Cómo llegar a pie",
+    publicTransport: "Transporte público",
     savePlace: (name) => `Guardar ${name}`,
     removeSaved: (name) => `Quitar ${name} de guardados`,
     scanAside: "Escanéalo para abrirlo en tu móvil — ahí es donde mejor funciona.",
@@ -94,6 +95,9 @@ const es: Dictionary = {
     enableCompass: "Activar brújula",
     recenter: "Centrar",
     overview: "Ruta completa",
+    board: (line, headsign) => `Coge ${line} dirección ${headsign}`,
+    alight: (stop) => `Bájate en ${stop}`,
+    stopsCount: (n) => `${n} ${n === 1 ? "parada" : "paradas"}`,
   },
 
   saved: {

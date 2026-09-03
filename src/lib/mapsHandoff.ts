@@ -51,6 +51,29 @@ export function googleMapsWalkingUrl({
 }
 
 /**
+ * The public-transport twin of googleMapsWalkingUrl — same two decisions
+ * (no `origin`, coordinates as the destination), different `travelmode`.
+ *
+ * Used as the escape hatch from in-app transit navigation
+ * (GuestNavigationScreen.tsx): when Google can't route a guest by transit,
+ * or they'd simply rather use the real Maps app with live departures, this
+ * is the link that hands them off mid-mode rather than dropping them back
+ * into walking directions they didn't ask for.
+ */
+export function googleMapsTransitUrl({
+  destLat,
+  destLng,
+}: GoogleMapsWalkingUrlInput): string {
+  const params = new URLSearchParams({
+    api: "1",
+    destination: `${destLat},${destLng}`,
+    travelmode: "transit",
+  });
+
+  return `${MAPS_DIR_BASE}?${params.toString()}`;
+}
+
+/**
  * The label for the hand-off button.
  *
  * Kept short — the button sits in a card, and the destination name is already

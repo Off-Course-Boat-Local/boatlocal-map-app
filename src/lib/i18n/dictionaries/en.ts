@@ -26,6 +26,7 @@ const en = {
     cancel: "Cancel",
     bookTour: "Book this tour",
     walkingDirections: "Walking directions",
+    publicTransport: "Public transport",
     savePlace: (name: string) => `Save ${name}`,
     removeSaved: (name: string) => `Remove ${name} from saved`,
     scanAside: "Scan to open this on your phone — that’s where you’ll want it.",
@@ -112,6 +113,9 @@ const en = {
     enableCompass: "Enable compass",
     recenter: "Recenter",
     overview: "Overview",
+    board: (line: string, headsign: string) => `Take ${line} toward ${headsign}`,
+    alight: (stop: string) => `Get off at ${stop}`,
+    stopsCount: (n: number) => `${n} ${n === 1 ? "stop" : "stops"}`,
   },
 
   saved: {

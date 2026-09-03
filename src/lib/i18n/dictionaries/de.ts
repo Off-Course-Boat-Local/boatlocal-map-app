@@ -13,6 +13,7 @@ const de: Dictionary = {
     cancel: "Abbrechen",
     bookTour: "Diese Tour buchen",
     walkingDirections: "Fußweg anzeigen",
+    publicTransport: "Öffentliche Verkehrsmittel",
     savePlace: (name) => `${name} speichern`,
     removeSaved: (name) => `${name} aus Gespeichert entfernen`,
     scanAside: "Scanne den Code, um das auf deinem Handy zu öffnen — dort gehört es hin.",
@@ -94,6 +95,9 @@ const de: Dictionary = {
     enableCompass: "Kompass aktivieren",
     recenter: "Zentrieren",
     overview: "Ganze Route",
+    board: (line, headsign) => `Nimm ${line} Richtung ${headsign}`,
+    alight: (stop) => `Aussteigen an ${stop}`,
+    stopsCount: (n) => `${n} ${n === 1 ? "Haltestelle" : "Haltestellen"}`,
   },
 
   saved: {

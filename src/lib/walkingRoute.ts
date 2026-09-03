@@ -83,7 +83,7 @@ function parseSeconds(duration: string | undefined): number {
 export async function getWalkingRoute(
   origin: { lng: number; lat: number },
   destination: { lng: number; lat: number },
-  options: { includeSteps?: boolean } = {},
+  options: { includeSteps?: boolean; languageCode?: string } = {},
 ): Promise<WalkingRoute | null> {
   const fieldMask = options.includeSteps
     ? "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline," +
@@ -104,6 +104,10 @@ export async function getWalkingRoute(
         origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
         destination: { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } },
         travelMode: "WALK",
+        // Google localises the turn instructions itself when told which
+        // language the guest is reading in — cheaper and better than
+        // translating "Turn right onto Prinsengracht" in five dictionaries.
+        ...(options.languageCode ? { languageCode: options.languageCode } : {}),
       }),
     });
     if (!res.ok) return null;

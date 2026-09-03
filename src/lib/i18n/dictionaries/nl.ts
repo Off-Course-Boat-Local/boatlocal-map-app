@@ -14,6 +14,7 @@ const nl: Dictionary = {
     cancel: "Annuleren",
     bookTour: "Boek deze tour",
     walkingDirections: "Looproute",
+    publicTransport: "Openbaar vervoer",
     savePlace: (name) => `${name} bewaren`,
     removeSaved: (name) => `${name} niet meer bewaren`,
     scanAside: "Scan de code om dit op je telefoon te openen — daar hoort het thuis.",
@@ -95,6 +96,9 @@ const nl: Dictionary = {
     enableCompass: "Kompas inschakelen",
     recenter: "Centreren",
     overview: "Hele route",
+    board: (line, headsign) => `Neem ${line} richting ${headsign}`,
+    alight: (stop) => `Uitstappen bij ${stop}`,
+    stopsCount: (n) => `${n} ${n === 1 ? "halte" : "haltes"}`,
   },
 
   saved: {

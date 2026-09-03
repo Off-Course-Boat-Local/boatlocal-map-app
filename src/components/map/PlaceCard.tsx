@@ -12,7 +12,7 @@
 // (the "Book this tour" fill, the directions arrow, and the saved-heart
 // fill). Nothing else here changes when the skin changes.
 
-import { Clock, Heart, MapPin as MapPinIcon, Navigation, X } from "lucide-react";
+import { Clock, Heart, MapPin as MapPinIcon, Navigation, TramFront, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { CategoryId } from "@/lib/types";
@@ -56,6 +56,14 @@ export interface PlaceCardProps {
   onClose?: () => void;
   /** "Book this tour" for boats, "Walking directions" for everything else. */
   onAction?: (item: PlaceCardItem) => void;
+  /**
+   * Public-transport directions — the same destination as `onAction`, by
+   * tram/bus/metro instead of on foot. Rendered as a compact icon button
+   * (never for boats, which only book), so the walking route stays the
+   * one-tap default it has always been rather than becoming a mode picker
+   * every guest has to answer before they can go anywhere.
+   */
+  onSecondaryAction?: (item: PlaceCardItem) => void;
   /** Gallery open state. Controlled if provided, otherwise internal. */
   galleryOpen?: boolean;
   onToggleGallery?: (next: boolean) => void;
@@ -96,6 +104,7 @@ export function PlaceCard({
   onToggleSaved,
   onClose,
   onAction,
+  onSecondaryAction,
   galleryOpen,
   onToggleGallery,
   floating = true,
@@ -486,6 +495,24 @@ export function PlaceCard({
           )}
           {actionLabel}
         </button>
+
+        {!item.isBoat && onSecondaryAction && (
+          <button
+            type="button"
+            onClick={() => onSecondaryAction(item)}
+            aria-label={t.common.publicTransport}
+            title={t.common.publicTransport}
+            style={{
+              ...actionBase,
+              flex: "0 0 auto",
+              width: 44,
+              background: "#FFFFFF",
+              border: `1px solid ${BORDER}`,
+            }}
+          >
+            <TramFront size={19} strokeWidth={1.9} color="var(--brand-primary)" aria-hidden />
+          </button>
+        )}
 
         <button
           type="button"

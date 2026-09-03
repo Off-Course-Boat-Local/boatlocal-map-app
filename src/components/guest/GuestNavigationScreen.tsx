@@ -1,9 +1,20 @@
 "use client";
 
-// In-app turn-by-turn walking directions — replaces the old hand-off to an
+// In-app turn-by-turn directions — replaces the old hand-off to an
 // external Google/Apple Maps app for the guest map's "Walking directions"
 // button (2026-09-01 founder request: "asking for directions still leads to
 // an external google maps link, i want to build something internal").
+//
+// TWO MODES, ONE SCREEN (2026-09-04): `mode` is "walk" or "transit". A
+// transit itinerary comes back from the same endpoint as ONE flat step list
+// spanning both travel modes — walk to the stop, ride the tram, walk from
+// the stop — which is what lets everything below stay mode-agnostic:
+// camera-follow, compass bearing, wake lock, GPS-proximity step advance and
+// arrival detection are all pure geometry against `route.path`/`steps` and
+// never ask how the guest is travelling. Only the STEP RENDERING branches
+// (StepIcon + the instruction/subtext composers), because "Board Tram 14
+// toward Muiderpoortstation, get off after 4 stops" is a different sentence
+// from "Turn right onto Prinsengracht", not a relabelled one.
 //
 // Full-screen takeover, same `position: fixed inset: 0` pattern
 // GuestPlaceDetail.tsx already established for the guest app's other
@@ -45,6 +56,7 @@ import {
   ArrowUp,
   ArrowUpLeft,
   ArrowUpRight,
+  Bus,
   CircleCheck,
   Compass,
   Crosshair,
@@ -54,7 +66,10 @@ import {
   Maximize2,
   Navigation as NavigationArrow,
   RotateCcw,
+  Ship,
   Signpost,
+  TrainFront,
+  TramFront,
 } from "lucide-react";
 
 import BaseMap, { useMapInstance } from "@/components/map/BaseMap";
@@ -70,7 +85,11 @@ import { recordGuestEvent } from "@/lib/guestEvents";
 import { detectInstallPlatform, installPlatformToEventPlatform } from "@/lib/installPlatform";
 import { hasShownArrivalPrompt, markArrivalPromptShown } from "@/lib/reviewPrompt";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
-import { DIRECTIONS_LINK_PROPS, googleMapsWalkingUrl } from "@/lib/mapsHandoff";
+import {
+  DIRECTIONS_LINK_PROPS,
+  googleMapsTransitUrl,
+  googleMapsWalkingUrl,
+} from "@/lib/mapsHandoff";
 import { BORDER, INK, MUTED, SHADOW_FLOAT, SURFACE } from "@/lib/guestTheme";
 
 /** How close (metres, raw) to a step's endpoint counts as "reached it" — advances to the next instruction. */
@@ -102,9 +121,28 @@ function remainingMinutes(seconds: number): number {
   return Math.max(1, Math.ceil(seconds / 60));
 }
 
+interface TransitDetails {
+  line: {
+    name: string | null;
+    shortName: string | null;
+    color: string | null;
+    vehicleType: string | null;
+  };
+  headsign: string | null;
+  stopCount: number | null;
+  departureStop: string | null;
+  arrivalStop: string | null;
+  departureTime: string | null;
+  arrivalTime: string | null;
+}
+
 interface RouteStep {
-  instruction: string;
+  /** Google's own turn instruction. Null on TRANSIT steps, which carry structured `transitDetails` instead — see stepInstruction() below. */
+  instruction: string | null;
   maneuver: string;
+  /** Absent on walk-only routes (the endpoint doesn't ask Google for it there) — treated as "WALK". */
+  travelMode?: "WALK" | "TRANSIT";
+  transitDetails?: TransitDetails | null;
   distanceMeters: number;
   durationSeconds: number;
   startLocation: { lng: number; lat: number };
@@ -121,12 +159,44 @@ interface Route {
 export interface GuestNavigationScreenProps {
   /** `id` is the recommendation's id — it keys the arrival event and the once-per-place prompt latch this screen shares with GuestMapScreen's own arrival banner. */
   destination: { id: string; lng: number; lat: number; name: string };
+  /** How the guest asked to travel. Decides which route this screen fetches, how its steps render, and where its "Open in Google Maps" escape hatch points. */
+  mode: "walk" | "transit";
   /** Both optional on exactly the same terms as GuestMapScreen's own props — a tenant preview can render the guest app without either, and an arrival event with no company is simply not worth recording. */
   companyId?: string | null;
   guideId?: string | null;
   /** Who the arrival prompt asks the guest to rate — the guide whose recommendation sent them here, never the venue they walked to. */
   companyName: string;
   onClose: () => void;
+}
+
+/** Google's transit vehicle-type enum → a lucide icon. Only the types Amsterdam actually runs are mapped; everything else gets the bus, which is the honest default for "some vehicle you board". */
+function VehicleIcon({ type, className }: { type: string | null; className?: string }) {
+  switch (type) {
+    case "TRAM":
+    case "LIGHT_RAIL":
+      return <TramFront className={className} aria-hidden />;
+    case "SUBWAY":
+    case "METRO_RAIL":
+    case "MONORAIL":
+    case "RAIL":
+    case "HEAVY_RAIL":
+    case "COMMUTER_TRAIN":
+    case "HIGH_SPEED_TRAIN":
+    case "LONG_DISTANCE_TRAIN":
+      return <TrainFront className={className} aria-hidden />;
+    case "FERRY":
+      return <Ship className={className} aria-hidden />;
+    default:
+      return <Bus className={className} aria-hidden />;
+  }
+}
+
+/** The icon for one step: a vehicle for transit legs, the maneuver arrow for walking ones. */
+function StepIcon({ step, className }: { step: RouteStep; className?: string }) {
+  if (step.travelMode === "TRANSIT") {
+    return <VehicleIcon type={step.transitDetails?.line.vehicleType ?? null} className={className} />;
+  }
+  return <ManeuverIcon maneuver={step.maneuver} className={className} />;
 }
 
 /** Google's maneuver enum → a lucide icon. Unlisted values (roundabouts, ferries, merges — rare on foot) fall back to a plain forward arrow rather than guessing. */
@@ -201,12 +271,13 @@ function DestinationMarker({ position, color }: { position: { lng: number; lat: 
 
 export default function GuestNavigationScreen({
   destination,
+  mode,
   companyId,
   guideId,
   companyName,
   onClose,
 }: GuestNavigationScreenProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const searchParams = useSearchParams();
   const { location } = useGuestLocation();
   const rawGuest = guestPoint(location);
@@ -244,6 +315,10 @@ export default function GuestNavigationScreen({
       destLng: String(destination.lng),
       destLat: String(destination.lat),
       steps: "1",
+      mode,
+      // Google localises its own instruction text when told which language
+      // the guest is reading in — see walkingRoute.ts.
+      lang: locale,
     });
     void fetch(`/api/guest/walking-route?${params.toString()}`)
       .then((res) => (res.ok ? res.json() : null))
@@ -255,7 +330,7 @@ export default function GuestNavigationScreen({
         }
       })
       .catch(() => setLoadError(true));
-  }, [guest, destination.lng, destination.lat]);
+  }, [guest, destination.lng, destination.lat, mode, locale]);
 
   // Advance the current step once the guest passes its endpoint.
   useEffect(() => {
@@ -359,7 +434,43 @@ export default function GuestNavigationScreen({
     return { meters, seconds: route.durationSeconds * ratio };
   }, [route, stepIndex, metersToTurn, currentStep]);
 
-  const fallbackUrl = googleMapsWalkingUrl({ destLat: destination.lat, destLng: destination.lng });
+  const fallbackUrl =
+    mode === "transit"
+      ? googleMapsTransitUrl({ destLat: destination.lat, destLng: destination.lng })
+      : googleMapsWalkingUrl({ destLat: destination.lat, destLng: destination.lng });
+
+  /**
+   * What a step actually tells the guest to do. Walking steps use Google's
+   * own sentence; transit steps have none, so one is composed from the
+   * structured line/headsign — falling back to whichever half exists,
+   * because a tram with no headsign is still boardable and "Take 14" beats
+   * an empty row.
+   *
+   * SHORT NAME FIRST, deliberately: it's what's actually written on the
+   * front of the vehicle and on the platform sign. Verified against the
+   * live API (2026-09-04) — GVB's night bus comes back as
+   * nameShort "N88" vs name "Lijn 288", and an NS train as "Sprinter" vs
+   * "Uitgeest <-> Rotterdam Centraal SPR4000". Preferring `name` would put
+   * that second string in front of a guest looking for a train.
+   */
+  function stepInstruction(step: RouteStep): string {
+    if (step.travelMode !== "TRANSIT") return step.instruction ?? "";
+    const line = step.transitDetails?.line;
+    const label = line?.shortName ?? line?.name ?? "";
+    const headsign = step.transitDetails?.headsign;
+    if (label && headsign) return t.navigation.board(label, headsign);
+    if (label) return label;
+    return step.instruction ?? "";
+  }
+
+  /** The small grey line under an instruction: stop count on transit, distance on foot. */
+  function stepSubtext(step: RouteStep): string {
+    const stops = step.transitDetails?.stopCount;
+    if (step.travelMode === "TRANSIT" && typeof stops === "number") {
+      return t.navigation.stopsCount(stops);
+    }
+    return formatStepMeters(step.distanceMeters);
+  }
 
   // Direction-to-walk arrow: which way to face right now, not just where the
   // destination is on the map. Points at the next turn (or the destination
@@ -612,18 +723,40 @@ export default function GuestNavigationScreen({
             <div className="flex items-center gap-3.5 p-4">
               <span
                 className="flex shrink-0 items-center justify-center rounded-full"
-                style={{ width: 44, height: 44, background: "var(--brand-primary)" }}
+                style={{
+                  width: 44,
+                  height: 44,
+                  // Transit legs wear their real line colour (GVB's own tram
+                  // red, the metro's blue) — that's the colour the guest is
+                  // about to look for on a vehicle and on the platform sign,
+                  // so borrowing it beats the brand tint here.
+                  background:
+                    (currentStep.travelMode === "TRANSIT"
+                      ? currentStep.transitDetails?.line.color
+                      : null) ?? "var(--brand-primary)",
+                }}
               >
-                <ManeuverIcon maneuver={currentStep.maneuver} className="size-6 text-white" />
+                <StepIcon step={currentStep} className="size-6 text-white" />
               </span>
               <div className="min-w-0 flex-1">
                 <p style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 16, color: INK }}>
-                  {currentStep.instruction}
+                  {stepInstruction(currentStep)}
                 </p>
                 <p className="text-[13px]" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
-                  {t.navigation.stepDistance(
-                    formatStepMeters(metersToTurn ?? currentStep.distanceMeters),
-                  )}
+                  {currentStep.travelMode === "TRANSIT"
+                    ? [
+                        currentStep.transitDetails?.arrivalStop
+                          ? t.navigation.alight(currentStep.transitDetails.arrivalStop)
+                          : null,
+                        typeof currentStep.transitDetails?.stopCount === "number"
+                          ? t.navigation.stopsCount(currentStep.transitDetails.stopCount)
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                    : t.navigation.stepDistance(
+                        formatStepMeters(metersToTurn ?? currentStep.distanceMeters),
+                      )}
                 </p>
               </div>
             </div>
@@ -663,21 +796,30 @@ export default function GuestNavigationScreen({
                   <div key={i} className="flex items-start gap-2.5 py-1.5">
                     <span
                       className="mt-0.5 flex shrink-0 items-center justify-center rounded-full"
-                      style={{ width: 24, height: 24, background: SURFACE, color: MUTED }}
+                      style={
+                        step.travelMode === "TRANSIT" && step.transitDetails?.line.color
+                          ? {
+                              width: 24,
+                              height: 24,
+                              background: step.transitDetails.line.color,
+                              color: "#FFFFFF",
+                            }
+                          : { width: 24, height: 24, background: SURFACE, color: MUTED }
+                      }
                     >
-                      <ManeuverIcon maneuver={step.maneuver} className="size-3.5" />
+                      <StepIcon step={step} className="size-3.5" />
                     </span>
                     <span
                       className="min-w-0 flex-1 text-[12.5px] leading-4"
                       style={{ color: INK, fontFamily: bodyFontFamily }}
                     >
-                      {step.instruction}
+                      {stepInstruction(step)}
                     </span>
                     <span
                       className="shrink-0 text-[11.5px] leading-4"
                       style={{ color: MUTED, fontFamily: bodyFontFamily }}
                     >
-                      {formatStepMeters(step.distanceMeters)}
+                      {stepSubtext(step)}
                     </span>
                   </div>
                 ))}
