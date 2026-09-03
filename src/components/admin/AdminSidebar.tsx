@@ -21,6 +21,7 @@ import {
   ChartIcon,
   GridIcon,
   LogoutIcon,
+  MegaphoneIcon,
   PersonIcon,
   UsersIcon,
 } from "@/components/PortalIcons";
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { href: "/admin/users", label: "Users", icon: UsersIcon },
   { href: "/admin/boats", label: "Boats", icon: AnchorIcon },
   { href: "/admin/companies", label: "Companies", icon: BuildingIcon },
+  { href: "/admin/outreach", label: "Outreach", icon: MegaphoneIcon },
   { href: "/admin/guides", label: "Guides", icon: PersonIcon },
   { href: "/admin/analytics", label: "Platform analytics", icon: ChartIcon },
   // The platform-default company (src/lib/data/source.ts's

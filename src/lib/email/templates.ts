@@ -314,3 +314,50 @@ export function setPasswordEmail({
     ].join("\n"),
   };
 }
+
+/**
+ * Renders a cold-outreach email (src/lib/admin/outreachActions.ts,
+ * sendOutreachEmailAction) from the admin's own composed subject/body.
+ *
+ * Deliberately NOT run through layout()/button() above: those render the
+ * "Map App" wordmark + branded card + CTA button that every transactional
+ * email (invites, notifications) uses on purpose, because the recipient
+ * already has a relationship with the product. A cold email to a tour
+ * operator who has never heard of Map App is the opposite case — wrapping
+ * it in obvious marketing chrome is what makes a first-contact email read
+ * as a mass blast and land in spam instead of like the personal note it's
+ * meant to be. So this only escapes the admin's text and turns blank-line-
+ * separated paragraphs into <p> tags; nothing else is added.
+ */
+export function plainOutreachEmail({
+  subject,
+  bodyText,
+}: {
+  subject: string;
+  bodyText: string;
+}): RenderedEmail {
+  const html = bodyText
+    .split(/\n{2,}/)
+    .map((paragraph) => escapeHtml(paragraph).replace(/\n/g, "<br />"))
+    .map(
+      (paragraph) =>
+        `<p style="margin:0 0 16px;font-size:14.5px;line-height:22px;color:${INK};">${paragraph}</p>`,
+    )
+    .join("");
+
+  return {
+    subject,
+    html: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(subject)}</title>
+  </head>
+  <body style="margin:0;padding:24px;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+    ${html}
+  </body>
+</html>`,
+    text: bodyText,
+  };
+}
