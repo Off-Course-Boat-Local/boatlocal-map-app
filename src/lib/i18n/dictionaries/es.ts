@@ -95,9 +95,11 @@ const es: Dictionary = {
     enableCompass: "Activar brújula",
     recenter: "Centrar",
     overview: "Ruta completa",
-    board: (line, headsign) => `Coge ${line} dirección ${headsign}`,
+    board: (line, headsign) => `Toma ${line} dirección ${headsign}`,
     alight: (stop) => `Bájate en ${stop}`,
     stopsCount: (n) => `${n} ${n === 1 ? "parada" : "paradas"}`,
+    departsAt: (time) => `Sale a las ${time}`,
+    nextStep: "Siguiente paso",
   },
 
   saved: {

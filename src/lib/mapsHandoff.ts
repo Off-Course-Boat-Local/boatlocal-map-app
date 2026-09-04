@@ -12,17 +12,20 @@
 
 const MAPS_DIR_BASE = "https://www.google.com/maps/dir/";
 
-export interface GoogleMapsWalkingUrlInput {
+export interface GoogleMapsDirectionsInput {
   destLat: number;
   destLng: number;
   /** Only used for labelling — see the note below on why it is not the destination. */
   destName?: string;
 }
 
+/** @deprecated Kept as an alias while `googleMapsWalkingUrl` still carries the older name. Prefer GoogleMapsDirectionsInput. */
+export type GoogleMapsWalkingUrlInput = GoogleMapsDirectionsInput;
+
 /**
- * Builds a walking-directions deep link to a destination.
+ * Builds a directions deep link to a destination, for one travel mode.
  *
- * Two deliberate decisions:
+ * Two deliberate decisions, shared by every mode:
  *
  * 1. **No `origin`.** Omitting it makes Google use the device's own live
  *    location. That is both more accurate than anything we could pass and
@@ -37,40 +40,35 @@ export interface GoogleMapsWalkingUrlInput {
  * Everything is encoded via URLSearchParams, so names, commas and diacritics
  * are safe.
  */
-export function googleMapsWalkingUrl({
-  destLat,
-  destLng,
-}: GoogleMapsWalkingUrlInput): string {
+function googleMapsDirectionsUrl(
+  { destLat, destLng }: GoogleMapsDirectionsInput,
+  travelmode: "walking" | "transit",
+): string {
   const params = new URLSearchParams({
     api: "1",
     destination: `${destLat},${destLng}`,
-    travelmode: "walking",
+    travelmode,
   });
 
   return `${MAPS_DIR_BASE}?${params.toString()}`;
 }
 
+/** Walking directions hand-off. See googleMapsDirectionsUrl for the shared decisions. */
+export function googleMapsWalkingUrl(input: GoogleMapsDirectionsInput): string {
+  return googleMapsDirectionsUrl(input, "walking");
+}
+
 /**
- * The public-transport twin of googleMapsWalkingUrl — same two decisions
- * (no `origin`, coordinates as the destination), different `travelmode`.
+ * Public-transport hand-off.
  *
  * Used as the escape hatch from in-app transit navigation
  * (GuestNavigationScreen.tsx): when Google can't route a guest by transit,
  * or they'd simply rather use the real Maps app with live departures, this
- * is the link that hands them off mid-mode rather than dropping them back
- * into walking directions they didn't ask for.
+ * hands them off IN THE MODE THEY ASKED FOR rather than dropping them into
+ * walking directions they didn't want.
  */
-export function googleMapsTransitUrl({
-  destLat,
-  destLng,
-}: GoogleMapsWalkingUrlInput): string {
-  const params = new URLSearchParams({
-    api: "1",
-    destination: `${destLat},${destLng}`,
-    travelmode: "transit",
-  });
-
-  return `${MAPS_DIR_BASE}?${params.toString()}`;
+export function googleMapsTransitUrl(input: GoogleMapsDirectionsInput): string {
+  return googleMapsDirectionsUrl(input, "transit");
 }
 
 /**
@@ -91,10 +89,19 @@ export function directionsButtonLabel(
 /**
  * Accessible label. Screen-reader users get no visual card context and no
  * "opens in a new tab" affordance, so both are spelled out here.
+ *
+ * `mode` defaults to walking to keep existing callers unchanged — but it is
+ * a parameter rather than hardcoded because a transit hand-off announcing
+ * "walking directions" would be actively wrong for the one group of users
+ * who can't see which button they pressed.
  */
-export function directionsAriaLabel(destName?: string): string {
+export function directionsAriaLabel(
+  destName?: string,
+  mode: "walking" | "transit" = "walking",
+): string {
   const where = destName ? ` to ${destName}` : "";
-  return `Get walking directions${where} in Google Maps (opens in a new tab)`;
+  const kind = mode === "transit" ? "public transport" : "walking";
+  return `Get ${kind} directions${where} in Google Maps (opens in a new tab)`;
 }
 
 /** Props every "Get directions" anchor should spread, so nobody forgets rel. */

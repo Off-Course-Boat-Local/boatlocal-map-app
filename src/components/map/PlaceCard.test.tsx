@@ -66,6 +66,34 @@ describe("PlaceCard", () => {
     expect(onAction.mock.calls[0][0].id).toBe(boat.id);
   });
 
+  it("offers public transport alongside walking directions for a place", async () => {
+    const onSecondaryAction = vi.fn();
+    render(<PlaceCard item={place} onSecondaryAction={onSecondaryAction} />);
+
+    // Walking stays the primary, one-tap action; transit is the compact
+    // second option beside it, never a mode picker in front of both.
+    expect(screen.getByRole("button", { name: /directions/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /public transport/i }));
+
+    expect(onSecondaryAction).toHaveBeenCalledTimes(1);
+    expect(onSecondaryAction.mock.calls[0][0].id).toBe(place.id);
+  });
+
+  it("never offers public transport for a boat, even when a handler is passed", () => {
+    // A boat tour is booked, not travelled to by tram. The `!item.isBoat`
+    // half of the render guard is the part a refactor could quietly drop
+    // with nothing else to signal it.
+    render(<PlaceCard item={boat} onSecondaryAction={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /public transport/i })).toBeNull();
+  });
+
+  it("renders no transit button when no handler is supplied", () => {
+    // Every other PlaceCard call site (List, Saved, Welcome, the spikes)
+    // omits it and must look exactly as it did before transit existed.
+    render(<PlaceCard item={place} />);
+    expect(screen.queryByRole("button", { name: /public transport/i })).toBeNull();
+  });
+
   it("reports save toggles by id", async () => {
     const onToggleSaved = vi.fn();
     render(<PlaceCard item={place} saved={false} onToggleSaved={onToggleSaved} />);

@@ -97,8 +97,10 @@ const nl: Dictionary = {
     recenter: "Centreren",
     overview: "Hele route",
     board: (line, headsign) => `Neem ${line} richting ${headsign}`,
-    alight: (stop) => `Uitstappen bij ${stop}`,
+    alight: (stop) => `Stap uit bij ${stop}`,
     stopsCount: (n) => `${n} ${n === 1 ? "halte" : "haltes"}`,
+    departsAt: (time) => `Vertrekt om ${time}`,
+    nextStep: "Volgende stap",
   },
 
   saved: {

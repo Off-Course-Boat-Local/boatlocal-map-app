@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { googleMapsWalkingUrl } from "./mapsHandoff";
+import { googleMapsTransitUrl, googleMapsWalkingUrl } from "./mapsHandoff";
 import { PLACES } from "./data";
 
 const ANNE_FRANK = PLACES.find((p) => p.id === "anne-frank")!;
@@ -66,5 +66,42 @@ describe("googleMapsWalkingUrl", () => {
       });
       expect(() => new URL(url), place.name).not.toThrow();
     }
+  });
+});
+
+describe("googleMapsTransitUrl", () => {
+  it("hands off in transit mode, not walking", () => {
+    // The whole point of the transit escape hatch: a guest who asked for
+    // public transport and hit an error must not land in Google Maps on
+    // walking directions they never requested.
+    const url = new URL(
+      googleMapsTransitUrl({ destLat: ANNE_FRANK.lat, destLng: ANNE_FRANK.lng }),
+    );
+
+    expect(url.origin + url.pathname).toBe("https://www.google.com/maps/dir/");
+    expect(url.searchParams.get("api")).toBe("1");
+    expect(url.searchParams.get("travelmode")).toBe("transit");
+  });
+
+  it("sends coordinates as the destination, not the name", () => {
+    const url = new URL(
+      googleMapsTransitUrl({
+        destLat: ANNE_FRANK.lat,
+        destLng: ANNE_FRANK.lng,
+        destName: ANNE_FRANK.name,
+      }),
+    );
+
+    const destination = url.searchParams.get("destination") ?? "";
+    expect(destination).toMatch(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/);
+    expect(destination).not.toContain("Anne");
+  });
+
+  it("never puts the guest's own position in the URL", () => {
+    // Same privacy invariant as the walking twin — it applies to every mode,
+    // so it is asserted for every mode.
+    const url = new URL(googleMapsTransitUrl({ destLat: 52.3731, destLng: 4.8936 }));
+    expect(url.searchParams.has("origin")).toBe(false);
+    expect(url.searchParams.has("saddr")).toBe(false);
   });
 });

@@ -100,7 +100,9 @@ const fr: Dictionary = {
     overview: "Itinéraire complet",
     board: (line, headsign) => `Prends ${line} direction ${headsign}`,
     alight: (stop) => `Descends à ${stop}`,
-    stopsCount: (n) => `${n} ${n === 1 ? "arrêt" : "arrêts"}`,
+    stopsCount: (n) => `${n} ${n <= 1 ? "arrêt" : "arrêts"}`,
+    departsAt: (time) => `Départ à ${time}`,
+    nextStep: "Étape suivante",
   },
 
   saved: {

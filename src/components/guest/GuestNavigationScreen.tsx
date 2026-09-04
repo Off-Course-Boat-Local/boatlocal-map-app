@@ -57,6 +57,7 @@ import {
   ArrowUpLeft,
   ArrowUpRight,
   Bus,
+  ChevronRight,
   CircleCheck,
   Compass,
   Crosshair,
@@ -92,8 +93,21 @@ import {
 } from "@/lib/mapsHandoff";
 import { BORDER, INK, MUTED, SHADOW_FLOAT, SURFACE } from "@/lib/guestTheme";
 
-/** How close (metres, raw) to a step's endpoint counts as "reached it" — advances to the next instruction. */
+/** How close (metres, raw) to a WALKING step's endpoint counts as "reached it" — advances to the next instruction. */
 const STEP_ADVANCE_METERS = 25;
+
+/**
+ * The same, for a TRANSIT step — deliberately far looser.
+ *
+ * A transit step's endpoint is Google's coordinate for the alighting stop,
+ * which is a platform centroid. Nobody surfaces there: at a metro station or
+ * Centraal you come up a stairwell 50-150 m away, so a 25 m window is simply
+ * never entered and the step list freezes on "get off at X" while the guest
+ * walks the last stretch. GPS underground makes it worse — position updates
+ * stop during the ride, so the one moment inside the window may never be
+ * sampled at all.
+ */
+const TRANSIT_STEP_ADVANCE_METERS = 150;
 
 /** How close (metres, raw) to the destination itself counts as arrived. Looser than a step advance: this ends navigation and asks for a review, so it has to fire reliably through normal urban GPS scatter rather than leave a guest standing at the door being told to keep walking. */
 const ARRIVAL_METERS = 40;
@@ -121,11 +135,50 @@ function remainingMinutes(seconds: number): number {
   return Math.max(1, Math.ceil(seconds / 60));
 }
 
+/**
+ * Google's departure/arrival times are ISO 8601 in UTC; a guest wants "21:07"
+ * in the clock they're reading. Returns "" for anything unparseable, which
+ * the caller treats as "no departure time" rather than rendering a broken one.
+ */
+function formatClockTime(iso: string, locale: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  try {
+    return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(date);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Black or white, whichever is readable on `background`. Only used when
+ * Google gives a line colour without its matching textColor.
+ *
+ * Standard sRGB relative-luminance threshold — good enough for a 24px icon
+ * badge, and far better than always-white on a yellow line.
+ */
+function readableTextColor(background: string): string {
+  const hex = background.replace("#", "");
+  const full =
+    hex.length === 3
+      ? hex.split("").map((c) => c + c).join("")
+      : hex.slice(0, 6);
+  if (full.length !== 6 || !/^[0-9a-f]{6}$/i.test(full)) return "#FFFFFF";
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.6 ? INK : "#FFFFFF";
+}
+
+// Mirrored by hand from src/lib/transitRoute.ts rather than imported: that
+// module carries `import "server-only"`, which would break this client
+// component's build. Same reason the Route/RouteStep copies below predate
+// transit. Keep the two in step when either changes.
 interface TransitDetails {
   line: {
     name: string | null;
     shortName: string | null;
     color: string | null;
+    textColor: string | null;
     vehicleType: string | null;
   };
   headsign: string | null;
@@ -140,8 +193,7 @@ interface RouteStep {
   /** Google's own turn instruction. Null on TRANSIT steps, which carry structured `transitDetails` instead — see stepInstruction() below. */
   instruction: string | null;
   maneuver: string;
-  /** Absent on walk-only routes (the endpoint doesn't ask Google for it there) — treated as "WALK". */
-  travelMode?: "WALK" | "TRANSIT";
+  travelMode: "WALK" | "TRANSIT";
   transitDetails?: TransitDetails | null;
   distanceMeters: number;
   durationSeconds: number;
@@ -303,24 +355,41 @@ export default function GuestNavigationScreen({
   // screen timeout. Released automatically when this screen unmounts.
   useWakeLock(!arrived);
 
-  // Fetched once, the moment a first guest fix is available — not
-  // refetched on subsequent GPS ticks (see this file's header comment).
-  const fetchedRef = useRef(false);
+  // Fetched once per (destination, mode, language), the moment a first guest
+  // fix is available — not refetched on subsequent GPS ticks (see this
+  // file's header comment).
+  //
+  // The ref holds a KEY rather than a boolean: with a plain `true` the
+  // effect's own dependencies were decorative, and the first person to add
+  // an in-screen "try transit instead" toggle would have got a transit
+  // chrome wrapped around the walking route, silently.
+  const fetchedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!guest || fetchedRef.current) return;
-    fetchedRef.current = true;
+    if (!guest) return;
+    const fetchKey = `${mode}|${locale}|${destination.lng},${destination.lat}`;
+    if (fetchedRef.current === fetchKey) return;
+    fetchedRef.current = fetchKey;
+
+    // Closing the screen mid-flight shouldn't leave a response nobody reads
+    // still downloading on a phone's mobile data — and the transit response
+    // is the larger of the two. Same intent as DirectionLine's own cancel
+    // flag, done with the platform's abort signal.
+    const controller = new AbortController();
     const params = new URLSearchParams({
       originLng: String(guest.lng),
       originLat: String(guest.lat),
       destLng: String(destination.lng),
       destLat: String(destination.lat),
+      // Only walking routes gate their step list behind this; the transit
+      // endpoint always returns steps. Sent anyway so the cache key and the
+      // walking path stay identical to what they were.
       steps: "1",
       mode,
       // Google localises its own instruction text when told which language
       // the guest is reading in — see walkingRoute.ts.
       lang: locale,
     });
-    void fetch(`/api/guest/walking-route?${params.toString()}`)
+    void fetch(`/api/guest/walking-route?${params.toString()}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((body: { route?: Route } | null) => {
         if (body?.route && body.route.steps.length > 0) {
@@ -329,16 +398,35 @@ export default function GuestNavigationScreen({
           setLoadError(true);
         }
       })
-      .catch(() => setLoadError(true));
+      .catch((error: unknown) => {
+        if ((error as { name?: string })?.name === "AbortError") return;
+        setLoadError(true);
+      });
+    return () => controller.abort();
   }, [guest, destination.lng, destination.lat, mode, locale]);
 
+  /** How close counts as "reached this step", which depends on how the guest got there. */
+  function advanceThreshold(step: RouteStep): number {
+    return step.travelMode === "TRANSIT" ? TRANSIT_STEP_ADVANCE_METERS : STEP_ADVANCE_METERS;
+  }
+
   // Advance the current step once the guest passes its endpoint.
+  //
+  // SCANS FORWARD rather than stepping one at a time: on transit, GPS goes
+  // quiet in a tunnel and comes back several steps later, and even above
+  // ground a vehicle covers the 25 m window between two ~1 Hz fixes. Taking
+  // the FURTHEST satisfied step means a guest who reappears past two of them
+  // lands on the right instruction instead of being stuck one behind
+  // forever, with no way to catch up.
   useEffect(() => {
     if (!route || !guest || arrived) return;
-    const step = route.steps[stepIndex];
-    if (!step) return;
-    if (haversineMeters(guest, step.endLocation) > STEP_ADVANCE_METERS) return;
-    if (stepIndex < route.steps.length - 1) setStepIndex((i) => i + 1);
+    let next = stepIndex;
+    for (let i = stepIndex; i < route.steps.length - 1; i += 1) {
+      if (haversineMeters(guest, route.steps[i].endLocation) <= advanceThreshold(route.steps[i])) {
+        next = i + 1;
+      }
+    }
+    if (next !== stepIndex) setStepIndex(next);
   }, [route, guest, stepIndex, arrived]);
 
   // Arrival is checked against the DESTINATION, independently of step
@@ -346,14 +434,24 @@ export default function GuestNavigationScreen({
   // STEP_ADVANCE_METERS of some intermediate step's endpoint, and "you're
   // standing at the door" must not depend on having ticked off every
   // instruction on the way there.
+  //
+  // EXCEPT WHILE RIDING. Amsterdam's tram and bus lines run down the same
+  // streets these recommendations sit on, so a vehicle passing within 40 m
+  // of the venue two stops before the one the guest is meant to get off at
+  // is completely ordinary — and this latch is one-way and expensive: it
+  // ends navigation, releases the wake lock, swaps the turn-by-turn panel
+  // for the review ask, fires `directions_arrived`, and burns the shared
+  // once-per-place prompt latch so the map's own arrival banner never shows
+  // either. So: not while the current step is a ride.
   const destLng = destination.lng;
   const destLat = destination.lat;
+  const ridingTransit = route?.steps[stepIndex]?.travelMode === "TRANSIT";
   useEffect(() => {
-    if (!guest || arrived) return;
+    if (!guest || arrived || ridingTransit) return;
     if (haversineMeters(guest, { lng: destLng, lat: destLat }) <= ARRIVAL_METERS) {
       setArrived(true);
     }
-  }, [guest, arrived, destLng, destLat]);
+  }, [guest, arrived, ridingTransit, destLng, destLat]);
 
   // The "a guest actually got there" signal behind Admin's Platform
   // analytics and Studio's Report page. Latched through the same
@@ -410,8 +508,12 @@ export default function GuestNavigationScreen({
   /* ---- Live progress --------------------------------------------- */
 
   const currentStep = route?.steps[stepIndex] ?? null;
+  // Capped in COUNT as well as height: the panel only ever shows ~4 rows,
+  // and walking had an implicit bound (nobody walks 20 km) that transit
+  // removes — a cross-region itinerary can carry a long tail of steps that
+  // would all sit in the DOM unread.
   const upcomingSteps = useMemo(
-    () => (route ? route.steps.slice(stepIndex + 1) : []),
+    () => (route ? route.steps.slice(stepIndex + 1, stepIndex + 13) : []),
     [route, stepIndex],
   );
 
@@ -423,15 +525,26 @@ export default function GuestNavigationScreen({
 
   const remaining = useMemo(() => {
     if (!route) return null;
-    const laterSteps = route.steps
-      .slice(stepIndex + 1)
-      .reduce((sum, step) => sum + step.distanceMeters, 0);
-    const meters = (metersToTurn ?? currentStep?.distanceMeters ?? 0) + laterSteps;
-    // Scale Google's own duration by how much of the route is left, rather
-    // than re-deriving a time from a walking-speed constant — the reason to
-    // pay for a route at all is that its timing model beats our assumption.
-    const ratio = route.distanceMeters > 0 ? Math.min(1, meters / route.distanceMeters) : 0;
-    return { meters, seconds: route.durationSeconds * ratio };
+    const later = route.steps.slice(stepIndex + 1);
+    const meters = (metersToTurn ?? currentStep?.distanceMeters ?? 0) + later.reduce((sum, step) => sum + step.distanceMeters, 0);
+
+    // TIME COMES FROM THE STEPS' OWN DURATIONS, never from scaling the total
+    // by distance travelled. That scaling silently assumes constant speed,
+    // which is exactly what a transit itinerary isn't: after a 4.5 km metro
+    // ride, a remaining 600 m walk is 11% of the distance, so a
+    // distance-proportional estimate of a 25 min trip reported ~3 minutes
+    // for an 8 minute walk. Always wrong in the under-reporting direction,
+    // on the final leg, which is the leg people actually check. Only the
+    // CURRENT step gets pro-rated, and only by how much of it is left.
+    const currentFraction =
+      currentStep && currentStep.distanceMeters > 0 && metersToTurn !== null
+        ? Math.min(1, metersToTurn / currentStep.distanceMeters)
+        : 1;
+    const seconds =
+      (currentStep?.durationSeconds ?? 0) * currentFraction +
+      later.reduce((sum, step) => sum + step.durationSeconds, 0);
+
+    return { meters, seconds };
   }, [route, stepIndex, metersToTurn, currentStep]);
 
   const fallbackUrl =
@@ -463,13 +576,58 @@ export default function GuestNavigationScreen({
     return step.instruction ?? "";
   }
 
-  /** The small grey line under an instruction: stop count on transit, distance on foot. */
+  /** The small grey line under an instruction in the UPCOMING list: stop count on transit, distance on foot. */
   function stepSubtext(step: RouteStep): string {
     const stops = step.transitDetails?.stopCount;
     if (step.travelMode === "TRANSIT" && typeof stops === "number") {
       return t.navigation.stopsCount(stops);
     }
     return formatStepMeters(step.distanceMeters);
+  }
+
+  /**
+   * The same line for the CURRENT step, which earns more detail than the
+   * upcoming ones: where to get off, and — the one question a rider has that
+   * a walker never does — when the thing actually leaves. On foot the
+   * distance is the live one, recomputed from where the guest is standing,
+   * not the step's static length.
+   *
+   * Falls back to `stepSubtext` when a transit step has neither a stop name
+   * nor a stop count, so this can never render as a blank grey line.
+   */
+  function currentStepSubtext(step: RouteStep): string {
+    if (step.travelMode !== "TRANSIT") {
+      return t.navigation.stepDistance(formatStepMeters(metersToTurn ?? step.distanceMeters));
+    }
+    const parts = [
+      step.transitDetails?.departureTime
+        ? t.navigation.departsAt(formatClockTime(step.transitDetails.departureTime, locale))
+        : null,
+      step.transitDetails?.arrivalStop
+        ? t.navigation.alight(step.transitDetails.arrivalStop)
+        : null,
+      typeof step.transitDetails?.stopCount === "number"
+        ? t.navigation.stopsCount(step.transitDetails.stopCount)
+        : null,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(" · ") : stepSubtext(step);
+  }
+
+  /**
+   * The badge colours for one step's icon. Transit legs wear their real line
+   * colour — that's what the guest is about to look for on a vehicle and a
+   * platform sign — but the foreground comes from Google's own `textColor`
+   * rather than a hardcoded white, because operator colours are arbitrary
+   * and plenty are light (NS yellow, #FFC917, would have made the icon
+   * invisible). Falls back to a luminance test when Google omits it.
+   */
+  function stepBadgeColors(step: RouteStep): { background: string; color: string } {
+    const line = step.travelMode === "TRANSIT" ? step.transitDetails?.line : null;
+    if (!line?.color) return { background: SURFACE, color: MUTED };
+    return {
+      background: line.color,
+      color: line.textColor ?? readableTextColor(line.color),
+    };
   }
 
   // Direction-to-walk arrow: which way to face right now, not just where the
@@ -723,42 +881,45 @@ export default function GuestNavigationScreen({
             <div className="flex items-center gap-3.5 p-4">
               <span
                 className="flex shrink-0 items-center justify-center rounded-full"
-                style={{
-                  width: 44,
-                  height: 44,
-                  // Transit legs wear their real line colour (GVB's own tram
-                  // red, the metro's blue) — that's the colour the guest is
-                  // about to look for on a vehicle and on the platform sign,
-                  // so borrowing it beats the brand tint here.
-                  background:
-                    (currentStep.travelMode === "TRANSIT"
-                      ? currentStep.transitDetails?.line.color
-                      : null) ?? "var(--brand-primary)",
-                }}
+                style={
+                  currentStep.travelMode === "TRANSIT" && currentStep.transitDetails?.line.color
+                    ? { width: 44, height: 44, ...stepBadgeColors(currentStep) }
+                    : { width: 44, height: 44, background: "var(--brand-primary)", color: "#FFFFFF" }
+                }
               >
-                <StepIcon step={currentStep} className="size-6 text-white" />
+                <StepIcon step={currentStep} className="size-6" />
               </span>
               <div className="min-w-0 flex-1">
                 <p style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 16, color: INK }}>
                   {stepInstruction(currentStep)}
                 </p>
                 <p className="text-[13px]" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
-                  {currentStep.travelMode === "TRANSIT"
-                    ? [
-                        currentStep.transitDetails?.arrivalStop
-                          ? t.navigation.alight(currentStep.transitDetails.arrivalStop)
-                          : null,
-                        typeof currentStep.transitDetails?.stopCount === "number"
-                          ? t.navigation.stopsCount(currentStep.transitDetails.stopCount)
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")
-                    : t.navigation.stepDistance(
-                        formatStepMeters(metersToTurn ?? currentStep.distanceMeters),
-                      )}
+                  {currentStepSubtext(currentStep)}
                 </p>
               </div>
+              {/* Manual advance — the escape hatch for the one case GPS
+                  can't solve: a guest who surfaces from a metro station far
+                  enough from Google's platform coordinate that the (already
+                  generous) transit threshold never fires. Without it they'd
+                  be stuck reading "get off at X" for the rest of the walk. */}
+              {stepIndex < (route?.steps.length ?? 0) - 1 && (
+                <button
+                  type="button"
+                  onClick={() => setStepIndex((i) => Math.min(i + 1, (route?.steps.length ?? 1) - 1))}
+                  aria-label={t.navigation.nextStep}
+                  className="grid size-9 shrink-0 place-items-center rounded-full"
+                  style={{
+                    background: SURFACE,
+                    color: MUTED,
+                    border: 0,
+                    cursor: "pointer",
+                    WebkitTapHighlightColor: "transparent",
+                    touchAction: "manipulation",
+                  }}
+                >
+                  <ChevronRight size={18} aria-hidden />
+                </button>
+              )}
             </div>
 
             <div
@@ -796,16 +957,7 @@ export default function GuestNavigationScreen({
                   <div key={i} className="flex items-start gap-2.5 py-1.5">
                     <span
                       className="mt-0.5 flex shrink-0 items-center justify-center rounded-full"
-                      style={
-                        step.travelMode === "TRANSIT" && step.transitDetails?.line.color
-                          ? {
-                              width: 24,
-                              height: 24,
-                              background: step.transitDetails.line.color,
-                              color: "#FFFFFF",
-                            }
-                          : { width: 24, height: 24, background: SURFACE, color: MUTED }
-                      }
+                      style={{ width: 24, height: 24, ...stepBadgeColors(step) }}
                     >
                       <StepIcon step={step} className="size-3.5" />
                     </span>

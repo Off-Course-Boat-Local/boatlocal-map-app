@@ -33,6 +33,7 @@
 
 import "server-only";
 
+import { computeRoutes, parseSeconds, type RawRouteStep } from "./googleRoutes";
 import { decodePolyline } from "./polyline";
 
 export interface WalkingRouteStep {
@@ -40,6 +41,14 @@ export interface WalkingRouteStep {
   instruction: string;
   /** Google's maneuver enum, e.g. "TURN_RIGHT", "DEPART", "ARRIVE" — see GuestNavigationScreen.tsx's icon mapping for the values actually handled. */
   maneuver: string;
+  /**
+   * Always "WALK" here. Emitted even though it's constant, so the client's
+   * step type can keep `travelMode` NON-optional across both route kinds —
+   * an optional one is a foot-gun: every consumer has to remember to test
+   * `!== "TRANSIT"` rather than the more natural `=== "WALK"`, which would
+   * be silently false for every walking route.
+   */
+  travelMode: "WALK";
   distanceMeters: number;
   durationSeconds: number;
   startLocation: { lng: number; lat: number };
@@ -53,24 +62,6 @@ export interface WalkingRoute {
   path: Array<{ lng: number; lat: number }>;
   /** Only populated when `includeSteps` was passed to getWalkingRoute. */
   steps: WalkingRouteStep[];
-}
-
-function apiKey(): string {
-  const key = process.env.GOOGLE_PLACES_API_KEY;
-  if (!key) throw new Error("GOOGLE_PLACES_API_KEY is not set. Check .env.local.");
-  return key;
-}
-
-interface RawStep {
-  distanceMeters?: number;
-  staticDuration?: string;
-  navigationInstruction?: { maneuver?: string; instructions?: string };
-  startLocation?: { latLng?: { latitude?: number; longitude?: number } };
-  endLocation?: { latLng?: { latitude?: number; longitude?: number } };
-}
-
-function parseSeconds(duration: string | undefined): number {
-  return duration ? parseInt(duration, 10) : 0;
 }
 
 /**
@@ -92,57 +83,40 @@ export async function getWalkingRoute(
       "routes.legs.steps.endLocation"
     : "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline";
 
-  try {
-    const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey(),
-        "X-Goog-FieldMask": fieldMask,
-      },
-      body: JSON.stringify({
-        origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
-        destination: { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } },
-        travelMode: "WALK",
-        // Google localises the turn instructions itself when told which
-        // language the guest is reading in — cheaper and better than
-        // translating "Turn right onto Prinsengracht" in five dictionaries.
-        ...(options.languageCode ? { languageCode: options.languageCode } : {}),
-      }),
-    });
-    if (!res.ok) return null;
+  // Google localises the turn instructions itself when told which language
+  // the guest is reading in — cheaper and better than translating "Turn
+  // right onto Prinsengracht" in five dictionaries.
+  const route = await computeRoutes({
+    origin,
+    destination,
+    travelMode: "WALK",
+    fieldMask,
+    languageCode: options.languageCode,
+  });
 
-    const body = (await res.json()) as {
-      routes?: Array<{
-        distanceMeters?: number;
-        duration?: string;
-        polyline?: { encodedPolyline?: string };
-        legs?: Array<{ steps?: RawStep[] }>;
-      }>;
-    };
-    const route = body.routes?.[0];
-    const encoded = route?.polyline?.encodedPolyline;
-    if (!route || !encoded) return null;
+  const encoded = route?.polyline?.encodedPolyline;
+  if (!route || !encoded) return null;
 
-    const rawSteps = route.legs?.flatMap((leg) => leg.steps ?? []) ?? [];
-    const steps: WalkingRouteStep[] = rawSteps
-      .filter((s) => s.navigationInstruction?.instructions && s.startLocation?.latLng && s.endLocation?.latLng)
-      .map((s) => ({
-        instruction: s.navigationInstruction!.instructions!,
-        maneuver: s.navigationInstruction!.maneuver ?? "STRAIGHT",
-        distanceMeters: s.distanceMeters ?? 0,
-        durationSeconds: parseSeconds(s.staticDuration),
-        startLocation: { lng: s.startLocation!.latLng!.longitude!, lat: s.startLocation!.latLng!.latitude! },
-        endLocation: { lng: s.endLocation!.latLng!.longitude!, lat: s.endLocation!.latLng!.latitude! },
-      }));
+  const rawSteps = route.legs?.flatMap((leg) => leg.steps ?? []) ?? [];
+  const steps: WalkingRouteStep[] = rawSteps
+    .filter(
+      (s: RawRouteStep) =>
+        s.navigationInstruction?.instructions && s.startLocation?.latLng && s.endLocation?.latLng,
+    )
+    .map((s: RawRouteStep) => ({
+      instruction: s.navigationInstruction!.instructions!,
+      maneuver: s.navigationInstruction!.maneuver ?? "STRAIGHT",
+      travelMode: "WALK" as const,
+      distanceMeters: s.distanceMeters ?? 0,
+      durationSeconds: parseSeconds(s.staticDuration),
+      startLocation: { lng: s.startLocation!.latLng!.longitude!, lat: s.startLocation!.latLng!.latitude! },
+      endLocation: { lng: s.endLocation!.latLng!.longitude!, lat: s.endLocation!.latLng!.latitude! },
+    }));
 
-    return {
-      distanceMeters: route.distanceMeters ?? 0,
-      durationSeconds: parseSeconds(route.duration),
-      path: decodePolyline(encoded),
-      steps,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    distanceMeters: route.distanceMeters ?? 0,
+    durationSeconds: parseSeconds(route.duration),
+    path: decodePolyline(encoded),
+    steps,
+  };
 }

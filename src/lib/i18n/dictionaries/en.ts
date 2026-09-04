@@ -116,6 +116,8 @@ const en = {
     board: (line: string, headsign: string) => `Take ${line} toward ${headsign}`,
     alight: (stop: string) => `Get off at ${stop}`,
     stopsCount: (n: number) => `${n} ${n === 1 ? "stop" : "stops"}`,
+    departsAt: (time: string) => `Departs ${time}`,
+    nextStep: "Next step",
   },
 
   saved: {

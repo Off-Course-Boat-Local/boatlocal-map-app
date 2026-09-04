@@ -96,8 +96,10 @@ const de: Dictionary = {
     recenter: "Zentrieren",
     overview: "Ganze Route",
     board: (line, headsign) => `Nimm ${line} Richtung ${headsign}`,
-    alight: (stop) => `Aussteigen an ${stop}`,
+    alight: (stop) => `Steig bei ${stop} aus`,
     stopsCount: (n) => `${n} ${n === 1 ? "Haltestelle" : "Haltestellen"}`,
+    departsAt: (time) => `Abfahrt um ${time}`,
+    nextStep: "Nächster Schritt",
   },
 
   saved: {

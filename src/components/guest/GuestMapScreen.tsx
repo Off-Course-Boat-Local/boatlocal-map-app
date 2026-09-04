@@ -338,6 +338,11 @@ export default function GuestMapScreen({
       platform: installPlatformToEventPlatform(
         detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
       ),
+      // Which mode was asked for. Transit bills on a higher Routes API tier
+      // than walking, so this is the datum that later answers "is anyone
+      // using it, and is it worth what it costs?" — and rows written
+      // without it can never be backfilled.
+      metadata: { mode },
     }).catch(() => {});
     setNavigationTarget({ id: pin.id, lng: pin.lng, lat: pin.lat, name: pin.name, mode });
   }

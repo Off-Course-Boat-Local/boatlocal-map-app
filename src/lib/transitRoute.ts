@@ -21,6 +21,7 @@
 
 import "server-only";
 
+import { computeRoutes, parseSeconds, type RawRouteStep } from "./googleRoutes";
 import { decodePolyline } from "./polyline";
 
 export interface TransitLine {
@@ -30,6 +31,8 @@ export interface TransitLine {
   shortName: string | null;
   /** Hex colour Google associates with this line/operator, e.g. "#E4572E" — null if Google didn't supply one. */
   color: string | null;
+  /** The colour Google says to draw ON TOP of `color`. Requested because operator colours are arbitrary and plenty are light (NS yellow, #FFC917) — hardcoding white text would make the badge unreadable on those. */
+  textColor: string | null;
   /** Google's vehicle-type enum, e.g. "TRAM", "BUS", "SUBWAY", "FERRY" — see GuestNavigationScreen.tsx's icon mapping for the values actually handled. */
   vehicleType: string | null;
 }
@@ -52,6 +55,7 @@ export interface TransitRouteStep {
   /** Populated for WALK sub-legs only (Google doesn't supply a plain-English instruction for TRANSIT steps — GuestNavigationScreen composes that itself from `transitDetails`). */
   instruction: string | null;
   maneuver: string;
+  /** Non-optional on purpose — see WalkingRouteStep.travelMode's comment for why an optional one is a foot-gun. */
   travelMode: "WALK" | "TRANSIT";
   transitDetails: TransitStepDetails | null;
   distanceMeters: number;
@@ -68,16 +72,11 @@ export interface TransitRoute {
   steps: TransitRouteStep[];
 }
 
-function apiKey(): string {
-  const key = process.env.GOOGLE_PLACES_API_KEY;
-  if (!key) throw new Error("GOOGLE_PLACES_API_KEY is not set. Check .env.local.");
-  return key;
-}
-
 interface RawTransitLine {
   name?: string;
   nameShort?: string;
   color?: string;
+  textColor?: string;
   vehicle?: { type?: string };
 }
 
@@ -93,19 +92,8 @@ interface RawTransitDetails {
   };
 }
 
-interface RawStep {
-  travelMode?: string;
-  distanceMeters?: number;
-  staticDuration?: string;
-  navigationInstruction?: { maneuver?: string; instructions?: string };
-  startLocation?: { latLng?: { latitude?: number; longitude?: number } };
-  endLocation?: { latLng?: { latitude?: number; longitude?: number } };
-  transitDetails?: RawTransitDetails;
-}
-
-function parseSeconds(duration: string | undefined): number {
-  return duration ? parseInt(duration, 10) : 0;
-}
+/** The shared raw step shape, narrowed to the transitDetails this module actually parses. */
+type RawStep = Omit<RawRouteStep, "transitDetails"> & { transitDetails?: RawTransitDetails };
 
 const FIELD_MASK = [
   "routes.duration",
@@ -120,6 +108,7 @@ const FIELD_MASK = [
   "routes.legs.steps.transitDetails.transitLine.name",
   "routes.legs.steps.transitDetails.transitLine.nameShort",
   "routes.legs.steps.transitDetails.transitLine.color",
+  "routes.legs.steps.transitDetails.transitLine.textColor",
   "routes.legs.steps.transitDetails.transitLine.vehicle.type",
   "routes.legs.steps.transitDetails.headsign",
   "routes.legs.steps.transitDetails.stopCount",
@@ -140,74 +129,63 @@ export async function getTransitRoute(
   destination: { lng: number; lat: number },
   options: { languageCode?: string } = {},
 ): Promise<TransitRoute | null> {
-  try {
-    const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey(),
-        "X-Goog-FieldMask": FIELD_MASK,
-      },
-      body: JSON.stringify({
-        origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
-        destination: { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } },
-        travelMode: "TRANSIT",
-        ...(options.languageCode ? { languageCode: options.languageCode } : {}),
-      }),
+  const route = await computeRoutes({
+    origin,
+    destination,
+    travelMode: "TRANSIT",
+    fieldMask: FIELD_MASK,
+    languageCode: options.languageCode,
+  });
+
+  const encoded = route?.polyline?.encodedPolyline;
+  if (!route || !encoded) return null;
+
+  const rawSteps = (route.legs?.flatMap((leg) => leg.steps ?? []) ?? []) as RawStep[];
+  const steps: TransitRouteStep[] = rawSteps
+    .filter((s) => {
+      if (!s.startLocation?.latLng || !s.endLocation?.latLng) return false;
+      // A TRANSIT step carries no instruction (it's composed from
+      // transitDetails downstream), and a WALK step carries no
+      // transitDetails — but a step with NEITHER has nothing to say, and
+      // would render as a blank row with only a distance beside it.
+      // walkingRoute.ts filters those out via its instruction predicate;
+      // this is that guard, widened to let real transit legs through.
+      return Boolean(s.navigationInstruction?.instructions || s.transitDetails);
+    })
+    .map((s) => {
+      const td = s.transitDetails;
+      return {
+        instruction: s.navigationInstruction?.instructions ?? null,
+        maneuver: s.navigationInstruction?.maneuver ?? "STRAIGHT",
+        travelMode: s.travelMode === "TRANSIT" ? ("TRANSIT" as const) : ("WALK" as const),
+        transitDetails: td
+          ? {
+              line: {
+                name: td.transitLine?.name ?? null,
+                shortName: td.transitLine?.nameShort ?? null,
+                color: td.transitLine?.color ?? null,
+                textColor: td.transitLine?.textColor ?? null,
+                vehicleType: td.transitLine?.vehicle?.type ?? null,
+              },
+              headsign: td.headsign ?? null,
+              stopCount: td.stopCount ?? null,
+              departureStop: td.stopDetails?.departureStop?.name ?? null,
+              arrivalStop: td.stopDetails?.arrivalStop?.name ?? null,
+              departureTime: td.stopDetails?.departureTime ?? null,
+              arrivalTime: td.stopDetails?.arrivalTime ?? null,
+            }
+          : null,
+        distanceMeters: s.distanceMeters ?? 0,
+        durationSeconds: parseSeconds(s.staticDuration),
+        startLocation: { lng: s.startLocation!.latLng!.longitude!, lat: s.startLocation!.latLng!.latitude! },
+        endLocation: { lng: s.endLocation!.latLng!.longitude!, lat: s.endLocation!.latLng!.latitude! },
+      };
     });
-    if (!res.ok) return null;
 
-    const body = (await res.json()) as {
-      routes?: Array<{
-        distanceMeters?: number;
-        duration?: string;
-        polyline?: { encodedPolyline?: string };
-        legs?: Array<{ steps?: RawStep[] }>;
-      }>;
-    };
-    const route = body.routes?.[0];
-    const encoded = route?.polyline?.encodedPolyline;
-    if (!route || !encoded) return null;
-
-    const rawSteps = route.legs?.flatMap((leg) => leg.steps ?? []) ?? [];
-    const steps: TransitRouteStep[] = rawSteps
-      .filter((s) => s.startLocation?.latLng && s.endLocation?.latLng)
-      .map((s) => {
-        const td = s.transitDetails;
-        return {
-          instruction: s.navigationInstruction?.instructions ?? null,
-          maneuver: s.navigationInstruction?.maneuver ?? "STRAIGHT",
-          travelMode: s.travelMode === "TRANSIT" ? "TRANSIT" : "WALK",
-          transitDetails: td
-            ? {
-                line: {
-                  name: td.transitLine?.name ?? null,
-                  shortName: td.transitLine?.nameShort ?? null,
-                  color: td.transitLine?.color ?? null,
-                  vehicleType: td.transitLine?.vehicle?.type ?? null,
-                },
-                headsign: td.headsign ?? null,
-                stopCount: td.stopCount ?? null,
-                departureStop: td.stopDetails?.departureStop?.name ?? null,
-                arrivalStop: td.stopDetails?.arrivalStop?.name ?? null,
-                departureTime: td.stopDetails?.departureTime ?? null,
-                arrivalTime: td.stopDetails?.arrivalTime ?? null,
-              }
-            : null,
-          distanceMeters: s.distanceMeters ?? 0,
-          durationSeconds: parseSeconds(s.staticDuration),
-          startLocation: { lng: s.startLocation!.latLng!.longitude!, lat: s.startLocation!.latLng!.latitude! },
-          endLocation: { lng: s.endLocation!.latLng!.longitude!, lat: s.endLocation!.latLng!.latitude! },
-        };
-      });
-
-    return {
-      distanceMeters: route.distanceMeters ?? 0,
-      durationSeconds: parseSeconds(route.duration),
-      path: decodePolyline(encoded),
-      steps,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    distanceMeters: route.distanceMeters ?? 0,
+    durationSeconds: parseSeconds(route.duration),
+    path: decodePolyline(encoded),
+    steps,
+  };
 }
