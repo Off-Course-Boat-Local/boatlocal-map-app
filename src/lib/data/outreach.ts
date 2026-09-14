@@ -473,10 +473,26 @@ export async function recordInboundReplyByEmail(input: {
 
   // Find prospect matching the sender's email
   const cleanEmail = input.fromEmail.trim().toLowerCase();
-  const { data: prospects, error } = await supabase
+  let { data: prospects, error } = await supabase
     .from("outreach_prospects")
     .select("*, outreach_events(id, event_type, body, created_at)")
     .ilike("email", cleanEmail);
+
+  // Fallback: match by company domain if sender is e.g. mikael@company.com while prospect was info@company.com
+  if ((!prospects || prospects.length === 0) && cleanEmail.includes("@")) {
+    const domain = cleanEmail.split("@")[1];
+    const genericDomains = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "icloud.com", "live.com", "me.com"];
+    if (domain && !genericDomains.includes(domain)) {
+      const { data: domainMatches } = await supabase
+        .from("outreach_prospects")
+        .select("*, outreach_events(id, event_type, body, created_at)")
+        .ilike("email", `%@${domain}`);
+
+      if (domainMatches && domainMatches.length === 1) {
+        prospects = domainMatches;
+      }
+    }
+  }
 
   if (error || !prospects || prospects.length === 0) {
     return { matched: false };

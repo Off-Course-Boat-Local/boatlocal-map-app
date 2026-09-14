@@ -88,6 +88,24 @@ export async function POST(request: Request) {
         revalidatePath(`/admin/outreach/${result.prospect.id}`);
       } else {
         console.log(`[resend-inbound] Inbound email received from unlisted sender: ${senderEmail}`);
+
+        // Safety net: ALWAYS forward to Gmail so no inbound message is ever lost
+        try {
+          const { sendEmail } = await import("@/lib/email/client");
+          await sendEmail({
+            to: "info@boatlocal.nl",
+            subject: `[Unmatched Inbound Email] ${emailData.subject || "No subject"} (from ${senderEmail})`,
+            text: `Inbound email received at reply@reply.boatlocal.nl from an address not matched to an active prospect (${senderEmail}):\n\n${snippet}`,
+            html: `<p><strong>Inbound email received from unlisted sender:</strong> ${senderEmail}</p><blockquote style="border-left: 3px solid #f59e0b; padding-left: 12px; margin: 12px 0;">${snippet.replace(/\n/g, "<br/>")}</blockquote><p>Check the outreach list or respond from Gmail.</p>`,
+          });
+        } catch (fwdErr) {
+          console.error("[resend-inbound] Failed to forward unmatched copy to info@boatlocal.nl:", fwdErr);
+        }
+
+        if (isSlackConfigured()) {
+          const slackText = `⚠️ *Inbound Email from Unmatched Sender* (${senderEmail})\n> *Subject:* ${emailData.subject || "No subject"}\n\n${snippet.slice(0, 500)}`;
+          await postToSlack(slackText);
+        }
       }
 
       return NextResponse.json({ ok: true, matched: result.matched });
