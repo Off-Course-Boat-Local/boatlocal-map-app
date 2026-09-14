@@ -18,12 +18,14 @@ import { revalidatePath } from "next/cache";
 import { requireAdminSession } from "@/lib/admin/devAuth";
 import { createCompany } from "@/lib/data/source";
 import {
+  deleteOutreachProspect,
   getOutreachProspect,
   listOutreachEvents,
   logOutreachEvent,
   updateOutreachProspect,
   upsertOutreachProspectsFromCsv,
   type OutreachActionType,
+  type OutreachEventType,
 } from "@/lib/data/outreach";
 import { isEmailConfigured, sendEmail } from "@/lib/email/client";
 import { plainOutreachEmail } from "@/lib/email/templates";
@@ -31,6 +33,8 @@ import { plainOutreachEmail } from "@/lib/email/templates";
 import { ADMIN_ACTOR } from "./actor";
 import { parseOutreachCsv } from "./outreachCsv";
 import { sendOwnerInvite } from "./ownerInvite";
+import { OUTREACH_STATUS_LABELS, type OutreachStatus } from "./outreachStatus";
+import { CHANNEL_META, type OutreachChannel } from "./outreachTouchpoints";
 
 /** Both configurable per .env.example; 4/4 matches the founder's own default cadence. */
 const REMINDER_DAYS = Number(process.env.OUTREACH_REMINDER_DAYS ?? "4");
@@ -110,7 +114,9 @@ export async function sendOutreachEmailAction(
 
   const prospect = await getOutreachProspect(ADMIN_ACTOR, prospectId);
   if (!prospect) return { error: "This prospect no longer exists." };
-  if (!prospect.email) return { error: "This prospect has no email address on file." };
+
+  const toEmail = String(formData.get("toEmail") ?? prospect.email ?? "").trim();
+  if (!toEmail) return { error: "Please provide a recipient email address." };
 
   const subject = String(formData.get("subject") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
@@ -122,7 +128,7 @@ export async function sendOutreachEmailAction(
   }
 
   const rendered = plainOutreachEmail({ subject, bodyText: body });
-  const sent = await sendEmail({ to: prospect.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+  const sent = await sendEmail({ to: toEmail, subject: rendered.subject, html: rendered.html, text: rendered.text });
   if (!sent.ok) {
     return { error: `Could not send: ${sent.error}` };
   }
@@ -146,10 +152,11 @@ export async function sendOutreachEmailAction(
     lastContactedAt: new Date().toISOString(),
     nextActionType,
     nextActionDueAt,
+    ...(prospect.email ? {} : { email: toEmail }),
   });
 
   revalidateOutreach(prospectId);
-  return { message: `Email sent to ${prospect.email}.` };
+  return { message: `Email sent to ${toEmail}.` };
 }
 
 /**
@@ -167,6 +174,8 @@ export async function logCallAction(
   await requireAdminSession();
 
   const note = String(formData.get("note") ?? "").trim();
+  const prospect = await getOutreachProspect(ADMIN_ACTOR, prospectId);
+  if (!prospect) return { error: "This prospect no longer exists." };
 
   await logOutreachEvent(ADMIN_ACTOR, {
     prospectId,
@@ -174,11 +183,17 @@ export async function logCallAction(
     body: note || null,
   });
 
-  await updateOutreachProspect(ADMIN_ACTOR, prospectId, {
+  const patch: Parameters<typeof updateOutreachProspect>[2] = {
     lastContactedAt: new Date().toISOString(),
     nextActionType: "call",
     nextActionDueAt: addDays(CALL_DAYS),
-  });
+  };
+
+  if (prospect.status === "not_contacted") {
+    patch.status = "emailed";
+  }
+
+  await updateOutreachProspect(ADMIN_ACTOR, prospectId, patch);
 
   revalidateOutreach(prospectId);
   return { message: "Call logged." };
@@ -243,6 +258,168 @@ export async function markOutreachDeclinedAction(
 }
 
 /**
+ * Updates a prospect's status directly to any valid pipeline state.
+ * Adjusts nextActionType / nextActionDueAt to match the new status
+ * and logs an event in the timeline.
+ */
+export async function updateOutreachStatusAction(
+  prospectId: string,
+  newStatus: OutreachStatus,
+  note?: string,
+): Promise<OutreachActionResult> {
+  await requireAdminSession();
+
+  const validStatuses: OutreachStatus[] = ["not_contacted", "emailed", "replied", "declined", "onboarded"];
+  if (!validStatuses.includes(newStatus)) {
+    return { error: `Invalid status: ${newStatus}` };
+  }
+
+  const prospect = await getOutreachProspect(ADMIN_ACTOR, prospectId);
+  if (!prospect) return { error: "This prospect no longer exists." };
+
+  if (prospect.status === newStatus && !note) {
+    return { message: "Status unchanged." };
+  }
+
+  const patch: Parameters<typeof updateOutreachProspect>[2] = {
+    status: newStatus,
+  };
+
+  if (
+    newStatus === "replied" ||
+    newStatus === "declined" ||
+    newStatus === "onboarded" ||
+    newStatus === "not_contacted"
+  ) {
+    patch.nextActionType = null;
+    patch.nextActionDueAt = null;
+  } else if (newStatus === "emailed") {
+    if (!prospect.lastContactedAt) {
+      patch.lastContactedAt = new Date().toISOString();
+    }
+    if (!prospect.nextActionType) {
+      patch.nextActionType = "email_reminder";
+      patch.nextActionDueAt = addDays(REMINDER_DAYS);
+    }
+  }
+
+  await updateOutreachProspect(ADMIN_ACTOR, prospectId, patch);
+
+  const trimmedNote = note?.trim();
+  const eventBody =
+    trimmedNote ||
+    (prospect.status !== newStatus
+      ? `Status changed from ${OUTREACH_STATUS_LABELS[prospect.status]} to ${OUTREACH_STATUS_LABELS[newStatus]}.`
+      : `Status set to ${OUTREACH_STATUS_LABELS[newStatus]}.`);
+
+  let eventType: OutreachEventType = "note";
+  if (newStatus === "replied") eventType = "replied";
+  else if (newStatus === "declined") eventType = "declined";
+  else if (newStatus === "onboarded") eventType = "onboarded";
+  else eventType = "note";
+
+  await logOutreachEvent(ADMIN_ACTOR, {
+    prospectId,
+    eventType,
+    body: eventBody,
+  });
+
+  revalidateOutreach(prospectId);
+  return { message: `Status updated to ${OUTREACH_STATUS_LABELS[newStatus]}.` };
+}
+
+export async function updateOutreachStatusFormAction(
+  prospectId: string,
+  _prevState: OutreachActionResult,
+  formData: FormData,
+): Promise<OutreachActionResult> {
+  const newStatus = formData.get("status") as OutreachStatus;
+  const note = String(formData.get("note") ?? "").trim();
+  return updateOutreachStatusAction(prospectId, newStatus, note);
+}
+
+export interface LogTouchpointInput {
+  channel: OutreachChannel;
+  note: string;
+  nextActionDueAt?: string | null;
+  nextActionType?: OutreachActionType | null;
+}
+
+/**
+ * Logs an outreach touchpoint across any channel (WhatsApp, meeting proposed,
+ * meeting held, call, in-person visit, direct email, or note).
+ *
+ * Saves a timeline event formatted with the channel prefix (e.g. `[WhatsApp] ...`),
+ * updates `lastContactedAt = now()`, advances `status` from `not_contacted` to `emailed`
+ * (if not already further in the pipeline), and optionally schedules the next follow-up.
+ */
+export async function logOutreachTouchpointAction(
+  prospectId: string,
+  input: LogTouchpointInput,
+): Promise<OutreachActionResult> {
+  await requireAdminSession();
+
+  const note = input.note?.trim();
+  if (!note) {
+    return { error: "Please write a brief note about this touchpoint." };
+  }
+
+  const prospect = await getOutreachProspect(ADMIN_ACTOR, prospectId);
+  if (!prospect) return { error: "This prospect no longer exists." };
+
+  const meta = CHANNEL_META[input.channel] ?? CHANNEL_META.note;
+  const prefix = meta.defaultPrefix;
+  const eventBody = prefix && !note.startsWith(prefix) ? `${prefix} ${note}` : note;
+
+  const nowIso = new Date().toISOString();
+  const patch: Parameters<typeof updateOutreachProspect>[2] = {
+    lastContactedAt: nowIso,
+  };
+
+  // If this is an outbound/interactive touchpoint and prospect hasn't been contacted yet,
+  // advance them from 'not_contacted' to 'emailed' (contacted).
+  if (prospect.status === "not_contacted" && input.channel !== "note") {
+    patch.status = "emailed";
+  }
+
+  // If follow-up date is provided, update next_action_due_at and next_action_type
+  if (input.nextActionDueAt) {
+    patch.nextActionDueAt = new Date(input.nextActionDueAt).toISOString();
+    patch.nextActionType = input.nextActionType ?? (input.channel === "call" ? "call" : "email_reminder");
+  }
+
+  await updateOutreachProspect(ADMIN_ACTOR, prospectId, patch);
+
+  await logOutreachEvent(ADMIN_ACTOR, {
+    prospectId,
+    eventType: meta.underlyingEventType,
+    body: eventBody,
+  });
+
+  revalidateOutreach(prospectId);
+  return { message: `${meta.badgeLabel} logged.` };
+}
+
+export async function logOutreachTouchpointFormAction(
+  prospectId: string,
+  _prevState: OutreachActionResult,
+  formData: FormData,
+): Promise<OutreachActionResult> {
+  const channel = (formData.get("channel") as OutreachChannel) || "whatsapp";
+  const note = String(formData.get("note") ?? "").trim();
+  const nextActionDueAt = String(formData.get("nextActionDueAt") ?? "").trim() || null;
+  const nextActionType = (formData.get("nextActionType") as OutreachActionType) || null;
+
+  return logOutreachTouchpointAction(prospectId, {
+    channel,
+    note,
+    nextActionDueAt,
+    nextActionType,
+  });
+}
+
+
+/**
  * Graduates a replied/interested prospect into a real tenant: creates the
  * `companies` row via the existing onboarding path (src/lib/data/source.ts
  * createCompany, the same function Admin's "Create company" button uses)
@@ -303,3 +480,23 @@ export async function onboardOutreachProspectAction(
   revalidatePath("/admin");
   return { message };
 }
+
+export async function deleteOutreachProspectAction(
+  prospectId: string,
+): Promise<OutreachActionResult> {
+  await requireAdminSession();
+  const prospect = await getOutreachProspect(ADMIN_ACTOR, prospectId);
+  if (!prospect) {
+    return { error: "This prospect does not exist." };
+  }
+
+  try {
+    await deleteOutreachProspect(ADMIN_ACTOR, prospectId);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Could not delete this prospect." };
+  }
+
+  revalidateOutreach(prospectId);
+  return { message: "Prospect deleted." };
+}
+

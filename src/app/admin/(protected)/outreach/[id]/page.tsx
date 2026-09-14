@@ -1,28 +1,35 @@
 // Admin Outreach — one prospect's detail: enrichment info, the compose box
 // (OutreachComposeForm), the pipeline actions (OutreachQuickActions), and
-// the full event timeline. Mirrors Admin Companies' own list/detail split.
+// the full multi-channel event timeline. Mirrors Admin Companies' own list/detail split.
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import {
+  Building2,
+  Calendar,
+  CheckCircle2,
+  FileText,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Phone,
+  Users,
+  XCircle,
+} from "lucide-react";
 
 import { ADMIN_ACTOR } from "@/lib/admin/actor";
 import { buildDefaultOutreachDraft, outreachTouchForPriorEmails } from "@/lib/admin/outreachDraft";
-import { getOutreachProspect, listOutreachEvents, type OutreachEventType } from "@/lib/data/outreach";
+import {
+  formatLastContact,
+  parseOutreachEvent,
+} from "@/lib/admin/outreachTouchpoints";
+import { getOutreachProspect, listOutreachEvents } from "@/lib/data/outreach";
 import OutreachComposeForm from "@/components/admin/OutreachComposeForm";
 import OutreachQuickActions from "@/components/admin/OutreachQuickActions";
+import OutreachStatusDropdown from "@/components/admin/OutreachStatusDropdown";
 import { Panel, SectionHeading } from "@/components/admin/primitives";
-import StatusBadge from "@/components/admin/StatusBadge";
 
 export const metadata: Metadata = { title: "Outreach prospect" };
-
-const EVENT_LABEL: Record<OutreachEventType, string> = {
-  note: "Note",
-  email_sent: "Email sent",
-  call_logged: "Call logged",
-  replied: "Replied",
-  declined: "Declined",
-  onboarded: "Onboarded",
-};
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-GB", {
@@ -32,6 +39,32 @@ function formatDateTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function ChannelIcon({ name, className = "h-3.5 w-3.5" }: { name: string; className?: string }) {
+  switch (name) {
+    case "MessageSquare":
+      return <MessageSquare className={className} />;
+    case "Calendar":
+      return <Calendar className={className} />;
+    case "Users":
+      return <Users className={className} />;
+    case "Phone":
+      return <Phone className={className} />;
+    case "MapPin":
+      return <MapPin className={className} />;
+    case "Mail":
+      return <Mail className={className} />;
+    case "CheckCircle2":
+      return <CheckCircle2 className={className} />;
+    case "XCircle":
+      return <XCircle className={className} />;
+    case "Building2":
+      return <Building2 className={className} />;
+    case "FileText":
+    default:
+      return <FileText className={className} />;
+  }
 }
 
 export default async function OutreachProspectPage({
@@ -44,14 +77,26 @@ export default async function OutreachProspectPage({
   if (!prospect) notFound();
 
   const events = await listOutreachEvents(ADMIN_ACTOR, id);
-  const isOpen = prospect.status === "not_contacted" || prospect.status === "emailed";
-  // A different draft per touch — see outreachDraft.ts's header for why a
-  // follow-up must never be the first email again.
+  const isOpen = prospect.status === "not_contacted" || prospect.status === "emailed" || prospect.status === "replied";
   const priorEmails = events.filter((e) => e.eventType === "email_sent").length;
+  const isReplied = prospect.status === "replied";
   const touch = outreachTouchForPriorEmails(priorEmails);
-  const draft = buildDefaultOutreachDraft(prospect, { touch });
-  const composeTitle =
-    touch === 1 ? "Send outreach email" : touch === 2 ? "Send follow-up" : "Send last follow-up";
+  const draft = isReplied
+    ? {
+        subject: "Re: Hotel Guests",
+        body: `Hi ${prospect.contactName?.trim().split(/\s+/)[0] ?? ""},\n\n\n\nBeer, BoatLocal`,
+        touch,
+      }
+    : buildDefaultOutreachDraft(prospect, { touch });
+  const composeTitle = isReplied
+    ? "Reply to prospect"
+    : touch === 1
+      ? "Send outreach email"
+      : touch === 2
+        ? "Send follow-up"
+        : "Send last follow-up";
+
+  const lastContact = formatLastContact(prospect.lastContactedAt, events);
 
   return (
     <div className="space-y-6">
@@ -60,16 +105,71 @@ export default async function OutreachProspectPage({
           <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-[var(--admin-ink)]">
             {prospect.name}
           </h1>
-          <p className="mt-1.5 text-sm text-[var(--admin-ink-soft)]">
+          <p className="mt-1 text-sm text-[var(--admin-ink-soft)]">
             {[prospect.tourType, prospect.languages].filter(Boolean).join(" · ") || "No enrichment on file"}
           </p>
+
+          {lastContact ? (
+            <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-[var(--admin-ink-soft)]">Last touchpoint:</span>
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium ${lastContact.badgeClass}`}>
+                <ChannelIcon
+                  name={
+                    lastContact.channel === "whatsapp"
+                      ? "MessageSquare"
+                      : lastContact.channel === "meeting_proposed"
+                        ? "Calendar"
+                        : lastContact.channel === "meeting_held"
+                          ? "Users"
+                          : lastContact.channel === "call"
+                            ? "Phone"
+                            : lastContact.channel === "in_person"
+                              ? "MapPin"
+                              : lastContact.channel === "email"
+                                ? "Mail"
+                                : "FileText"
+                  }
+                  className="h-3 w-3"
+                />
+                <span>{lastContact.label} · {lastContact.relativeTime}</span>
+              </span>
+              {lastContact.snippet ? (
+                <span className="text-[var(--admin-ink-soft)] italic truncate max-w-lg">&ldquo;{lastContact.snippet}&rdquo;</span>
+              ) : null}
+            </div>
+          ) : (
+            <div className="mt-2.5 flex items-center gap-2 text-xs text-[var(--admin-ink-soft)]">
+              <span className="inline-flex items-center rounded-full border border-[var(--admin-border)] px-2 py-0.5 bg-[var(--admin-bg)]">
+                Not contacted yet
+              </span>
+            </div>
+          )}
         </div>
-        <StatusBadge status={prospect.status.replace("_", " ")} />
+        <OutreachStatusDropdown prospectId={prospect.id} currentStatus={prospect.status} align="right" />
       </div>
+
+      {lastContact?.isMeetingProposed ? (
+        <div className="rounded-2xl border border-purple-200 bg-purple-50/80 p-4 text-sm dark:border-purple-900/60 dark:bg-purple-950/30 flex items-start gap-3.5">
+          <div className="rounded-xl bg-purple-500/10 p-2.5 text-purple-700 dark:text-purple-300 shrink-0">
+            <Calendar className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="font-semibold text-purple-950 dark:text-purple-200 flex items-center gap-2">
+              <span>Meeting proposed</span>
+              <span className="text-xs font-normal text-purple-700 dark:text-purple-400">({lastContact.relativeTime})</span>
+            </div>
+            {lastContact.snippet ? (
+              <p className="mt-1 text-sm text-purple-900/90 dark:text-purple-300/90">
+                {lastContact.snippet}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          {isOpen && prospect.email ? (
+          {isOpen ? (
             <Panel>
               <SectionHeading title={composeTitle} />
               <OutreachComposeForm
@@ -77,14 +177,8 @@ export default async function OutreachProspectPage({
                 toEmail={prospect.email}
                 defaultSubject={draft.subject}
                 defaultBody={draft.body}
-                submitLabel={touch === 1 ? "Send" : "Send follow-up"}
+                submitLabel={isReplied ? "Send reply" : touch === 1 ? "Send" : "Send follow-up"}
               />
-            </Panel>
-          ) : isOpen ? (
-            <Panel>
-              <p className="text-sm text-[var(--admin-ink-soft)]">
-                No email address on file — log a call instead, or add one via the research notes below.
-              </p>
             </Panel>
           ) : null}
 
@@ -94,23 +188,27 @@ export default async function OutreachProspectPage({
               <p className="text-sm text-[var(--admin-ink-soft)]">Nothing logged yet.</p>
             ) : (
               <ol className="space-y-4">
-                {events.map((event) => (
-                  <li key={event.id} className="border-l-2 border-[var(--admin-border)] pl-4">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-semibold text-[var(--admin-ink)]">
-                        {EVENT_LABEL[event.eventType]}
-                      </span>
-                      <span className="text-xs text-[var(--admin-ink-soft)]">
-                        {formatDateTime(event.createdAt)}
-                      </span>
-                    </div>
-                    {event.body ? (
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--admin-ink-soft)]">
-                        {event.body}
-                      </p>
-                    ) : null}
-                  </li>
-                ))}
+                {events.map((event) => {
+                  const parsed = parseOutreachEvent(event);
+                  return (
+                    <li key={event.id} className="border-l-2 border-[var(--admin-border)] pl-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${parsed.meta.toneClass}`}>
+                          <ChannelIcon name={parsed.meta.iconName} className="h-3 w-3" />
+                          <span>{parsed.meta.badgeLabel}</span>
+                        </span>
+                        <span className="text-xs text-[var(--admin-ink-soft)]">
+                          {formatDateTime(event.createdAt)}
+                        </span>
+                      </div>
+                      {parsed.cleanBody ? (
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm text-[var(--admin-ink)]">
+                          {parsed.cleanBody}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ol>
             )}
           </Panel>
@@ -145,6 +243,22 @@ export default async function OutreachProspectPage({
               />
               <Field label="Price from" value={prospect.priceFrom ? `€${prospect.priceFrom}` : null} />
               <Field label="Founded" value={prospect.yearFounded ? String(prospect.yearFounded) : null} />
+              {lastContact ? (
+                <div className="flex justify-between gap-3 border-t border-[var(--admin-border)] pt-2 mt-2">
+                  <dt className="text-[var(--admin-ink-soft)]">Last contact</dt>
+                  <dd className="text-right font-medium text-[var(--admin-ink)]">
+                    {lastContact.label} ({lastContact.relativeTime})
+                  </dd>
+                </div>
+              ) : null}
+              {prospect.nextActionDueAt ? (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-[var(--admin-ink-soft)]">Next action</dt>
+                  <dd className="text-right font-medium text-[var(--admin-ink)]">
+                    {prospect.nextActionType === "call" ? "Call" : "Follow-up"} due {new Date(prospect.nextActionDueAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
             {prospect.notes ? (
               <p className="mt-3 border-t border-[var(--admin-border)] pt-3 text-xs text-[var(--admin-ink-soft)]">

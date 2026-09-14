@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export interface AdminTableProps {
-  columns: string[];
+  columns: ReactNode[];
   /** Each row is an ordered list of cells, matching `columns`. Cells may be plain strings or small components (e.g. StatusBadge). */
   rows: ReactNode[][];
   emptyMessage?: string;
@@ -42,7 +42,7 @@ export default function AdminTable({
             <tr className="border-b border-[var(--admin-border)] bg-[var(--admin-bg)]/60 text-left">
               {columns.map((column, columnIndex) => (
                 <th
-                  key={column}
+                  key={typeof column === "string" || typeof column === "number" ? String(column) : columnIndex}
                   scope="col"
                   className={[
                     "px-5 py-3 text-[0.6875rem] font-semibold tracking-[0.14em] text-[var(--admin-ink-soft)] uppercase whitespace-nowrap",

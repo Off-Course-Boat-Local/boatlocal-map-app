@@ -46,7 +46,7 @@ export function outreachTouchForPriorEmails(priorEmails: number): OutreachTouch 
  */
 const SUBJECT = "Hotel Guests";
 
-const SIGN_OFF = "Beer, Map App";
+const SIGN_OFF = "Beer, BoatLocal";
 
 function firstName(prospect: OutreachProspect): string | null {
   const first = prospect.contactName?.trim().split(/\s+/)[0];

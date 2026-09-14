@@ -86,7 +86,7 @@ export function isEmailConfigured(): boolean {
 
 let cached: Resend | null = null;
 
-function resendClient(): Resend {
+export function resendClient(): Resend {
   if (!RESEND_API_KEY) {
     throw new Error(
       "RESEND_API_KEY is not set. Check .env.local — this client must only " +
@@ -95,6 +95,10 @@ function resendClient(): Resend {
   }
   cached ??= new Resend(RESEND_API_KEY);
   return cached;
+}
+
+export async function getInboundEmail(emailId: string) {
+  return resendClient().emails.receiving.get(emailId);
 }
 
 export interface SendEmailInput {

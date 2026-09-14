@@ -17,7 +17,7 @@ const initialState: OutreachActionResult = {};
 
 export interface OutreachComposeFormProps {
   prospectId: string;
-  toEmail: string;
+  toEmail?: string | null;
   defaultSubject: string;
   defaultBody: string;
   /** "Send" for the first outreach email, "Send follow-up" once one has already gone out. */
@@ -45,10 +45,17 @@ export default function OutreachComposeForm({
 
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
-      <p className="text-xs text-[var(--admin-ink-soft)]">
-        Sends to <span className="font-medium text-[var(--admin-ink)]">{toEmail}</span> via the same
-        Resend setup Admin invites use.
-      </p>
+      <label className={FIELD_LABEL_CLASS}>
+        Recipient email
+        <input
+          name="toEmail"
+          type="email"
+          required
+          defaultValue={toEmail ?? ""}
+          placeholder="e.g. info@operator.com"
+          className={`mt-1.5 ${FIELD_CLASS}`}
+        />
+      </label>
 
       <label className={FIELD_LABEL_CLASS}>
         Subject

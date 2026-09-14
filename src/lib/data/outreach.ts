@@ -69,6 +69,8 @@ export interface OutreachProspect {
   websiteDomain: string | null;
   createdAt: string;
   updatedAt: string;
+  events?: OutreachEvent[];
+  latestEvent?: OutreachEvent | null;
 }
 
 export interface OutreachEvent {
@@ -109,9 +111,26 @@ interface OutreachProspectRow {
   website_domain: string | null;
   created_at: string;
   updated_at: string;
+  outreach_events?: Array<{
+    id: string;
+    event_type: OutreachEventType;
+    body: string | null;
+    created_at: string;
+  }>;
 }
 
 function fromRow(row: OutreachProspectRow): OutreachProspect {
+  const rawEvents = row.outreach_events ?? [];
+  const events: OutreachEvent[] = rawEvents
+    .map((e) => ({
+      id: e.id,
+      prospectId: row.id,
+      eventType: e.event_type,
+      body: e.body,
+      createdAt: e.created_at,
+    }))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
   return {
     id: row.id,
     name: row.name,
@@ -140,6 +159,8 @@ function fromRow(row: OutreachProspectRow): OutreachProspect {
     websiteDomain: row.website_domain,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    events,
+    latestEvent: events[0] ?? null,
   };
 }
 
@@ -160,7 +181,7 @@ export async function listOutreachProspects(actor: StudioActor): Promise<Outreac
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("outreach_prospects")
-    .select("*")
+    .select("*, outreach_events(id, event_type, body, created_at)")
     .order("next_action_due_at", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true });
   if (error) throw error;
@@ -175,7 +196,7 @@ export async function getOutreachProspect(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("outreach_prospects")
-    .select("*")
+    .select("*, outreach_events(id, event_type, body, created_at)")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
@@ -265,6 +286,11 @@ export interface UpdateOutreachProspectInput {
   nextActionDueAt?: string | null;
   lastContactedAt?: string | null;
   companyId?: string | null;
+  email?: string | null;
+  contactName?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  notes?: string | null;
 }
 
 /**
@@ -412,7 +438,75 @@ export async function updateOutreachProspect(
   if ("nextActionDueAt" in input) patch.next_action_due_at = input.nextActionDueAt;
   if ("lastContactedAt" in input) patch.last_contacted_at = input.lastContactedAt;
   if ("companyId" in input) patch.company_id = input.companyId;
+  if ("email" in input) patch.email = input.email;
+  if ("contactName" in input) patch.contact_name = input.contactName;
+  if ("phone" in input) patch.phone = input.phone;
+  if ("website" in input) patch.website = input.website;
+  if ("notes" in input) patch.notes = input.notes;
 
   const { error } = await supabase.from("outreach_prospects").update(patch).eq("id", id);
   if (error) throw error;
 }
+
+export async function deleteOutreachProspect(
+  actor: StudioActor,
+  id: string,
+): Promise<void> {
+  requireAdmin(actor);
+  const supabase = await createClient();
+  const { error } = await supabase.from("outreach_prospects").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Service-role helper for the Resend inbound webhook (/api/webhooks/resend-inbound).
+ * Finds a prospect by recipient or sender email address, records a 'replied' event,
+ * sets their status to 'replied', and clears pending reminder actions.
+ */
+export async function recordInboundReplyByEmail(input: {
+  fromEmail: string;
+  subject?: string | null;
+  bodySnippet: string;
+}): Promise<{ matched: boolean; prospect?: OutreachProspect }> {
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const supabase = createAdminClient();
+
+  // Find prospect matching the sender's email
+  const cleanEmail = input.fromEmail.trim().toLowerCase();
+  const { data: prospects, error } = await supabase
+    .from("outreach_prospects")
+    .select("*, outreach_events(id, event_type, body, created_at)")
+    .ilike("email", cleanEmail);
+
+  if (error || !prospects || prospects.length === 0) {
+    return { matched: false };
+  }
+
+  const row = prospects[0] as OutreachProspectRow;
+  const prospect = fromRow(row);
+
+  // 1. Log replied event in timeline
+  const fullBody = input.subject
+    ? `[Replied via Email] ${input.subject}\n\n${input.bodySnippet}`
+    : `[Replied via Email] ${input.bodySnippet}`;
+
+  await supabase.from("outreach_events").insert({
+    prospect_id: prospect.id,
+    event_type: "replied",
+    body: fullBody,
+  });
+
+  // 2. Update prospect status
+  await supabase
+    .from("outreach_prospects")
+    .update({
+      status: "replied",
+      last_contacted_at: new Date().toISOString(),
+      next_action_type: null,
+      next_action_due_at: null,
+    })
+    .eq("id", prospect.id);
+
+  return { matched: true, prospect };
+}
+
