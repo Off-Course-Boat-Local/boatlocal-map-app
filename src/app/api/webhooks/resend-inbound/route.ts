@@ -64,10 +64,27 @@ export async function POST(request: Request) {
       if (result.matched && result.prospect) {
         console.log(`[resend-inbound] Matched reply to prospect: ${result.prospect.name} (${senderEmail})`);
 
+        // Forward a copy to Gmail inbox info@boatlocal.nl so it also arrives in Gmail
+        try {
+          const { sendEmail } = await import("@/lib/email/client");
+          await sendEmail({
+            to: "info@boatlocal.nl",
+            subject: `[Outreach Reply] ${emailData.subject || "Reply"} - ${result.prospect.name}`,
+            text: `Reply received from ${result.prospect.name} (${senderEmail}):\n\n${snippet}\n\nView in Map App: https://map.boatlocal.nl/admin/outreach/${result.prospect.id}`,
+            html: `<p><strong>Reply received from ${result.prospect.name}</strong> (${senderEmail})</p><blockquote style="border-left: 3px solid #1B5FE3; padding-left: 12px; margin: 12px 0;">${snippet.replace(/\n/g, "<br/>")}</blockquote><p><a href="https://map.boatlocal.nl/admin/outreach/${result.prospect.id}">View and reply in Map App</a></p>`,
+          });
+        } catch (fwdErr) {
+          console.error("[resend-inbound] Failed to forward copy to info@boatlocal.nl:", fwdErr);
+        }
+
         if (isSlackConfigured()) {
           const slackText = `*New Reply from ${result.prospect.name}* (${senderEmail})\n> *Subject:* ${emailData.subject || "No subject"}\n\n${snippet.slice(0, 280)}...`;
           await postToSlack(slackText);
         }
+
+        const { revalidatePath } = await import("next/cache");
+        revalidatePath("/admin/outreach");
+        revalidatePath(`/admin/outreach/${result.prospect.id}`);
       } else {
         console.log(`[resend-inbound] Inbound email received from unlisted sender: ${senderEmail}`);
       }
