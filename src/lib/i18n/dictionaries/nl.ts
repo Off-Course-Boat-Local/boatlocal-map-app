@@ -90,6 +90,8 @@ const nl: Dictionary = {
   navigation: {
     title: (name) => `Route naar ${name}`,
     loading: "Beste route zoeken…",
+    locatingYou: "Je locatie ophalen…",
+    locationNeeded: "Zet locatie aan om een route te krijgen",
     loadError: "Kon de route nu niet laden.",
     openExternally: "Openen in Google Maps",
     modeSwitcherLabel: "Kies hoe je reist",

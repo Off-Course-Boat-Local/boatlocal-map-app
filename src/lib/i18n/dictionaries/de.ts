@@ -89,6 +89,8 @@ const de: Dictionary = {
   navigation: {
     title: (name) => `Route zu ${name}`,
     loading: "Beste Route wird gesucht…",
+    locatingYou: "Dein Standort wird ermittelt…",
+    locationNeeded: "Aktiviere den Standort, um eine Route zu bekommen",
     loadError: "Route konnte gerade nicht geladen werden.",
     openExternally: "In Google Maps öffnen",
     modeSwitcherLabel: "Wähle, wie du unterwegs bist",

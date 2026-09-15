@@ -107,6 +107,8 @@ const en = {
   navigation: {
     title: (name: string) => `Directions to ${name}`,
     loading: "Finding the best route…",
+    locatingYou: "Getting your location…",
+    locationNeeded: "Turn on location to get directions",
     loadError: "Couldn't load directions right now.",
     openExternally: "Open in Google Maps",
     /** Aria-label for the walk/bike/transit tab row at the top of the screen. */

@@ -340,7 +340,7 @@ export default function GuestNavigationScreen({
 }: GuestNavigationScreenProps) {
   const { t, locale } = useI18n();
   const searchParams = useSearchParams();
-  const { location } = useGuestLocation();
+  const { location, request: requestLocation } = useGuestLocation();
   const rawGuest = guestPoint(location);
 
   // Pinned to primitives: guestPoint() builds a fresh object every render,
@@ -352,6 +352,8 @@ export default function GuestNavigationScreen({
     () => (guestLng !== null && guestLat !== null ? { lng: guestLng, lat: guestLat } : null),
     [guestLng, guestLat],
   );
+  /** A denial or hard failure, as opposed to merely still waiting on a first fix — the two need very different UI (a retry button vs. a spinner). */
+  const locationBlocked = location.status === "denied" || location.status === "unavailable";
 
   // Always starts on foot — the Google Maps-style default — and is switched
   // by the mode tab row rendered below the header, never by a prop from the
@@ -819,7 +821,32 @@ export default function GuestNavigationScreen({
           <DestinationMarker position={destination} color="var(--brand-primary)" />
           <GuestDot position={guest} />
         </BaseMap>
-        {!map || (!route && !loadError) ? (
+        {!guest && locationBlocked ? (
+          // No route can be fetched without an origin — surfacing this
+          // explicitly (with a way to retry) beats what this screen used to
+          // do, which was sit on "Finding the best route…" forever with no
+          // explanation whenever location was denied or unavailable. This is
+          // a SEPARATE geolocation watch from the map screen's own (see
+          // useGuestLocation's per-call-site state), so it starts fresh —
+          // and asks again — the moment a guest actually taps Directions,
+          // rather than only ever depending on whatever happened earlier.
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-8 text-center"
+            style={{ background: "rgba(255,255,255,0.85)" }}
+          >
+            <p className="text-sm" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
+              {t.navigation.locationNeeded}
+            </p>
+            <button
+              type="button"
+              onClick={requestLocation}
+              className="rounded-full px-4 py-2 text-[13px] font-semibold text-white"
+              style={{ background: "var(--brand-primary)" }}
+            >
+              {t.map.tryAgain}
+            </button>
+          </div>
+        ) : !map || (!route && !loadError) ? (
           <div
             className="absolute inset-0 flex flex-col items-center justify-center gap-3"
             style={{ background: "rgba(255,255,255,0.85)" }}
@@ -831,7 +858,7 @@ export default function GuestNavigationScreen({
               aria-hidden
             />
             <p className="text-sm" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
-              {t.navigation.loading}
+              {guest ? t.navigation.loading : t.navigation.locatingYou}
             </p>
           </div>
         ) : null}

@@ -92,6 +92,8 @@ const fr: Dictionary = {
   navigation: {
     title: (name) => `Itinéraire vers ${name}`,
     loading: "Recherche du meilleur itinéraire…",
+    locatingYou: "Récupération de ta position…",
+    locationNeeded: "Active la localisation pour obtenir un itinéraire",
     loadError: "Impossible de charger l'itinéraire pour le moment.",
     openExternally: "Ouvrir dans Google Maps",
     modeSwitcherLabel: "Choisis ton mode de déplacement",

@@ -89,6 +89,8 @@ const es: Dictionary = {
   navigation: {
     title: (name) => `Cómo llegar a ${name}`,
     loading: "Buscando la mejor ruta…",
+    locatingYou: "Obteniendo tu ubicación…",
+    locationNeeded: "Activa la ubicación para obtener indicaciones",
     loadError: "No se ha podido cargar la ruta ahora mismo.",
     openExternally: "Abrir en Google Maps",
     modeSwitcherLabel: "Elige cómo te desplazas",
