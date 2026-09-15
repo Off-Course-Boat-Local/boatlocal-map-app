@@ -203,12 +203,18 @@ export function PlaceCard({
         paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)",
         borderRadius: "28px 28px 0 0",
         // Swiping down on this card must scroll/close nothing — it has no
-        // scrollable content of its own, and without this a drag here can
-        // still be read as the page's own overscroll and hand off to the
-        // browser's pull-to-refresh, the exact gesture this mode exists to
-        // avoid relying on.
+        // vertical scrollable content of its own, and without this a drag
+        // here can still be read as the page's own overscroll and hand off
+        // to the browser's pull-to-refresh, the exact gesture this mode
+        // exists to avoid relying on. `pan-x` rather than `none`: this same
+        // drawer chrome is reused per-slide by PlaceCardCarousel (a cluster
+        // of places at one map coordinate — see that component), whose
+        // horizontal swipe-between-slides gesture starts ON the card. `none`
+        // blocks every default touch action starting here, including that
+        // swipe, from ever reaching the carousel's own scroll container —
+        // `pan-x` still blocks the vertical one this comment is about.
         overscrollBehavior: "none",
-        touchAction: "none",
+        touchAction: "pan-x",
       }
     : {};
 

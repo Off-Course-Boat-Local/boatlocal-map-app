@@ -760,8 +760,8 @@ export default function GuestNavigationScreen({
           style={{
             flex: "0 0 auto",
             display: "flex",
-            gap: 8,
-            padding: "10px 12px",
+            gap: 6,
+            padding: "6px 10px",
             borderBottom: `1px solid ${BORDER}`,
           }}
         >
@@ -784,25 +784,29 @@ export default function GuestNavigationScreen({
                 onClick={() => switchMode(tab.id)}
                 style={{
                   flex: "1 1 0",
+                  minWidth: 0,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 6,
-                  height: 38,
+                  gap: 4,
+                  height: 30,
                   borderRadius: 9999,
                   border: `1px solid ${active ? "var(--brand-primary)" : BORDER}`,
                   background: active ? "var(--brand-primary)" : "#FFFFFF",
                   color: active ? "#FFFFFF" : INK,
                   fontFamily: bodyFontFamily,
-                  fontSize: 13,
+                  fontSize: 11.5,
                   fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                   cursor: "pointer",
                   WebkitTapHighlightColor: "transparent",
                   touchAction: "manipulation",
                 }}
               >
-                <tab.Icon size={16} strokeWidth={2} aria-hidden />
-                {tab.label}
+                <tab.Icon size={13} strokeWidth={2} className="shrink-0" aria-hidden />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tab.label}</span>
               </button>
             );
           })}
