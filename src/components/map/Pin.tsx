@@ -108,6 +108,13 @@ export interface PinProps {
   onClick?: () => void;
   /** Rest width in px. Height follows the 36:44 ratio. Default 36. */
   size?: number;
+  /**
+   * Several places sharing one coordinate (e.g. boat tours departing the
+   * same dock — see src/lib/mapPinClusters.ts) render as a single pin; this
+   * is how many. Only a small numeral badge when > 1 — 1 or undefined
+   * renders nothing extra, same as before clustering existed.
+   */
+  count?: number;
   /** Render as a non-interactive <span> instead of a <button>. */
   interactive?: boolean;
   className?: string;
@@ -120,6 +127,7 @@ export function Pin({
   label,
   onClick,
   size = 36,
+  count,
   interactive = true,
   className,
   style,
@@ -272,6 +280,34 @@ export function Pin({
             strokeWidth={1}
           />
         </svg>
+
+        {/* Cluster-count badge — several places at this one coordinate (see
+            src/lib/mapPinClusters.ts). Sits inside the same scaling wrapper
+            as the pin artwork so it lifts/shrinks together with it. */}
+        {count != null && count > 1 ? (
+          <span
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: "74%",
+              top: "8%",
+              minWidth: 16,
+              height: 16,
+              padding: "0 3px",
+              borderRadius: 9999,
+              background: "#10141C",
+              color: "#FFFFFF",
+              fontSize: 9.5,
+              fontWeight: 700,
+              lineHeight: "15px",
+              textAlign: "center",
+              border: "1.5px solid #FFFFFF",
+              boxShadow: "0 1px 2px rgba(16, 20, 28, 0.35)",
+            }}
+          >
+            {count}
+          </span>
+        ) : null}
       </span>
 
       {/* Invisible 44x44 hit area — the artwork is 36px wide, the target is not. */}

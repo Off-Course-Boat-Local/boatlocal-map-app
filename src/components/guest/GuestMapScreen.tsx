@@ -48,6 +48,7 @@ import MapPins from "@/components/map/MapPins";
 import DirectionLine, { type RouteInfo } from "@/components/map/DirectionLine";
 import FilterPills from "@/components/map/FilterPills";
 import { PlaceCard } from "@/components/map/PlaceCard";
+import PlaceCardCarousel from "@/components/map/PlaceCardCarousel";
 import GuestDot from "@/components/map/GuestDot";
 import BoatBookingPicker from "@/components/guest/BoatBookingPicker";
 import GuestNavigationScreen from "@/components/guest/GuestNavigationScreen";
@@ -82,6 +83,7 @@ import {
 } from "@/lib/reviewPrompt";
 import { useGuestFilter } from "@/lib/guestFilterContext";
 import { CATEGORIES } from "@/lib/categories";
+import { groupPinsByLocation } from "@/lib/mapPinClusters";
 import { AMSTERDAM_CENTER } from "@/lib/data";
 import type { MapPin } from "@/lib/data";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
@@ -232,22 +234,53 @@ export default function GuestMapScreen({
     [pins],
   );
 
+  // Places sharing one coordinate (e.g. several boat tours departing the
+  // same dock) collapse to a single marker on the map — see
+  // src/lib/mapPinClusters.ts. `markerPins` is one representative per
+  // cluster (its first pin) for MapPins to actually render; `clusterCounts`
+  // drives that pin's count badge; `pinClusters` itself is kept to resolve
+  // the full cluster once one is selected, below.
+  const pinClusters = useMemo(() => groupPinsByLocation(mappablePins), [mappablePins]);
+  const markerPins = useMemo(() => pinClusters.map((c) => c[0]), [pinClusters]);
+  const clusterCounts = useMemo(
+    () => Object.fromEntries(pinClusters.map((c) => [c[0].id, c.length])),
+    [pinClusters],
+  );
+
   const selected = useMemo(
     () => allPins.find((p) => p.id === selectedId) ?? null,
     [allPins, selectedId],
   );
 
+  // The full set of places at the selected pin's coordinate — length 1 for
+  // an ordinary pin, >1 when it's a cluster, in which case the drawer below
+  // renders PlaceCardCarousel instead of a single PlaceCard.
+  const selectedCluster = useMemo(
+    () => (selectedId ? (pinClusters.find((c) => c.some((p) => p.id === selectedId)) ?? null) : null),
+    [pinClusters, selectedId],
+  );
+
   const crossesTheIJ =
     !!selected && !!guest && selected.lat > IJ_LATITUDE && guest.lat < IJ_LATITUDE;
+
+  // True once a real route is actually on its way (DirectionLine's `to`
+  // prop below goes live on the same condition) but hasn't landed yet. In
+  // this window we show neither a number nor a line — see DirectionLine's
+  // header comment for why a straight-line placeholder here used to flicker
+  // into the real distance the moment it arrived.
+  const awaitingRoute =
+    !!selected && !selected.isBoat && directionsTappedFor === selected.id && !routeInfo;
 
   const walkLine = useMemo(() => {
     if (!selected || !guest) return null;
     if (crossesTheIJ) return t.map.ferryLine;
+    if (awaitingRoute) return t.map.gettingDirections;
     // Prefer the REAL routed distance/duration (DirectionLine's Routes API
-    // fetch, surfaced via onRouteInfo) once it's landed — walkEstimateParts
-    // (a padded straight-line guess) is only the fallback while that's
-    // still in flight or failed. Same banding/rounding either way — only
-    // the wording is assembled here, per locale.
+    // fetch, surfaced via onRouteInfo) once it's landed. Before "Walking
+    // directions" has even been tapped, walkEstimateParts (a padded
+    // straight-line guess) is the only number available at all — that's a
+    // single stable browsing estimate, not the loading state above, so it
+    // never flickers into anything.
     const parts = routeInfo
       ? walkEstimatePartsFromRoute(routeInfo.distanceMeters, routeInfo.durationSeconds)
       : walkEstimateParts(walkingDistanceMeters(guest, selected));
@@ -257,27 +290,29 @@ export default function GuestMapScreen({
         : t.map.rightHere;
     }
     return t.map.walkLine(parts.minutes, parts.distanceLabel);
-  }, [selected, guest, crossesTheIJ, routeInfo, t]);
+  }, [selected, guest, crossesTheIJ, awaitingRoute, routeInfo, t]);
 
   // The caveat earns its place only when the estimate could actually
   // mislead: a long straight-line walk, or the IJ crossing. Printing
   // "canals may add a detour" under every 300 m hop is noise, and noise
   // trains people to stop reading — and once a REAL route has landed
-  // (routeInfo), the straight-line detour caveat is no longer even true,
-  // so it's suppressed entirely rather than hedging a number that isn't a
-  // guess anymore. The ferry caveat is a separate, real geographic
-  // constraint (no bridge, full stop) and stays regardless.
+  // (routeInfo) or is loading (awaitingRoute, walkLine already showing
+  // gettingDirections instead of an estimate), the straight-line detour
+  // caveat is no longer even true, so it's suppressed entirely rather than
+  // hedging a number that isn't a guess anymore. The ferry caveat is a
+  // separate, real geographic constraint (no bridge, full stop) and stays
+  // regardless.
   const caveat = useMemo(() => {
     if (!selected || !guest) return null;
     if (crossesTheIJ) return t.map.ferryCaveat;
-    if (routeInfo) return null;
+    if (routeInfo || awaitingRoute) return null;
     if (walkingDistanceMeters(guest, selected) >= LONG_WALK_METERS) {
       // At or past LONG_WALK_METERS this is always the long-walk caveat —
       // same rule distance.ts's walkCaveat encodes.
       return t.map.longWalkCaveat;
     }
     return null;
-  }, [selected, guest, crossesTheIJ, routeInfo, t]);
+  }, [selected, guest, crossesTheIJ, routeInfo, awaitingRoute, t]);
 
   // Arrival detection for the review-prompt banner: once the guest has
   // tapped "Walking directions" for the currently-selected place (see
@@ -331,6 +366,52 @@ export default function GuestMapScreen({
     setNavigationTarget({ id: pin.id, lng: pin.lng, lat: pin.lat, name: pin.name });
   }
 
+  // Shared by the single-place drawer and PlaceCardCarousel (a cluster of
+  // places at one coordinate — see src/lib/mapPinClusters.ts): PlaceCard's
+  // onAction already hands back the specific card's OWN item, so this
+  // resolves the full MapPin by id rather than closing over `selected` — in
+  // a carousel that's not necessarily the centred card.
+  function handlePlaceAction(item: { id: string }) {
+    const pin = allPins.find((p) => p.id === item.id);
+    if (!pin) return;
+    if (pin.isBoat) {
+      // PlaceCard's onAction hands back a reduced PlaceCardItem (no
+      // lat/lng — see src/components/map/PlaceCard.tsx), so the booking
+      // URL is built from the full MapPin looked up above.
+      const { url, clickId } = guestPinAction(pin, {
+        selection: bookingSelection,
+        companySlug: brand.id,
+        guideSlug: guideSlug ?? undefined,
+      });
+      // Fire-and-forget: a failed analytics write must never block the
+      // guest from actually booking. See src/lib/guestEvents.ts.
+      recordGuestEvent({
+        eventType: "boat_book_click",
+        companyId,
+        guideId,
+        boatTourId: pin.id,
+        platform: installPlatformToEventPlatform(
+          detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
+        ),
+        // Same id as the booking URL's `ref` param — lets the BoatLocal
+        // conversion webhook find this exact click. See GuestPinAction's
+        // doc comment in guestActions.ts.
+        metadata: clickId ? { clickId } : undefined,
+      }).catch(() => {});
+      // Booking still hands off externally — BoatLocal owns that checkout
+      // flow, this app was never going to reimplement it.
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    // In-app turn-by-turn (GuestNavigationScreen) instead of the old
+    // hand-off to an external Maps app — founder request, 2026-09-01:
+    // "asking for directions still leads to an external google maps link,
+    // i want to build something internal". Always opens on foot; the
+    // screen's own mode tabs are where a guest switches to biking or
+    // transit (Google Maps-style — see GuestNavigationScreen's header).
+    startDirections(pin);
+  }
+
   return (
     <div className="relative h-full w-full">
       {/* The map fills the screen edge-to-edge; the header and filters float
@@ -346,8 +427,14 @@ export default function GuestMapScreen({
         onMapReady={setMap}
       >
         <MapPins
-          pins={mappablePins}
-          selectedId={selectedId}
+          pins={markerPins}
+          // A cluster's marker is its representative pin (markerPins[i]),
+          // but the guest may have swiped the carousel to a different
+          // member of that same cluster — the marker should still read as
+          // "selected" then, not just when selectedId is exactly the
+          // representative's own id.
+          selectedId={selectedCluster ? selectedCluster[0].id : selectedId}
+          clusterCounts={clusterCounts}
           onSelect={(id) => {
             // The booking picker and the PlaceCard occupy the same corner
             // of the screen — selecting a pin always wins so they can
@@ -574,54 +661,39 @@ export default function GuestMapScreen({
             </div>
           </div>
 
-          <PlaceCard
-            item={selected}
-            floating={false}
-            asDrawer
-            saved={isSaved(selected.id)}
-            onToggleSaved={(id) => toggleSaved(id)}
-            onClose={() => setSelectedId(null)}
-            className="w-full"
-            onAction={() => {
-              if (selected.isBoat) {
-                // PlaceCard's onAction hands back a reduced PlaceCardItem
-                // (no lat/lng — see src/components/map/PlaceCard.tsx), so
-                // the booking URL is built from `selected`, the full MapPin
-                // already in scope.
-                const { url, clickId } = guestPinAction(selected, {
-                  selection: bookingSelection,
-                  companySlug: brand.id,
-                  guideSlug: guideSlug ?? undefined,
-                });
-                // Fire-and-forget: a failed analytics write must never
-                // block the guest from actually booking. See
-                // src/lib/guestEvents.ts.
-                recordGuestEvent({
-                  eventType: "boat_book_click",
-                  companyId,
-                  guideId,
-                  boatTourId: selected.id,
-                  platform: installPlatformToEventPlatform(
-                    detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
-                  ),
-                  // Same id as the booking URL's `ref` param — lets the
-                  // BoatLocal conversion webhook find this exact click.
-                  // See GuestPinAction's doc comment in guestActions.ts.
-                  metadata: clickId ? { clickId } : undefined,
-                }).catch(() => {});
-                // Booking still hands off externally — BoatLocal owns that
-                // checkout flow, this app was never going to reimplement it.
-                window.open(url, "_blank", "noopener,noreferrer");
-                return;
-              }
-              // In-app turn-by-turn (GuestNavigationScreen) instead of the
-              // old hand-off to an external Maps app — founder request,
-              // 2026-09-01: "asking for directions still leads to an
-              // external google maps link, i want to build something
-              // internal".
-              startDirections(selected);
-            }}
-          />
+          {/* A cluster (>1 place at this coordinate — see
+              src/lib/mapPinClusters.ts) swipes between full PlaceCards;
+              an ordinary single place renders exactly as before. Keyed off
+              the cluster's representative id so swiping to a different
+              tenant/marker (a genuinely different cluster) remounts with a
+              fresh scroll position rather than reusing stale scroll state. */}
+          {selectedCluster && selectedCluster.length > 1 ? (
+            <PlaceCardCarousel
+              key={selectedCluster[0].id}
+              items={selectedCluster}
+              initialId={selected.id}
+              onActiveIdChange={(id) => {
+                setSelectedId(id);
+                notePlaceViewed(id);
+              }}
+              isSaved={isSaved}
+              onToggleSaved={(id) => toggleSaved(id)}
+              onClose={() => setSelectedId(null)}
+              onAction={handlePlaceAction}
+              className="w-full"
+            />
+          ) : (
+            <PlaceCard
+              item={selected}
+              floating={false}
+              asDrawer
+              saved={isSaved(selected.id)}
+              onToggleSaved={(id) => toggleSaved(id)}
+              onClose={() => setSelectedId(null)}
+              className="w-full"
+              onAction={handlePlaceAction}
+            />
+          )}
         </div>
       ) : null}
 
