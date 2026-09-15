@@ -65,6 +65,7 @@ const fr: Dictionary = {
       "Estimation à vol d'oiseau — le vrai trajet peut traverser l'eau. Vérifie l'itinéraire.",
     rightHere: "Juste ici",
     walkLine: (minutes, distance) => `~${minutes} min à pied · ${distance}`,
+    gettingDirections: "Récupération de l'itinéraire…",
     tripSummary: (dateLabel, guests) =>
       `${dateLabel} · ${guests} personne${guests === 1 ? "" : "s"}`,
     noTripDetails: "Pas encore de détails de sortie pour réserver",

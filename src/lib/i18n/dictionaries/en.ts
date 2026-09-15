@@ -77,6 +77,8 @@ const en = {
       "Straight-line estimate — the real route may cross water. Check directions.",
     rightHere: "Right here",
     walkLine: (minutes: number, distance: string) => `~${minutes} min walk · ${distance}`,
+    /** Shown for the brief window after "Walking directions" is tapped, before the real route lands — never the straight-line estimate, which is what used to flicker into this. */
+    gettingDirections: "Getting directions…",
     tripSummary: (dateLabel: string, guests: number) =>
       `${dateLabel} · ${guests} guest${guests === 1 ? "" : "s"}`,
     noTripDetails: "No trip details set for booking yet",

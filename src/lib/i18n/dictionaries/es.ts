@@ -62,6 +62,7 @@ const es: Dictionary = {
       "Estimación en línea recta — la ruta real puede cruzar agua. Consulta cómo llegar.",
     rightHere: "Aquí mismo",
     walkLine: (minutes, distance) => `~${minutes} min a pie · ${distance}`,
+    gettingDirections: "Obteniendo la ruta…",
     tripSummary: (dateLabel, guests) =>
       `${dateLabel} · ${guests} ${guests === 1 ? "persona" : "personas"}`,
     noTripDetails: "Aún no has guardado los datos del viaje",

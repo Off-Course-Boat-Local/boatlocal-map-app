@@ -62,6 +62,7 @@ const de: Dictionary = {
       "Luftlinien-Schätzung — der echte Weg führt eventuell übers Wasser. Prüfe die Route.",
     rightHere: "Direkt hier",
     walkLine: (minutes, distance) => `~${minutes} Min. zu Fuß · ${distance}`,
+    gettingDirections: "Route wird geladen…",
     tripSummary: (dateLabel, guests) =>
       `${dateLabel} · ${guests} ${guests === 1 ? "Gast" : "Gäste"}`,
     noTripDetails: "Noch keine Reisedaten fürs Buchen hinterlegt",

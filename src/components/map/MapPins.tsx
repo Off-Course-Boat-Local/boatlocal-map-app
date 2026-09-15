@@ -25,9 +25,16 @@ export interface MapPinsProps {
   pins: MapPin[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /**
+   * Pin id -> how many places share its coordinate (see
+   * src/lib/mapPinClusters.ts) — `pins` itself is expected to already be one
+   * representative per location, this just drives the count badge. Omitted
+   * entries render with no badge, same as before clustering existed.
+   */
+  clusterCounts?: Record<string, number>;
 }
 
-export default function MapPins({ pins, selectedId, onSelect }: MapPinsProps) {
+export default function MapPins({ pins, selectedId, onSelect, clusterCounts }: MapPinsProps) {
   const map = useMapInstance();
   const [containers, setContainers] = useState<Record<string, HTMLElement>>({});
   const overlaysRef = useRef<DomOverlayHandle[]>([]);
@@ -65,6 +72,7 @@ export default function MapPins({ pins, selectedId, onSelect }: MapPinsProps) {
             category={p.categories[0]}
             selected={selectedId === p.id}
             label={p.name}
+            count={clusterCounts?.[p.id]}
             onClick={() => onSelect(p.id)}
           />,
           el,

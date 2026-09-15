@@ -18,11 +18,14 @@
 // thing to show instead — see src/lib/walkingRoute.ts for the fetch and
 // its own cost/compliance notes.
 //
-// STILL DASHED, ON PURPOSE, WHEN THERE'S NO REAL ROUTE: a route fetch can
-// fail (network hiccup, no path found) — the straight-line fallback below
-// stays dashed specifically so it never LOOKS like a real route when it
-// isn't one. Same honesty principle the original dotted line encoded, just
-// narrowed to the one case it's still needed for.
+// NO STRAIGHT-LINE FALLBACK ANYMORE: this used to draw a dashed
+// straight-line placeholder while the real route was in flight, so
+// *something* was always on the map. In practice that meant every
+// "Walking directions" tap flashed a dashed straight line, then snapped to
+// the solid routed line a moment later — a visible flicker between the
+// crow-flies guess and the real distance (founder report, 2026-09-15, with
+// screenshots). Honesty now means showing nothing until the real route
+// lands, not a placeholder that has to change shape the moment it does.
 
 import { useEffect, useRef, useState } from "react";
 
@@ -51,7 +54,7 @@ export interface DirectionLineProps {
    * stays mounted (a tenant switcher, a live preview in the Studio).
    */
   color?: string;
-  /** Fired with the real route's distance/duration once fetched, or null when there's no real route (nothing selected, or the fetch failed and the fallback straight line is showing instead). */
+  /** Fired with the real route's distance/duration once fetched, or null when there's no real route (nothing selected, still loading, or the fetch failed). */
   onRouteInfo?: (info: RouteInfo | null) => void;
 }
 
@@ -65,22 +68,6 @@ export function readBrandPrimary(el?: HTMLElement | null): string {
 
 export const DIRECTION_LINE_WIDTH = 4;
 export const DIRECTION_LINE_OPACITY = 0.85;
-
-/** Google's documented recipe for a dashed Polyline: an invisible stroke plus a repeating dash symbol. */
-function dashedLineIcons(color: string): google.maps.IconSequence[] {
-  return [
-    {
-      icon: {
-        path: "M 0,-1 0,1",
-        strokeOpacity: DIRECTION_LINE_OPACITY,
-        strokeColor: color,
-        scale: 3,
-      },
-      offset: "0",
-      repeat: "16px",
-    },
-  ];
-}
 
 export function DirectionLine({ map, from, to, color, onRouteInfo }: DirectionLineProps) {
   // Primitive deps only — from/to are usually fresh object literals every
@@ -132,9 +119,9 @@ export function DirectionLine({ map, from, to, color, onRouteInfo }: DirectionLi
         onRouteInfoRef.current?.(info);
       })
       .catch(() => {
-        // Swallowed — the fallback straight line (drawn below) covers this,
-        // and a flaky network shouldn't surface as an app error over a map
-        // line.
+        // Swallowed — no route just means no line is drawn (see the effect
+        // below), and a flaky network shouldn't surface as an app error
+        // over a map line.
       });
 
     return () => {
@@ -142,40 +129,27 @@ export function DirectionLine({ map, from, to, color, onRouteInfo }: DirectionLi
     };
   }, [hasLine, fromLng, fromLat, toLng, toLat]);
 
-  // Draw whichever line is current: the real route once it lands, else the
-  // dashed straight-line fallback — never both, never neither while
-  // hasLine is true.
+  // Only ever draw the real routed line, and only once it has actually
+  // landed — nothing while it's in flight, nothing on failure. See the
+  // header comment for why there is no placeholder in between anymore.
   useEffect(() => {
-    if (!map || !hasLine) return;
+    if (!map || !hasLine || !route) return;
 
     const paintColor = color ?? readBrandPrimary(map.getDiv());
-    const path: Coordinate[] = route?.path ?? [
-      { lng: fromLng as number, lat: fromLat as number },
-      { lng: toLng as number, lat: toLat as number },
-    ];
 
-    const polyline = new google.maps.Polyline(
-      route
-        ? {
-            path,
-            strokeColor: paintColor,
-            strokeOpacity: DIRECTION_LINE_OPACITY,
-            strokeWeight: DIRECTION_LINE_WIDTH,
-            clickable: false,
-          }
-        : {
-            path,
-            strokeOpacity: 0,
-            icons: dashedLineIcons(paintColor),
-            clickable: false,
-          },
-    );
+    const polyline = new google.maps.Polyline({
+      path: route.path,
+      strokeColor: paintColor,
+      strokeOpacity: DIRECTION_LINE_OPACITY,
+      strokeWeight: DIRECTION_LINE_WIDTH,
+      clickable: false,
+    });
     polyline.setMap(map);
 
     return () => {
       polyline.setMap(null);
     };
-  }, [map, hasLine, fromLng, fromLat, toLng, toLat, color, route]);
+  }, [map, hasLine, color, route]);
 
   return null;
 }

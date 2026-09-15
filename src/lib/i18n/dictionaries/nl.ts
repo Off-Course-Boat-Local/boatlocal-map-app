@@ -63,6 +63,7 @@ const nl: Dictionary = {
       "Schatting in vogelvlucht — de echte route kan over water gaan. Check de looproute.",
     rightHere: "Pal hier",
     walkLine: (minutes, distance) => `~${minutes} min lopen · ${distance}`,
+    gettingDirections: "Route ophalen…",
     tripSummary: (dateLabel, guests) =>
       `${dateLabel} · ${guests} ${guests === 1 ? "gast" : "gasten"}`,
     noTripDetails: "Nog geen reisgegevens ingesteld om te boeken",
