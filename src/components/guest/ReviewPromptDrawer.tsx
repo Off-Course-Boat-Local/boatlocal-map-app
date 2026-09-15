@@ -25,6 +25,7 @@ import ReviewStars from "./ReviewStars";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { BORDER, INK, MUTED, SHADOW_FLOAT } from "@/lib/guestTheme";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
+import { photoUrl } from "@/lib/photoUrl";
 
 export interface ReviewPromptDrawerProps {
   /** Where a star tap leads — the tenant's own configured review link. */
@@ -35,6 +36,13 @@ export interface ReviewPromptDrawerProps {
    * guide" placeholder — an unsigned plea reads like spam.
    */
   signature: string;
+  /**
+   * The tenant's uploaded logo (Studio > Branding), shown as a small circular
+   * avatar above the ask — same face the guest already met on the Welcome
+   * screen. Falls back to `signature`'s first letter when unset, same rule
+   * GuestWelcomeScreen's GuideAvatar uses.
+   */
+  logoUrl?: string | null;
   onRate?: (rating: number) => void;
   onClose: () => void;
 }
@@ -42,6 +50,7 @@ export interface ReviewPromptDrawerProps {
 export default function ReviewPromptDrawer({
   reviewUrl,
   signature,
+  logoUrl,
   onRate,
   onClose,
 }: ReviewPromptDrawerProps) {
@@ -78,6 +87,31 @@ export default function ReviewPromptDrawer({
       </button>
 
       <div className="px-6 pt-7 text-center">
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            aria-hidden="true"
+            src={photoUrl(logoUrl, { width: 56 })}
+            alt=""
+            className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white object-contain p-[3px]"
+            style={{ boxShadow: "0 4px 12px -4px rgba(0,0,0,0.25)" }}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+            style={{
+              background: "var(--brand-primary)",
+              fontFamily: displayFontFamily,
+              fontSize: 18,
+              fontWeight: 700,
+              color: "#FFFFFF",
+              boxShadow: "0 4px 12px -4px rgba(0,0,0,0.25)",
+            }}
+          >
+            {signature.charAt(0).toUpperCase()}
+          </div>
+        )}
         <p
           style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 17, color: INK }}
         >

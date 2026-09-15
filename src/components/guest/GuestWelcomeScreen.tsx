@@ -20,6 +20,7 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 
 import { PlaceCard } from "@/components/map/PlaceCard";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import ShareQr from "@/components/ShareQr";
 import { useIsDesktopPointer } from "@/hooks/useIsDesktopPointer";
 import { useIsStandalone } from "@/hooks/useIsStandalone";
@@ -332,10 +333,24 @@ export default function GuestWelcomeScreen({
         // See GuestListScreen's header comment — safe-area top for
         // standalone/notched phones, env() is 0 in a browser tab.
         style={{
+          position: "relative",
           background: "var(--brand-primary)",
           paddingTop: "calc(env(safe-area-inset-top) + 32px)",
         }}
       >
+        {/* Language switcher — this is the FIRST screen a guest ever sees,
+            so it's the one place "please select your language" actually
+            needs to be offered before anything else, not just on the List
+            screen (founder audit, 2026-09-15: the switcher was reachable
+            from List only). Absolutely positioned rather than in the
+            centered text flow above/below it — this header has no other
+            row to share it with. */}
+        <div
+          className="absolute right-4"
+          style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
+        >
+          <LanguageSwitcher tone="header" />
+        </div>
         <GuideAvatar initial={guideAvatarInitial} logoUrl={brand.logoUrl} />
         <p className="mt-3 text-[11px] font-semibold uppercase tracking-widest opacity-80">
           {brand.companyName}

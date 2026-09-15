@@ -21,6 +21,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { Download, QrCode } from "lucide-react";
 
 import { GuestScreenHeader } from "./GuestScreenHeader";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useIsDesktopPointer } from "@/hooks/useIsDesktopPointer";
 import { useIsStandalone } from "@/hooks/useIsStandalone";
 import { displayFontFamily, bodyFontFamily } from "@/lib/fonts";
@@ -138,6 +139,7 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
         title={t.install.title}
         subtitle={t.install.subtitle(brand.appName)}
         logoUrl={brand.logoUrl}
+        action={<LanguageSwitcher tone="header" />}
       />
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6">

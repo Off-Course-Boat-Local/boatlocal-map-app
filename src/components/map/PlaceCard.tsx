@@ -289,6 +289,14 @@ export function PlaceCard({
             // hinting a gesture this card never had), so it needs to read
             // as an obvious button rather than bare chrome.
             background: asDrawer ? "#F1F3F6" : "transparent",
+            // This same absolute top/right position sits OVER the expanded
+            // photo gallery once one is open (the gallery grows the card
+            // upward, above where this button already is, rather than
+            // pushing it down) — a flat near-white chip against a bright
+            // sky/water photo nearly disappeared (design audit, 2026-09-15).
+            // The shadow gives it a visible edge against any photo without
+            // changing how it looks over the plain white card body.
+            boxShadow: asDrawer ? "0 1px 4px rgba(0,0,0,0.18)" : "none",
             color: MUTED,
             cursor: "pointer",
             WebkitTapHighlightColor: "transparent",

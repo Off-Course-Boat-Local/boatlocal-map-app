@@ -14,8 +14,12 @@ vi.mock("@/lib/guestEvents", () => ({ recordGuestEvent: vi.fn().mockResolvedValu
 // The empty state's CTAs must carry the `?company=`/`?guide=` tenant
 // stand-in across to the List/Map tabs (same pattern as GuestReviewScreen's
 // mapHref), so give useSearchParams a realistic preview query to preserve.
+// useRouter is also needed now — the header's LanguageSwitcher calls it
+// (for router.refresh() on a language change), and jsdom has no app router
+// mounted (same stub as GuestListScreen.test.tsx).
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("company=coastal&guide=jan"),
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 const brand = BRANDS.coastal;

@@ -52,6 +52,7 @@ import PlaceCardCarousel from "@/components/map/PlaceCardCarousel";
 import GuestDot from "@/components/map/GuestDot";
 import BoatBookingPicker from "@/components/guest/BoatBookingPicker";
 import GuestNavigationScreen from "@/components/guest/GuestNavigationScreen";
+import { LanguageSwitcher } from "@/components/guest/LanguageSwitcher";
 import ReviewPromptDrawer from "@/components/guest/ReviewPromptDrawer";
 
 import { useGuestLocation, guestPoint } from "@/hooks/useGuestLocation";
@@ -88,7 +89,6 @@ import { AMSTERDAM_CENTER } from "@/lib/data";
 import type { MapPin } from "@/lib/data";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import type { Brand, CategoryId } from "@/lib/types";
-import { photoUrl } from "@/lib/photoUrl";
 
 /* Neutral chrome — never re-skins (brand colour only via --brand-primary). */
 const INK = "#0B1421";
@@ -131,7 +131,6 @@ export interface GuestMapScreenProps {
 
 export default function GuestMapScreen({
   brand,
-  guideName,
   guideSlug,
   guideId,
   companyId,
@@ -199,7 +198,17 @@ export default function GuestMapScreen({
   const [showBookingPicker, setShowBookingPicker] = useState(false);
 
   function handleFilterChange(next: CategoryId | null) {
-    if (next === "boats" && filter !== "boats") setShowBookingPicker(true);
+    if (next === "boats" && filter !== "boats") {
+      setShowBookingPicker(true);
+      // A place selected before switching to Boats used to keep its own
+      // drawer open UNDERNEATH the picker — both fixed to the viewport
+      // bottom, stacked, with the picker's Guests stepper and Save button
+      // pushed off-screen behind the drawer (design audit, 2026-09-15). The
+      // picker and a selected place already can't coexist on open (see
+      // MapPins' onSelect below, which does the same in reverse), so this
+      // closes out the stale selection the same way.
+      setSelectedId(null);
+    }
     setFilter(next);
   }
 
@@ -361,8 +370,17 @@ export default function GuestMapScreen({
   // funnel — see directions_arrived's own comment above for its other half)
   // is fired from there instead, once per mode actually fetched, rather
   // than once here for whichever mode happened to be requested first.
+  //
+  // requestCompass() rides along in the SAME tap for the same reason the
+  // location-retry button already does this (see that onClick below):
+  // iOS gates DeviceOrientationEvent.requestPermission() behind a real user
+  // gesture, and "Directions" is the one action on this screen that most
+  // wants the compass arrow working the moment its own screen opens.
+  // Idempotent — a no-op once already granted or denied — so it's safe to
+  // fire on every tap rather than tracking "first time" separately.
   function startDirections(pin: MapPin) {
     setDirectionsTappedFor(pin.id);
+    requestCompass();
     setNavigationTarget({ id: pin.id, lng: pin.lng, lat: pin.lat, name: pin.name });
   }
 
@@ -473,31 +491,18 @@ export default function GuestMapScreen({
         // standalone/notched phones, env() is 0 in a browser tab.
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
       >
-        {/* Header pill — trimmed to just the logo + recommendation count
-            (founder, 2026-09-02: the company name and the language switcher
-            "take up too much screen real estate" on the one screen that
-            most wants its vertical space given to the map). The app name
-            (brand.appName) and the language switcher still exist on every
-            other guest screen (GuestScreenHeader's gradient band on List/
-            Saved/Review/Install), so language switching stays reachable —
-            just not from this specific floating pill. */}
-        <div className="flex items-start px-4">
-          <div
-            className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/95 px-5 py-2 backdrop-blur"
-            style={{ boxShadow: CARD_SHADOW }}
-          >
-            {brand.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={photoUrl(brand.logoUrl, { width: 28 })}
-                alt=""
-                className="size-8 shrink-0 rounded-full bg-white object-contain p-[2px]"
-                style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.06)" }}
-              />
-            ) : null}
-            <p className="truncate text-[13px] font-medium leading-5" style={{ color: INK }}>
-              {t.list.recommendationsFrom(allPins.length, guideName)}
-            </p>
+        {/* No header pill here (founder, 2026-09-15: removed from the map —
+            the company name/logo/count already live on every other guest
+            screen via GuestScreenHeader; the map is the one screen that
+            most wants its vertical space given entirely to the map itself).
+            The language switcher stays — it's a genuine action a guest
+            needs reachable from every screen, not branding, and this map
+            had NO way to reach it at all before (only List's header carried
+            it). Its own row, right-aligned, so it doesn't fight the
+            full-width scrolling filter row underneath for space. */}
+        <div className="flex justify-end px-4 pb-2">
+          <div className="pointer-events-auto">
+            <LanguageSwitcher tone="floating" />
           </div>
         </div>
 
@@ -710,6 +715,7 @@ export default function GuestMapScreen({
         <ReviewPromptDrawer
           reviewUrl={reviewUrl}
           signature={reviewSignature ?? brand.companyName}
+          logoUrl={brand.logoUrl}
           onClose={() => setShowReviewPrompt(false)}
         />
       )}

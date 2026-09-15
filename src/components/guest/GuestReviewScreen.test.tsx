@@ -11,8 +11,12 @@ vi.mock("@/lib/guestEvents", () => ({
   recordGuestReview: vi.fn().mockResolvedValue(undefined),
 }));
 
+// useRouter is needed too — the header's LanguageSwitcher calls it (for
+// router.refresh() on a language change), and jsdom has no app router
+// mounted (same stub as GuestListScreen.test.tsx).
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 const REVIEW_OPTIONS: ReviewOption[] = [

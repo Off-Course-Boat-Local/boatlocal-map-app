@@ -35,6 +35,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { Lock, Star } from "lucide-react";
 
 import { GuestScreenHeader } from "./GuestScreenHeader";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import ReviewStars from "./ReviewStars";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
@@ -300,6 +301,7 @@ export default function GuestReviewScreen({
         title={t.review.title}
         subtitle={t.review.subtitle(companyName)}
         logoUrl={logoUrl}
+        action={<LanguageSwitcher tone="header" />}
       />
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6">

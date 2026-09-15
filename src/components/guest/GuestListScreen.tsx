@@ -217,6 +217,7 @@ export default function GuestListScreen({
         <ReviewPromptDrawer
           reviewUrl={reviewUrl}
           signature={reviewSignature ?? brand.companyName}
+          logoUrl={brand.logoUrl}
           onClose={() => setShowReviewPrompt(false)}
         />
       )}

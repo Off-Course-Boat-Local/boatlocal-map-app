@@ -18,6 +18,7 @@ import { Heart } from "lucide-react";
 import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
 import { GuestScreenHeader } from "./GuestScreenHeader";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
 import { guestPinAction } from "@/lib/guestActions";
 import { recordGuestEvent } from "@/lib/guestEvents";
@@ -118,6 +119,7 @@ export default function GuestSavedScreen({
             : t.saved.countSubtitle(savedPins.length, brand.appName)
         }
         logoUrl={brand.logoUrl}
+        action={<LanguageSwitcher tone="header" />}
       />
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white">
