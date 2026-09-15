@@ -25,6 +25,7 @@ const en = {
     back: "Back",
     cancel: "Cancel",
     bookTour: "Book this tour",
+    directions: "Directions",
     walkingDirections: "Walking directions",
     publicTransport: "Public transport",
     savePlace: (name: string) => `Save ${name}`,
@@ -106,6 +107,11 @@ const en = {
     loading: "Finding the best route…",
     loadError: "Couldn't load directions right now.",
     openExternally: "Open in Google Maps",
+    /** Aria-label for the walk/bike/transit tab row at the top of the screen. */
+    modeSwitcherLabel: "Choose how you're travelling",
+    modeWalk: "Walking",
+    modeBike: "Bicycling",
+    modeTransit: "Public transport",
     arrivedTitle: (name: string) => `You've arrived at ${name}`,
     stepDistance: (distance: string) => `In ${distance}`,
     remaining: (minutes: number, distance: string) =>

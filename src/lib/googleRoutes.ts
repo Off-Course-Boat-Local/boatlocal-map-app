@@ -46,7 +46,7 @@ export interface RawRoute {
 export interface ComputeRoutesInput {
   origin: { lng: number; lat: number };
   destination: { lng: number; lat: number };
-  travelMode: "WALK" | "TRANSIT";
+  travelMode: "WALK" | "BICYCLE" | "TRANSIT";
   fieldMask: string;
   /** BCP-47. Google localises its own instruction text when given this. */
   languageCode?: string;

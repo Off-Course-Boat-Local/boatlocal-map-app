@@ -5,16 +5,24 @@
 // button (2026-09-01 founder request: "asking for directions still leads to
 // an external google maps link, i want to build something internal").
 //
-// TWO MODES, ONE SCREEN (2026-09-04): `mode` is "walk" or "transit". A
-// transit itinerary comes back from the same endpoint as ONE flat step list
-// spanning both travel modes — walk to the stop, ride the tram, walk from
-// the stop — which is what lets everything below stay mode-agnostic:
-// camera-follow, compass bearing, wake lock, GPS-proximity step advance and
-// arrival detection are all pure geometry against `route.path`/`steps` and
-// never ask how the guest is travelling. Only the STEP RENDERING branches
-// (StepIcon + the instruction/subtext composers), because "Board Tram 14
-// toward Muiderpoortstation, get off after 4 stops" is a different sentence
-// from "Turn right onto Prinsengracht", not a relabelled one.
+// THREE MODES, ONE SCREEN, GOOGLE-MAPS-STYLE MODE PICKING (2026-09-15,
+// extending the walk/transit split from 2026-09-04 with biking): the guest
+// map's "Directions" button no longer asks which mode up front — it always
+// opens this screen walking, the same way Google Maps opens on its default
+// mode and lets you tap Bike/Transit afterwards. `mode` is therefore local
+// STATE here, not a prop, switched by the tab row rendered below the
+// header; changing it just changes the fetch key and re-runs the same
+// effect. A transit itinerary comes back from the same endpoint as ONE flat
+// step list spanning both travel modes — walk to the stop, ride the tram,
+// walk from the stop — which is what lets everything below stay
+// mode-agnostic: camera-follow, compass bearing, wake lock, GPS-proximity
+// step advance and arrival detection are all pure geometry against
+// `route.path`/`steps` and never ask how the guest is travelling. Only the
+// STEP RENDERING branches (StepIcon + the instruction/subtext composers),
+// because "Board Tram 14 toward Muiderpoortstation, get off after 4 stops"
+// is a different sentence from "Turn right onto Prinsengracht", not a
+// relabelled one. Biking reuses the WALK rendering branch wholesale — Google
+// returns the same maneuver-based navigationInstruction shape for both.
 //
 // Full-screen takeover, same `position: fixed inset: 0` pattern
 // GuestPlaceDetail.tsx already established for the guest app's other
@@ -56,6 +64,7 @@ import {
   ArrowUp,
   ArrowUpLeft,
   ArrowUpRight,
+  Bike,
   Bus,
   ChevronRight,
   CircleCheck,
@@ -63,6 +72,8 @@ import {
   Crosshair,
   ExternalLink,
   Flag,
+  Footprints,
+  Loader2,
   MapPin as MapPinIcon,
   Maximize2,
   Navigation as NavigationArrow,
@@ -88,6 +99,7 @@ import { hasShownArrivalPrompt, markArrivalPromptShown } from "@/lib/reviewPromp
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import {
   DIRECTIONS_LINK_PROPS,
+  googleMapsBikingUrl,
   googleMapsTransitUrl,
   googleMapsWalkingUrl,
 } from "@/lib/mapsHandoff";
@@ -193,7 +205,7 @@ interface RouteStep {
   /** Google's own turn instruction. Null on TRANSIT steps, which carry structured `transitDetails` instead — see stepInstruction() below. */
   instruction: string | null;
   maneuver: string;
-  travelMode: "WALK" | "TRANSIT";
+  travelMode: "WALK" | "BICYCLE" | "TRANSIT";
   transitDetails?: TransitDetails | null;
   distanceMeters: number;
   durationSeconds: number;
@@ -211,8 +223,6 @@ interface Route {
 export interface GuestNavigationScreenProps {
   /** `id` is the recommendation's id — it keys the arrival event and the once-per-place prompt latch this screen shares with GuestMapScreen's own arrival banner. */
   destination: { id: string; lng: number; lat: number; name: string };
-  /** How the guest asked to travel. Decides which route this screen fetches, how its steps render, and where its "Open in Google Maps" escape hatch points. */
-  mode: "walk" | "transit";
   /** Both optional on exactly the same terms as GuestMapScreen's own props — a tenant preview can render the guest app without either, and an arrival event with no company is simply not worth recording. */
   companyId?: string | null;
   guideId?: string | null;
@@ -323,7 +333,6 @@ function DestinationMarker({ position, color }: { position: { lng: number; lat: 
 
 export default function GuestNavigationScreen({
   destination,
-  mode,
   companyId,
   guideId,
   companyName,
@@ -344,6 +353,10 @@ export default function GuestNavigationScreen({
     [guestLng, guestLat],
   );
 
+  // Always starts on foot — the Google Maps-style default — and is switched
+  // by the mode tab row rendered below the header, never by a prop from the
+  // caller. See this file's header comment.
+  const [mode, setMode] = useState<"walk" | "bike" | "transit">("walk");
   const [route, setRoute] = useState<Route | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -351,24 +364,55 @@ export default function GuestNavigationScreen({
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [cameraMode, setCameraMode] = useState<CameraMode>("follow");
 
+  /** Tab tap handler — clears the previous mode's route/progress so nothing stale is shown while the new one loads. */
+  function switchMode(next: "walk" | "bike" | "transit") {
+    if (next === mode) return;
+    setMode(next);
+    setRoute(null);
+    setLoadError(false);
+    setStepIndex(0);
+    setCameraMode("follow");
+  }
+
   // A guest reading a route mid-walk should not have to fight their own
   // screen timeout. Released automatically when this screen unmounts.
   useWakeLock(!arrived);
 
   // Fetched once per (destination, mode, language), the moment a first guest
   // fix is available — not refetched on subsequent GPS ticks (see this
-  // file's header comment).
+  // file's header comment). Also re-runs whenever the mode tabs change
+  // `mode`, since that changes the fetch key below.
   //
   // The ref holds a KEY rather than a boolean: with a plain `true` the
-  // effect's own dependencies were decorative, and the first person to add
-  // an in-screen "try transit instead" toggle would have got a transit
-  // chrome wrapped around the walking route, silently.
+  // effect's own dependencies were decorative, and switching mode via the
+  // tabs would have got the new mode's chrome wrapped around the previous
+  // mode's route, silently.
   const fetchedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!guest) return;
     const fetchKey = `${mode}|${locale}|${destination.lng},${destination.lat}`;
     if (fetchedRef.current === fetchKey) return;
     fetchedRef.current = fetchKey;
+
+    // Real data for the "Directions requested" row Report/Platform
+    // analytics have both had defined since before this screen existed —
+    // fired once per (mode, destination) actually fetched, which includes a
+    // guest switching mode via the tabs below, not just the initial
+    // "Directions" tap that opened this screen. Transit and biking bill on
+    // different Routes API tiers than walking, so this is the datum that
+    // later answers "is anyone using it, and is it worth what it costs?" —
+    // see directions_arrived's own comment for the matching other half of
+    // this funnel.
+    recordGuestEvent({
+      eventType: "directions_requested",
+      companyId,
+      guideId,
+      recommendationId: destination.id,
+      platform: installPlatformToEventPlatform(
+        detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
+      ),
+      metadata: { mode },
+    }).catch(() => {});
 
     // Closing the screen mid-flight shouldn't leave a response nobody reads
     // still downloading on a phone's mobile data — and the transit response
@@ -403,7 +447,7 @@ export default function GuestNavigationScreen({
         setLoadError(true);
       });
     return () => controller.abort();
-  }, [guest, destination.lng, destination.lat, mode, locale]);
+  }, [guest, destination.id, destination.lng, destination.lat, mode, locale, companyId, guideId]);
 
   /** How close counts as "reached this step", which depends on how the guest got there. */
   function advanceThreshold(step: RouteStep): number {
@@ -550,7 +594,9 @@ export default function GuestNavigationScreen({
   const fallbackUrl =
     mode === "transit"
       ? googleMapsTransitUrl({ destLat: destination.lat, destLng: destination.lng })
-      : googleMapsWalkingUrl({ destLat: destination.lat, destLng: destination.lng });
+      : mode === "bike"
+        ? googleMapsBikingUrl({ destLat: destination.lat, destLng: destination.lng })
+        : googleMapsWalkingUrl({ destLat: destination.lat, destLng: destination.lng });
 
   /**
    * What a step actually tells the guest to do. Walking steps use Google's
@@ -701,6 +747,66 @@ export default function GuestNavigationScreen({
         </p>
       </div>
 
+      {/* Mode tabs — Google Maps-style: "Directions" always opens walking,
+          and this row is where the guest actually picks biking or transit
+          instead, rather than the map's own drawer offering a button per
+          mode. Hidden once arrived — there's nothing left to route. */}
+      {!arrived && (
+        <div
+          role="tablist"
+          aria-label={t.navigation.modeSwitcherLabel}
+          style={{
+            flex: "0 0 auto",
+            display: "flex",
+            gap: 8,
+            padding: "10px 12px",
+            borderBottom: `1px solid ${BORDER}`,
+          }}
+        >
+          {(
+            [
+              { id: "walk", label: t.navigation.modeWalk, Icon: Footprints },
+              { id: "bike", label: t.navigation.modeBike, Icon: Bike },
+              { id: "transit", label: t.navigation.modeTransit, Icon: Bus },
+            ] as const
+          ).map((tab) => {
+            const active = tab.id === mode;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-label={tab.label}
+                title={tab.label}
+                onClick={() => switchMode(tab.id)}
+                style={{
+                  flex: "1 1 0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  height: 38,
+                  borderRadius: 9999,
+                  border: `1px solid ${active ? "var(--brand-primary)" : BORDER}`,
+                  background: active ? "var(--brand-primary)" : "#FFFFFF",
+                  color: active ? "#FFFFFF" : INK,
+                  fontFamily: bodyFontFamily,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
+                  touchAction: "manipulation",
+                }}
+              >
+                <tab.Icon size={16} strokeWidth={2} aria-hidden />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Map ----------------------------------------------------------- */}
       <div style={{ position: "relative", flex: "1 1 auto", minHeight: 0 }}>
         <BaseMap
@@ -715,9 +821,15 @@ export default function GuestNavigationScreen({
         </BaseMap>
         {!map || (!route && !loadError) ? (
           <div
-            className="absolute inset-0 flex items-center justify-center"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-3"
             style={{ background: "rgba(255,255,255,0.85)" }}
           >
+            <Loader2
+              className="size-7 animate-spin"
+              style={{ color: "var(--brand-primary)" }}
+              strokeWidth={2.25}
+              aria-hidden
+            />
             <p className="text-sm" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
               {t.navigation.loading}
             </p>

@@ -162,8 +162,6 @@ export default function GuestMapScreen({
     lng: number;
     lat: number;
     name: string;
-    /** Which way the guest asked to travel — both open the same in-app screen, which branches its own route fetch and step rendering. */
-    mode: "walk" | "transit";
   } | null>(null);
 
   // Same category set, LABELS swapped for the guest's language — ids and
@@ -320,31 +318,17 @@ export default function GuestMapScreen({
     }
   }, [directionsTappedFor, selected, guest, routeInfo, companyId, guideId]);
 
-  // Both directions buttons on the drawer run this: same intent signal, same
-  // analytics row, only the travel mode differs. "Walking directions" (never
-  // "Book this tour") is the real intent-to-go signal the arrival effect
-  // above watches for — merely tapping a pin to preview it must never count.
-  function startDirections(pin: MapPin, mode: "walk" | "transit") {
+  // "Directions" on the drawer runs this — the real intent-to-go signal the
+  // arrival effect above watches for (merely tapping a pin to preview it
+  // must never count). The in-app screen this opens always starts on foot
+  // and lets the guest switch to biking or transit itself via its own mode
+  // tabs, so the "directions_requested" analytics row (Report/Platform's
+  // funnel — see directions_arrived's own comment above for its other half)
+  // is fired from there instead, once per mode actually fetched, rather
+  // than once here for whichever mode happened to be requested first.
+  function startDirections(pin: MapPin) {
     setDirectionsTappedFor(pin.id);
-    // Real data for the "Directions requested" row Report/Platform analytics
-    // have both had defined since before this screen existed, with nothing
-    // ever actually firing it — see directions_arrived's own comment above
-    // for the matching other half of this funnel.
-    recordGuestEvent({
-      eventType: "directions_requested",
-      companyId,
-      guideId,
-      recommendationId: pin.id,
-      platform: installPlatformToEventPlatform(
-        detectInstallPlatform(navigator.userAgent, navigator.maxTouchPoints),
-      ),
-      // Which mode was asked for. Transit bills on a higher Routes API tier
-      // than walking, so this is the datum that later answers "is anyone
-      // using it, and is it worth what it costs?" — and rows written
-      // without it can never be backfilled.
-      metadata: { mode },
-    }).catch(() => {});
-    setNavigationTarget({ id: pin.id, lng: pin.lng, lat: pin.lat, name: pin.name, mode });
+    setNavigationTarget({ id: pin.id, lng: pin.lng, lat: pin.lat, name: pin.name });
   }
 
   return (
@@ -635,11 +619,8 @@ export default function GuestMapScreen({
               // 2026-09-01: "asking for directions still leads to an
               // external google maps link, i want to build something
               // internal".
-              startDirections(selected, "walk");
+              startDirections(selected);
             }}
-            // Same screen, transit itinerary — founder request, 2026-09-04.
-            // Boats never reach this (PlaceCard hides the button for them).
-            onSecondaryAction={() => startDirections(selected, "transit")}
           />
         </div>
       ) : null}
@@ -664,7 +645,6 @@ export default function GuestMapScreen({
       {navigationTarget && (
         <GuestNavigationScreen
           destination={navigationTarget}
-          mode={navigationTarget.mode}
           companyId={companyId}
           guideId={guideId}
           companyName={brand.companyName}

@@ -66,32 +66,18 @@ describe("PlaceCard", () => {
     expect(onAction.mock.calls[0][0].id).toBe(boat.id);
   });
 
-  it("offers public transport alongside walking directions for a place", async () => {
-    const onSecondaryAction = vi.fn();
-    render(<PlaceCard item={place} onSecondaryAction={onSecondaryAction} />);
+  it("offers a single Directions button for a place, with no separate transit button", async () => {
+    // Mode (walk/bike/transit) is chosen inside the in-app navigation screen
+    // this button opens, not via a second button on the card — see
+    // GuestNavigationScreen's mode tabs.
+    const onAction = vi.fn();
+    render(<PlaceCard item={place} onAction={onAction} />);
 
-    // Walking stays the primary, one-tap action; transit is the compact
-    // second option beside it, never a mode picker in front of both.
-    expect(screen.getByRole("button", { name: /directions/i })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /public transport/i }));
-
-    expect(onSecondaryAction).toHaveBeenCalledTimes(1);
-    expect(onSecondaryAction.mock.calls[0][0].id).toBe(place.id);
-  });
-
-  it("never offers public transport for a boat, even when a handler is passed", () => {
-    // A boat tour is booked, not travelled to by tram. The `!item.isBoat`
-    // half of the render guard is the part a refactor could quietly drop
-    // with nothing else to signal it.
-    render(<PlaceCard item={boat} onSecondaryAction={vi.fn()} />);
     expect(screen.queryByRole("button", { name: /public transport/i })).toBeNull();
-  });
+    await userEvent.click(screen.getByRole("button", { name: /directions/i }));
 
-  it("renders no transit button when no handler is supplied", () => {
-    // Every other PlaceCard call site (List, Saved, Welcome, the spikes)
-    // omits it and must look exactly as it did before transit existed.
-    render(<PlaceCard item={place} />);
-    expect(screen.queryByRole("button", { name: /public transport/i })).toBeNull();
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(onAction.mock.calls[0][0].id).toBe(place.id);
   });
 
   it("reports save toggles by id", async () => {

@@ -42,13 +42,14 @@ export interface WalkingRouteStep {
   /** Google's maneuver enum, e.g. "TURN_RIGHT", "DEPART", "ARRIVE" — see GuestNavigationScreen.tsx's icon mapping for the values actually handled. */
   maneuver: string;
   /**
-   * Always "WALK" here. Emitted even though it's constant, so the client's
-   * step type can keep `travelMode` NON-optional across both route kinds —
-   * an optional one is a foot-gun: every consumer has to remember to test
-   * `!== "TRANSIT"` rather than the more natural `=== "WALK"`, which would
-   * be silently false for every walking route.
+   * "WALK" or "BICYCLE", matching whichever of getWalkingRoute/getBikingRoute
+   * produced this step. Emitted even though it's constant per route, so the
+   * client's step type can keep `travelMode` NON-optional across every route
+   * kind (walking, biking, transit) — an optional one is a foot-gun: every
+   * consumer has to remember to test `!== "TRANSIT"` rather than the more
+   * natural positive check, which would be silently false otherwise.
    */
-  travelMode: "WALK";
+  travelMode: "WALK" | "BICYCLE";
   distanceMeters: number;
   durationSeconds: number;
   startLocation: { lng: number; lat: number };
@@ -60,20 +61,26 @@ export interface WalkingRoute {
   durationSeconds: number;
   /** [lng, lat] pairs, decoded from Google's polyline encoding — ready to feed straight into a google.maps.Polyline path. */
   path: Array<{ lng: number; lat: number }>;
-  /** Only populated when `includeSteps` was passed to getWalkingRoute. */
+  /** Only populated when `includeSteps` was passed to getWalkingRoute/getBikingRoute. */
   steps: WalkingRouteStep[];
 }
 
 /**
- * Fetches a real walking route between two points. Returns null (never
- * throws) on any failure — a bad/missing route is not worth crashing a map
- * (or a navigation screen) over; callers fall back accordingly (the map to
- * its old straight-line estimate, the navigation screen to an error state
- * with a link out to Google Maps).
+ * Shared by getWalkingRoute and getBikingRoute below — same field mask, same
+ * response shape (a single leg of turn-by-turn steps), only the Routes API
+ * `travelMode` and the resulting SKU/pricing differ. Kept private: callers
+ * ask for a mode by name (getWalkingRoute/getBikingRoute), never by passing
+ * a raw "WALK"/"BICYCLE" string around.
+ *
+ * Returns null (never throws) on any failure — a bad/missing route is not
+ * worth crashing a map (or a navigation screen) over; callers fall back
+ * accordingly (the map to its old straight-line estimate, the navigation
+ * screen to an error state with a link out to Google Maps).
  */
-export async function getWalkingRoute(
+async function getNonTransitRoute(
   origin: { lng: number; lat: number },
   destination: { lng: number; lat: number },
+  travelMode: "WALK" | "BICYCLE",
   options: { includeSteps?: boolean; languageCode?: string } = {},
 ): Promise<WalkingRoute | null> {
   const fieldMask = options.includeSteps
@@ -89,7 +96,7 @@ export async function getWalkingRoute(
   const route = await computeRoutes({
     origin,
     destination,
-    travelMode: "WALK",
+    travelMode,
     fieldMask,
     languageCode: options.languageCode,
   });
@@ -106,7 +113,7 @@ export async function getWalkingRoute(
     .map((s: RawRouteStep) => ({
       instruction: s.navigationInstruction!.instructions!,
       maneuver: s.navigationInstruction!.maneuver ?? "STRAIGHT",
-      travelMode: "WALK" as const,
+      travelMode,
       distanceMeters: s.distanceMeters ?? 0,
       durationSeconds: parseSeconds(s.staticDuration),
       startLocation: { lng: s.startLocation!.latLng!.longitude!, lat: s.startLocation!.latLng!.latitude! },
@@ -119,4 +126,26 @@ export async function getWalkingRoute(
     path: decodePolyline(encoded),
     steps,
   };
+}
+
+/** Fetches a real walking route between two points. See getNonTransitRoute for the shared contract. */
+export async function getWalkingRoute(
+  origin: { lng: number; lat: number },
+  destination: { lng: number; lat: number },
+  options: { includeSteps?: boolean; languageCode?: string } = {},
+): Promise<WalkingRoute | null> {
+  return getNonTransitRoute(origin, destination, "WALK", options);
+}
+
+/**
+ * Fetches a real cycling route between two points — same Compute Routes SKU
+ * family as walking (Basic/Essentials, no traffic features), just a
+ * different `travelMode`. See getNonTransitRoute for the shared contract.
+ */
+export async function getBikingRoute(
+  origin: { lng: number; lat: number },
+  destination: { lng: number; lat: number },
+  options: { includeSteps?: boolean; languageCode?: string } = {},
+): Promise<WalkingRoute | null> {
+  return getNonTransitRoute(origin, destination, "BICYCLE", options);
 }

@@ -92,16 +92,66 @@ function iosOrientationStatic(): IOSDeviceOrientationEventStatic | undefined {
   return window.DeviceOrientationEvent as unknown as IOSDeviceOrientationEventStatic;
 }
 
+/**
+ * Tilt-compensated compass heading from the three raw Euler angles, for
+ * browsers with no `webkitCompassHeading` (i.e. everyone but iOS Safari).
+ *
+ * PLAIN `360 - alpha` (this function's predecessor) IS ONLY A COMPASS
+ * HEADING WHEN THE DEVICE IS LYING FLAT. `alpha` is rotation around the
+ * device's own z-axis, and that axis only points straight up at the sky
+ * (matching "which way is the top of the phone facing, seen from above")
+ * when the phone is flat on a table. This feature exists for someone
+ * WALKING with the phone held upright in front of them — the one posture
+ * where that assumption is furthest from true — so the naive conversion
+ * reported a heading that drifted or inverted with how far back the phone
+ * was tilted, which reads exactly as "the arrow points the wrong way when I
+ * turn": walking normally, not turning the phone's face towards the sky.
+ * This combines all three angles (the standard fused-orientation formula —
+ * see e.g. w3c's DeviceOrientation examples) so tilt cancels out and the
+ * result matches a real compass regardless of how the phone is held.
+ */
+function tiltCompensatedHeading(alphaDeg: number, betaDeg: number, gammaDeg: number): number {
+  const alpha = (alphaDeg * Math.PI) / 180;
+  const beta = (betaDeg * Math.PI) / 180;
+  const gamma = (gammaDeg * Math.PI) / 180;
+
+  const cA = Math.cos(alpha);
+  const sA = Math.sin(alpha);
+  const sB = Math.sin(beta);
+  const cG = Math.cos(gamma);
+  const sG = Math.sin(gamma);
+
+  // Components of the compass-pointing (world -y) axis, expressed in the
+  // device's own frame after undoing its alpha/beta/gamma rotation.
+  const rA = -cA * sG - sA * sB * cG;
+  const rB = -sA * sG + cA * sB * cG;
+
+  let heading = Math.atan2(rA, rB);
+  if (heading < 0) heading += 2 * Math.PI;
+
+  return (heading * 180) / Math.PI;
+}
+
 function readHeading(event: CompassOrientationEvent): number | null {
-  // iOS's own field is a real compass heading and needs no conversion.
+  // iOS's own field is a real, already tilt-compensated compass heading and
+  // needs no conversion.
   const webkitHeading = event.webkitCompassHeading;
   if (typeof webkitHeading === "number" && Number.isFinite(webkitHeading)) {
     return webkitHeading;
   }
-  // Everyone else: alpha is counter-clockwise from north, hence 360 - alpha.
-  // Only trusted when `absolute` — a relative reading points nowhere real.
-  if (event.absolute && typeof event.alpha === "number" && Number.isFinite(event.alpha)) {
-    return (360 - event.alpha) % 360;
+  // Everyone else: only trusted when `absolute` — a relative reading points
+  // nowhere real — and only once beta/gamma (the device's tilt) are known,
+  // since alpha alone is meaningless once the phone isn't lying flat.
+  if (
+    event.absolute &&
+    typeof event.alpha === "number" &&
+    Number.isFinite(event.alpha) &&
+    typeof event.beta === "number" &&
+    Number.isFinite(event.beta) &&
+    typeof event.gamma === "number" &&
+    Number.isFinite(event.gamma)
+  ) {
+    return tiltCompensatedHeading(event.alpha, event.beta, event.gamma);
   }
   return null;
 }

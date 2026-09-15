@@ -12,7 +12,7 @@
 // (the "Book this tour" fill, the directions arrow, and the saved-heart
 // fill). Nothing else here changes when the skin changes.
 
-import { Clock, Heart, MapPin as MapPinIcon, Navigation, TramFront, X } from "lucide-react";
+import { Clock, Heart, MapPin as MapPinIcon, Navigation, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { CategoryId } from "@/lib/types";
@@ -54,16 +54,15 @@ export interface PlaceCardProps {
   saved?: boolean;
   onToggleSaved?: (id: string, next: boolean) => void;
   onClose?: () => void;
-  /** "Book this tour" for boats, "Walking directions" for everything else. */
-  onAction?: (item: PlaceCardItem) => void;
   /**
-   * Public-transport directions — the same destination as `onAction`, by
-   * tram/bus/metro instead of on foot. Rendered as a compact icon button
-   * (never for boats, which only book), so the walking route stays the
-   * one-tap default it has always been rather than becoming a mode picker
-   * every guest has to answer before they can go anywhere.
+   * "Book this tour" for boats, "Directions" for everything else. The latter
+   * opens the in-app turn-by-turn screen (GuestNavigationScreen) on foot by
+   * default — walk/bike/transit is chosen there, via that screen's own mode
+   * tabs, the way Google Maps itself separates "get directions" from "which
+   * mode" into two steps rather than asking the card to offer a button per
+   * mode.
    */
-  onSecondaryAction?: (item: PlaceCardItem) => void;
+  onAction?: (item: PlaceCardItem) => void;
   /** Gallery open state. Controlled if provided, otherwise internal. */
   galleryOpen?: boolean;
   onToggleGallery?: (next: boolean) => void;
@@ -104,7 +103,6 @@ export function PlaceCard({
   onToggleSaved,
   onClose,
   onAction,
-  onSecondaryAction,
   galleryOpen,
   onToggleGallery,
   floating = true,
@@ -167,7 +165,7 @@ export function PlaceCard({
   // truncatable.
   const locator = item.isBoat ? item.meta : item.area;
   const endorsement = item.isBoat ? item.note : item.note;
-  const actionLabel = item.isBoat ? t.common.bookTour : t.common.walkingDirections;
+  const actionLabel = item.isBoat ? t.common.bookTour : t.common.directions;
 
   const toggleSaved = () => {
     const next = !isSaved;
@@ -495,24 +493,6 @@ export function PlaceCard({
           )}
           {actionLabel}
         </button>
-
-        {!item.isBoat && onSecondaryAction && (
-          <button
-            type="button"
-            onClick={() => onSecondaryAction(item)}
-            aria-label={t.common.publicTransport}
-            title={t.common.publicTransport}
-            style={{
-              ...actionBase,
-              flex: "0 0 auto",
-              width: 44,
-              background: "#FFFFFF",
-              border: `1px solid ${BORDER}`,
-            }}
-          >
-            <TramFront size={19} strokeWidth={1.9} color="var(--brand-primary)" aria-hidden />
-          </button>
-        )}
 
         <button
           type="button"

@@ -5,10 +5,11 @@
 // guest read (see src/proxy.ts's guest-brand-resolution section) — there is
 // no guest session to check.
 //
-// NAME PREDATES TRANSIT: this also serves public-transport itineraries via
-// `?mode=transit` since 2026-09-04. The path is internal-only (two fetch
-// call sites, both in this repo), so it was left alone rather than renamed
-// for cosmetics.
+// NAME PREDATES TRANSIT AND BIKING: this also serves public-transport
+// itineraries via `?mode=transit` (since 2026-09-04) and cycling routes via
+// `?mode=bike` (since 2026-09-15). The path is internal-only (two fetch call
+// sites, both in this repo), so it was left alone rather than renamed for
+// cosmetics.
 //
 // EVERY REQUEST HERE COSTS REAL MONEY, and transit costs more than walking
 // (a higher Routes API tier), all drawn from one shared monthly Maps credit
@@ -34,7 +35,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { getWalkingRoute } from "@/lib/walkingRoute";
+import { getWalkingRoute, getBikingRoute } from "@/lib/walkingRoute";
 import { getTransitRoute } from "@/lib/transitRoute";
 import { isLocale } from "@/lib/i18n/locales";
 
@@ -132,11 +133,11 @@ export async function GET(request: NextRequest) {
   const lang = searchParams.get("lang");
   const languageCode = isLocale(lang) ? lang : undefined;
 
-  // Exact equality, deliberately: anything that isn't literally "transit"
-  // takes the cheaper walking path. Never invert this to
-  // `mode !== "walk" ? transit : walk` — that would make the expensive tier
-  // the default for every malformed or stale-client call.
-  const mode = searchParams.get("mode") === "transit" ? "transit" : "walk";
+  // Exact equality, deliberately: anything that isn't literally "transit" or
+  // "bike" takes the cheapest, walking path. Never invert this — that would
+  // make a pricier tier the default for every malformed or stale-client call.
+  const modeParam = searchParams.get("mode");
+  const mode = modeParam === "transit" ? "transit" : modeParam === "bike" ? "bike" : "walk";
 
   const key = cacheKey([
     mode,
@@ -164,11 +165,17 @@ export async function GET(request: NextRequest) {
           { lng: destLng, lat: destLat },
           { languageCode },
         )
-      : await getWalkingRoute(
-          { lng: originLng, lat: originLat },
-          { lng: destLng, lat: destLat },
-          { includeSteps, languageCode },
-        );
+      : mode === "bike"
+        ? await getBikingRoute(
+            { lng: originLng, lat: originLat },
+            { lng: destLng, lat: destLat },
+            { includeSteps, languageCode },
+          )
+        : await getWalkingRoute(
+            { lng: originLng, lat: originLat },
+            { lng: destLng, lat: destLat },
+            { includeSteps, languageCode },
+          );
 
   if (!route) {
     // The mode is in the body so a spike of these is greppable in Vercel's

@@ -42,7 +42,7 @@ export type GoogleMapsWalkingUrlInput = GoogleMapsDirectionsInput;
  */
 function googleMapsDirectionsUrl(
   { destLat, destLng }: GoogleMapsDirectionsInput,
-  travelmode: "walking" | "transit",
+  travelmode: "walking" | "bicycling" | "transit",
 ): string {
   const params = new URLSearchParams({
     api: "1",
@@ -56,6 +56,14 @@ function googleMapsDirectionsUrl(
 /** Walking directions hand-off. See googleMapsDirectionsUrl for the shared decisions. */
 export function googleMapsWalkingUrl(input: GoogleMapsDirectionsInput): string {
   return googleMapsDirectionsUrl(input, "walking");
+}
+
+/**
+ * Cycling hand-off — same escape-hatch role as googleMapsTransitUrl below,
+ * for in-app biking navigation (GuestNavigationScreen.tsx).
+ */
+export function googleMapsBikingUrl(input: GoogleMapsDirectionsInput): string {
+  return googleMapsDirectionsUrl(input, "bicycling");
 }
 
 /**

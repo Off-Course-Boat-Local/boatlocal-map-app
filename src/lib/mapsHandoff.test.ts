@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { googleMapsTransitUrl, googleMapsWalkingUrl } from "./mapsHandoff";
+import { googleMapsBikingUrl, googleMapsTransitUrl, googleMapsWalkingUrl } from "./mapsHandoff";
 import { PLACES } from "./data";
 
 const ANNE_FRANK = PLACES.find((p) => p.id === "anne-frank")!;
@@ -66,6 +66,38 @@ describe("googleMapsWalkingUrl", () => {
       });
       expect(() => new URL(url), place.name).not.toThrow();
     }
+  });
+});
+
+describe("googleMapsBikingUrl", () => {
+  it("hands off in bicycling mode, not walking", () => {
+    const url = new URL(
+      googleMapsBikingUrl({ destLat: ANNE_FRANK.lat, destLng: ANNE_FRANK.lng }),
+    );
+
+    expect(url.origin + url.pathname).toBe("https://www.google.com/maps/dir/");
+    expect(url.searchParams.get("api")).toBe("1");
+    expect(url.searchParams.get("travelmode")).toBe("bicycling");
+  });
+
+  it("sends coordinates as the destination, not the name", () => {
+    const url = new URL(
+      googleMapsBikingUrl({
+        destLat: ANNE_FRANK.lat,
+        destLng: ANNE_FRANK.lng,
+        destName: ANNE_FRANK.name,
+      }),
+    );
+
+    const destination = url.searchParams.get("destination") ?? "";
+    expect(destination).toMatch(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/);
+    expect(destination).not.toContain("Anne");
+  });
+
+  it("never puts the guest's own position in the URL", () => {
+    const url = new URL(googleMapsBikingUrl({ destLat: 52.3731, destLng: 4.8936 }));
+    expect(url.searchParams.has("origin")).toBe(false);
+    expect(url.searchParams.has("saddr")).toBe(false);
   });
 });
 
