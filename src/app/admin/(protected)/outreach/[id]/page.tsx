@@ -81,10 +81,15 @@ export default async function OutreachProspectPage({
   const priorEmails = events.filter((e) => e.eventType === "email_sent").length;
   const isReplied = prospect.status === "replied";
   const touch = outreachTouchForPriorEmails(priorEmails);
+
+  const lastEmailEvent = events.find((e) => e.eventType === "email_sent" || e.eventType === "replied");
+  const lastSubject = lastEmailEvent?.body ? lastEmailEvent.body.split("\n")[0].replace(/^\[Replied via Email\]\s*/, "") : null;
+  const replySubject = lastSubject ? (lastSubject.startsWith("Re:") ? lastSubject : `Re: ${lastSubject}`) : `Re: ${prospect.name}`;
+
   const draft = isReplied
     ? {
-        subject: "Re: Hotel Guests",
-        body: `Hi ${prospect.contactName?.trim().split(/\s+/)[0] ?? ""},\n\n\n\nBeer, BoatLocal`,
+        subject: replySubject,
+        body: `Hi ${prospect.contactName?.trim().split(/\s+/)[0] ?? ""},\n\n\n\nMet vriendelijke groet,\nBeer Zoomers\nboatlocal.nl`,
         touch,
       }
     : buildDefaultOutreachDraft(prospect, { touch });

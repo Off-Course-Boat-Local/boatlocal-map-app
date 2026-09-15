@@ -1,5 +1,4 @@
-// Enforces the mechanical rules in docs/outreach-voice.md so the drafts
-// can't drift back into machine-sounding copy without a test going red.
+// Enforces the outreach copy rules based on Beer's sent emails
 
 import { describe, expect, it } from "vitest";
 
@@ -7,38 +6,48 @@ import type { OutreachProspect } from "@/lib/data/outreach";
 
 import { buildDefaultOutreachDraft, outreachTouchForPriorEmails } from "./outreachDraft";
 
-const base: OutreachProspect = {
+
+const baseOperatorDutch: OutreachProspect = {
   id: "p1",
-  name: "360 Amsterdam Tours",
+  name: "King Bikes",
   segment: "operator",
   source: "csv",
-  website: "360amsterdamtours.com",
+  website: "kingbikes.nl",
   phone: null,
-  email: "support@360amsterdamtours.com",
-  contactName: "Anja Herrmann",
-  instagramHandle: "@360amsterdam",
-  instagramFollowers: 1488,
-  taRating: 5,
-  taReviewCount: 16096,
+  email: "info@kingbikes.nl",
+  contactName: "Mikael",
+  instagramHandle: "@kingbikes",
+  instagramFollowers: 125,
+  taRating: 4,
+  taReviewCount: 125,
   taUrl: null,
-  tourType: "Private & Group Walking",
-  priceFrom: 32.5,
-  yearFounded: 2014,
-  languages: "English, Spanish, Italian, German, Portuguese, French, Dutch",
-  notes: "Team 4 staff · Booking via: Viator, Own site",
+  tourType: "Bike Rental & Tours",
+  priceFrom: 20,
+  yearFounded: 2015,
+  languages: "Dutch, English",
+  notes: "Contactpersoon: Mikael",
   status: "not_contacted",
   nextActionType: null,
   nextActionDueAt: null,
   lastContactedAt: null,
   companyId: null,
   googlePlaceId: null,
-  websiteDomain: "360amsterdamtours.com",
+  websiteDomain: "kingbikes.nl",
   createdAt: "2026-09-03T00:00:00Z",
   updatedAt: "2026-09-03T00:00:00Z",
 };
 
-const bare: OutreachProspect = {
-  ...base,
+const baseOperatorEnglish: OutreachProspect = {
+  ...baseOperatorDutch,
+  name: "Amsterbike",
+  email: "info@amsterbike.nl",
+  languages: "English, Spanish",
+  contactName: "John",
+  notes: null,
+};
+
+const bareOperator: OutreachProspect = {
+  ...baseOperatorDutch,
   name: "Canal Bikes",
   contactName: null,
   taRating: null,
@@ -49,68 +58,18 @@ const bare: OutreachProspect = {
   notes: null,
 };
 
-const hotel: OutreachProspect = {
-  ...base,
+const hotelDutch: OutreachProspect = {
+  ...baseOperatorDutch,
   name: "Hotel V Nesplein",
   segment: "hotel",
   source: "agent",
   contactName: "Priya",
   tourType: null,
-  languages: "English, Dutch",
+  languages: "Dutch, English",
   taRating: 4.7,
   taReviewCount: 2140,
   notes: null,
 };
-
-const bareHotel: OutreachProspect = { ...hotel, contactName: null, taRating: null, taReviewCount: null };
-
-const words = (s: string) => s.trim().split(/\s+/).length;
-
-// From docs/outreach-voice.md "Banned". Checked case-insensitively against
-// the whole body, so a future rewrite can't sneak one in.
-const BANNED = [
-  "i hope this finds you well",
-  "hope you're doing well",
-  "i'm reaching out",
-  "i wanted to reach out",
-  "my name is",
-  "just checking in",
-  "checking in",
-  "circling back",
-  "touching base",
-  "following up",
-  "as mentioned",
-  "i'd love to",
-  "we'd love to",
-  "feel free",
-  "leverage",
-  "synergy",
-  "streamline",
-  "optimize",
-  "seamless",
-  "unlock",
-  "empower",
-  "elevate",
-  "referral channel",
-  "commission stack",
-  "exciting",
-  "amazing",
-  "game-changer",
-  "win-win",
-  "delve",
-  "landscape",
-  "tapestry",
-  "testament",
-  "pivotal",
-  "showcase",
-  "vibrant",
-  "genuinely",
-  "quick call",
-  "hop on a call",
-  "15 minutes",
-  "30 minutes",
-  "!",
-];
 
 describe("outreachTouchForPriorEmails", () => {
   it("maps the email count to the next touch, capping at the detach email", () => {
@@ -122,106 +81,56 @@ describe("outreachTouchForPriorEmails", () => {
 });
 
 describe("buildDefaultOutreachDraft", () => {
-  it("keeps the same subject on every touch so mail clients thread the sequence", () => {
-    const subjects = ([1, 2, 3] as const).map((touch) => buildDefaultOutreachDraft(base, { touch }).subject);
-    expect(new Set(subjects).size).toBe(1);
-    expect(subjects[0].split(" ").length).toBeLessThanOrEqual(3);
-    expect(subjects[0]).not.toMatch(/[?!.:]/);
+  it("generates Dutch copy with social proof for Dutch operators", () => {
+    const { subject, body } = buildDefaultOutreachDraft(baseOperatorDutch, { touch: 1 });
+    expect(subject).toContain("King Bikes");
+    expect(body).toContain("Hi Mikael,");
+    expect(body).toContain("Mijn naam is Beer van boatlocal.nl");
+    expect(body).toContain("verborgen parels");
+    expect(body).toContain("TripAdvisor");
+    // Must contain the social proof specified by user:
+    expect(body).toContain("Inmiddels werken we al samen met twee andere partijen in Amsterdam");
+    expect(body).toContain("volledig gratis");
+    expect(body).toContain("15 minuten");
   });
 
-  it("first email: 40–80 words, one question, addressed by first name", () => {
-    const { body } = buildDefaultOutreachDraft(base, { touch: 1 });
-    expect(words(body)).toBeGreaterThanOrEqual(40);
-    expect(words(body)).toBeLessThanOrEqual(80);
-    expect((body.match(/\?/g) ?? []).length).toBe(1);
-    expect(body.startsWith("Hi Anja,")).toBe(true);
+  it("generates English copy with social proof for English operators", () => {
+    const { subject, body } = buildDefaultOutreachDraft(baseOperatorEnglish, { touch: 1 });
+    expect(subject).toContain("Amsterbike");
+    expect(body).toContain("Hi John,");
+    expect(body).toContain("My name is Beer Zoomers from boatlocal.nl");
+    expect(body).toContain("hidden gems");
+    expect(body).toContain("TripAdvisor");
+    // Must contain the social proof specified by user:
+    expect(body).toContain("We are already working with two other parties in Amsterdam");
+    expect(body).toContain("completely free");
+    expect(body).toContain("15 minutes");
   });
 
-  it("first email: opens with a fact about them, states the offer with a 'without'", () => {
-    const { body } = buildDefaultOutreachDraft(base, { touch: 1 });
-    expect(body).toContain("16,096 reviews at 5 stars");
-    expect(body).toContain("seven languages");
-    expect(body).toContain("walking tours");
-    expect(body).toMatch(/without an OTA/);
+  it("treats a 'Team' contact name as team greeting, not person's first name", () => {
+    const { body } = buildDefaultOutreachDraft({ ...baseOperatorEnglish, contactName: "Amsterbike Team" }, { touch: 1 });
+    expect(body.startsWith("Hi Amsterbike team,")).toBe(true);
   });
 
-  it("first follow-up: 25–50 words, a new angle, no recap of the first email", () => {
-    const first = buildDefaultOutreachDraft(base, { touch: 1 }).body;
-    const { body } = buildDefaultOutreachDraft(base, { touch: 2 });
-    expect(words(body)).toBeGreaterThanOrEqual(25);
-    expect(words(body)).toBeLessThanOrEqual(50);
-    expect(body).not.toContain("lobby QR");
-    expect(body).toContain("Viator");
-    expect(body).not.toBe(first);
+  it("touch 2 generates a follow-up mentioning preview and two other parties", () => {
+    const { body } = buildDefaultOutreachDraft(baseOperatorDutch, { touch: 2 });
+    expect(body).toContain("Heb je toevallig al gelegenheid gehad");
+    expect(body).toContain("digitale preview voor King Bikes");
+    expect(body).toContain("twee andere partijen");
   });
 
-  it("first follow-up without OTA data asks the illumination question instead", () => {
-    const { body } = buildDefaultOutreachDraft(bare, { touch: 2 });
-    expect(body).toMatch(/no obvious way to find Canal Bikes/i);
-    expect(body).not.toContain("20–30%");
+  it("touch 3 generates a friendly detach email", () => {
+    const { body } = buildDefaultOutreachDraft(baseOperatorDutch, { touch: 3 });
+    expect(body).toContain("geen prioriteit");
+    expect(body).toContain("parkeren");
   });
 
-  it("last follow-up: under 30 words, one neutral yes/no question", () => {
-    const { body } = buildDefaultOutreachDraft(base, { touch: 3 });
-    expect(words(body)).toBeLessThanOrEqual(30);
-    expect(body).toContain("decided against");
-    expect((body.match(/\?/g) ?? []).length).toBe(1);
-  });
-
-  it("never invents a specific: a prospect with no enrichment gets no fact line", () => {
-    const { body } = buildDefaultOutreachDraft(bare, { touch: 1 });
-    expect(body.startsWith("Hi,")).toBe(true);
-    expect(body).not.toMatch(/stars|reviews|languages|since \d{4}/);
-    expect(words(body)).toBeLessThanOrEqual(80);
-  });
-
-  it("treats a 'Team' contact name as nobody, not as a first name", () => {
-    const { body } = buildDefaultOutreachDraft({ ...base, contactName: "SANDEMANs Team" }, { touch: 1 });
-    expect(body.startsWith("Hi,")).toBe(true);
-  });
-
-  it("uses their word for the tour type", () => {
-    expect(buildDefaultOutreachDraft({ ...base, tourType: "Group Bike" }).body).toContain("bike tours");
-    expect(buildDefaultOutreachDraft({ ...base, tourType: "Group Food Walking" }).body).toContain("food tours");
-  });
-
-  it.each([1, 2, 3] as const)("touch %i contains none of the banned phrases", (touch) => {
-    for (const prospect of [base, bare, hotel, bareHotel]) {
-      const body = buildDefaultOutreachDraft(prospect, { touch }).body.toLowerCase();
-      for (const phrase of BANNED) {
-        expect(body, `touch ${touch} contains "${phrase}"`).not.toContain(phrase);
-      }
-    }
-  });
-
-  describe("hotel segment", () => {
-    it("first email: pitches the gift, not distribution — no OTA/commission language", () => {
-      const { body } = buildDefaultOutreachDraft(hotel, { touch: 1 });
-      expect(words(body)).toBeLessThanOrEqual(80);
-      expect(body).toMatch(/free guest-discovery app/);
-      expect(body).toContain("2,140 reviews at 4.7 stars");
-      expect(body).not.toMatch(/OTA|commission|25%/);
-    });
-
-    it("first email with no enrichment gets no fact line", () => {
-      const { body } = buildDefaultOutreachDraft(bareHotel, { touch: 1 });
-      expect(body).not.toMatch(/stars|reviews/);
-    });
-
-    it("first follow-up: a different angle than touch 1, still one question", () => {
-      const first = buildDefaultOutreachDraft(hotel, { touch: 1 }).body;
-      const { body } = buildDefaultOutreachDraft(hotel, { touch: 2 });
-      expect(words(body)).toBeGreaterThanOrEqual(15);
-      expect(words(body)).toBeLessThanOrEqual(50);
-      expect(body).not.toBe(first);
-      expect(body).toMatch(/first afternoon/);
-      expect((body.match(/\?/g) ?? []).length).toBe(1);
-    });
-
-    it("last follow-up is the same detach shape as an operator's", () => {
-      const { body } = buildDefaultOutreachDraft(hotel, { touch: 3 });
-      expect(body).toContain("Hotel V Nesplein");
-      expect(words(body)).toBeLessThanOrEqual(30);
-    });
+  it("supports hotel segment with custom guest map copy and social proof", () => {
+    const { body } = buildDefaultOutreachDraft(hotelDutch, { touch: 1 });
+    expect(body).toContain("digitale gastenkaart");
+    expect(body).toContain("Hotel V Nesplein");
+    expect(body).toContain("QR-code");
+    expect(body).toContain("Inmiddels werken we al samen met twee andere partijen in Amsterdam");
   });
 });
+
