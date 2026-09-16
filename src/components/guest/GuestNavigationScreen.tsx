@@ -432,19 +432,14 @@ export default function GuestNavigationScreen({
       originLat: String(guest.lat),
       destLng: String(destination.lng),
       destLat: String(destination.lat),
-      // Only request turn-by-turn steps for transit. For walking and biking,
-      // steps are omitted to save bandwidth, lower latency, and avoid
-      // computing/fetching unnecessary direction instruction text.
-      steps: mode === "transit" ? "1" : "0",
+      steps: "1",
       mode,
-      // Google localises its own instruction text when told which language
-      // the guest is reading in — see walkingRoute.ts.
       lang: locale,
     });
     void fetch(`/api/guest/walking-route?${params.toString()}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((body: { route?: Route } | null) => {
-        if (body?.route && (mode === "transit" ? body.route.steps.length > 0 : body.route.path.length > 0)) {
+        if (body?.route && (body.route.steps.length > 0 || body.route.path.length > 0)) {
           setRoute(body.route);
         } else {
           setLoadError(true);
@@ -591,7 +586,7 @@ export default function GuestNavigationScreen({
 
   const remaining = useMemo(() => {
     if (!route) return null;
-    if (mode !== "transit" || route.steps.length === 0) {
+    if (route.steps.length === 0) {
       return { meters: route.distanceMeters, seconds: route.durationSeconds };
     }
     const later = route.steps.slice(stepIndex + 1);
@@ -840,7 +835,12 @@ export default function GuestNavigationScreen({
         <div
           style={{
             position: "absolute",
-            inset: 0,
+            inset: isNavigating ? "-35% -35% -15% -35%" : 0,
+            transform: isNavigating
+              ? "perspective(800px) rotateX(32deg)"
+              : "none",
+            transformOrigin: "50% 85%",
+            transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), inset 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
           <BaseMap
@@ -855,8 +855,8 @@ export default function GuestNavigationScreen({
           </BaseMap>
         </div>
 
-        {/* Active Navigation: Top Instruction Card (for transit) */}
-        {isNavigating && !arrived && currentStep && mode === "transit" && (
+        {/* Active Navigation: Top Instruction Card (all travel modes) */}
+        {isNavigating && !arrived && currentStep && (
           <div
             className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-3"
             style={{ paddingTop: "calc(env(safe-area-inset-top) + 10px)" }}
@@ -1021,7 +1021,7 @@ export default function GuestNavigationScreen({
             </div>
 
             <div className="flex items-center gap-2.5">
-              {mode === "transit" && (
+              {route?.steps && route.steps.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowStepsDrawer((v) => !v)}
@@ -1043,8 +1043,8 @@ export default function GuestNavigationScreen({
             </div>
           </div>
 
-          {/* Expandable Turn-by-Turn Steps Drawer in Navigation Mode (transit only) */}
-          {mode === "transit" && showStepsDrawer && upcomingSteps.length > 0 && (
+          {/* Expandable Turn-by-Turn Steps Drawer in Navigation Mode */}
+          {showStepsDrawer && upcomingSteps.length > 0 && (
             <div
               className="mt-3 max-h-52 overflow-y-auto border-t pt-2"
               style={{ borderColor: BORDER }}

@@ -313,6 +313,57 @@ export function useGuestLocation(
     // and re-running for, say, a timeout tweak should not flicker a good fix.
   }, [attempt, shouldWatch, enableHighAccuracy, timeoutMs, maximumAgeMs]);
 
+  // ── Auto-retry on page return ──────────────────────────────────────────
+  //
+  // Safari (and iOS in general) has a two-layer location permission model:
+  //   1. Safari per-website setting (Website Settings → Location)
+  //   2. iOS system setting (Settings → Privacy → Location Services → Safari)
+  //
+  // Both must agree. When either says "deny", watchPosition fires
+  // PERMISSION_DENIED and we stop the watch. The guest then has to go to
+  // Safari settings or iOS Settings to fix it — which necessarily puts our
+  // page in the background. When they come back, the old denial is stale
+  // and a fresh getCurrentPosition will succeed. So: listen for the page
+  // becoming visible again while we're in a failed state, and silently
+  // re-probe. If the permission was actually granted, we recover without
+  // the guest having to tap anything. If it's still denied, we just stay
+  // in the current state — no flicker, no loading spinner flash.
+  //
+  // This also catches Android Chrome's "Ask every time" setting, and any
+  // browser that requires a page reload after a permission change.
+  useEffect(() => {
+    if (!shouldWatch) return;
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (hasFixRef.current) return; // Already have a fix, nothing to recover.
+
+      // Silently probe — don't flash a spinner. If it works, great; if
+      // not, the current denied/unavailable state stays as-is.
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          hasFixRef.current = true;
+          setWatchReason(null);
+          setWatched({
+            status: "granted",
+            lng: pos.coords.longitude,
+            lat: pos.coords.latitude,
+            accuracy: pos.coords.accuracy,
+          });
+          // Restart the watch so we get live updates going forward.
+          setAttempt((n) => n + 1);
+        },
+        () => {
+          // Still denied/unavailable — do nothing, keep current UI.
+        },
+        { enableHighAccuracy: false, timeout: 5_000, maximumAge: 30_000 },
+      );
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [shouldWatch]);
+
   if (simulate) {
     return {
       location: {
