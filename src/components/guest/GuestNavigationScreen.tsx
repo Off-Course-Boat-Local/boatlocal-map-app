@@ -68,7 +68,6 @@ import {
   Bus,
   ChevronRight,
   CircleCheck,
-  Compass,
   Crosshair,
   ExternalLink,
   Flag,
@@ -88,7 +87,6 @@ import BaseMap, { useMapInstance } from "@/components/map/BaseMap";
 import GuestDot from "@/components/map/GuestDot";
 import { createDomOverlay } from "@/components/map/DomOverlay";
 import { useGuestLocation, guestPoint } from "@/hooks/useGuestLocation";
-import { useCompassHeading } from "@/hooks/useCompassHeading";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { bearingDegrees, haversineMeters } from "@/lib/distance";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
@@ -687,20 +685,6 @@ export default function GuestNavigationScreen({
     };
   }
 
-  // Direction-to-walk arrow: which way to face right now, not just where the
-  // destination is on the map. Points at the next turn (or the destination
-  // itself on the final leg), rotated by the phone's own compass heading so
-  // the arrow always shows the real-world direction regardless of which way
-  // the guest is holding their phone.
-  const { heading, permissionNeeded, requestPermission } = useCompassHeading();
-  const bearingTargetLng = currentStep?.endLocation.lng ?? destination.lng;
-  const bearingTargetLat = currentStep?.endLocation.lat ?? destination.lat;
-  const compassAngle = useMemo(() => {
-    if (heading === null || !guest) return null;
-    const bearing = bearingDegrees(guest, { lng: bearingTargetLng, lat: bearingTargetLat });
-    return (bearing - heading + 360) % 360;
-  }, [heading, guest, bearingTargetLng, bearingTargetLat]);
-
   return (
     <div
       role="dialog"
@@ -841,7 +825,7 @@ export default function GuestNavigationScreen({
             position: "absolute",
             inset: 0,
             transform: isNavigating
-              ? "perspective(800px) rotateX(42deg) scale(1.24)"
+              ? "perspective(900px) rotateX(28deg) scale(1.3)"
               : "none",
             transformOrigin: "50% 85%",
             transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -923,7 +907,7 @@ export default function GuestNavigationScreen({
           </div>
         ) : null}
 
-        {/* Camera control */}
+        {/* Camera control: recenter / overview */}
         {!arrived && route && (
           <button
             type="button"
@@ -931,7 +915,7 @@ export default function GuestNavigationScreen({
             className="pointer-events-auto absolute inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold"
             style={{
               left: 12,
-              bottom: isNavigating ? 98 : 12,
+              bottom: 12,
               background: "rgba(255,255,255,0.95)",
               border: `1px solid ${BORDER}`,
               boxShadow: SHADOW_FLOAT,
@@ -941,7 +925,6 @@ export default function GuestNavigationScreen({
               WebkitTapHighlightColor: "transparent",
               touchAction: "manipulation",
               zIndex: 20,
-              transition: "bottom 0.3s ease",
             }}
           >
             {cameraMode === "follow" ? (
@@ -962,77 +945,17 @@ export default function GuestNavigationScreen({
             )}
           </button>
         )}
-
-        {!arrived && compassAngle !== null && (
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              right: 12,
-              bottom: isNavigating ? 98 : 12,
-              width: 52,
-              height: 52,
-              borderRadius: "50%",
-              background: "#FFFFFF",
-              border: `1px solid ${BORDER}`,
-              boxShadow: SHADOW_FLOAT,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 20,
-              transition: "bottom 0.3s ease",
-            }}
-          >
-            <NavigationArrow
-              size={24}
-              color="var(--brand-primary)"
-              strokeWidth={2.25}
-              style={{ transform: `rotate(${compassAngle}deg)`, transition: "transform 0.15s linear" }}
-            />
-          </div>
-        )}
-
-        {!arrived && compassAngle === null && permissionNeeded && (
-          <button
-            type="button"
-            onClick={requestPermission}
-            className="absolute inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold"
-            style={{
-              right: 12,
-              bottom: isNavigating ? 98 : 12,
-              background: "#FFFFFF",
-              border: `1px solid ${BORDER}`,
-              boxShadow: SHADOW_FLOAT,
-              color: INK,
-              fontFamily: bodyFontFamily,
-              zIndex: 20,
-              transition: "bottom 0.3s ease",
-            }}
-          >
-            <Compass size={14} aria-hidden />
-            {t.navigation.enableCompass}
-          </button>
-        )}
       </div>
 
-      {/* Active Navigation: Bottom ETA Bar (Image 2 style) */}
+      {/* Active Navigation: Bottom ETA Bar */}
       {isNavigating && !arrived && (
         <div
-          className="relative z-30 flex-none rounded-t-3xl bg-white px-5 pt-3 shadow-2xl"
+          className="relative z-30 flex-none rounded-t-2xl bg-white px-5 py-3 shadow-xl"
           style={{
             borderTop: `1px solid ${BORDER}`,
-            paddingBottom: "calc(env(safe-area-inset-bottom) + 14px)",
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)",
           }}
         >
-          {/* Drag indicator */}
-          <button
-            type="button"
-            aria-label={t.navigation.steps}
-            onClick={() => setShowStepsDrawer((v) => !v)}
-            className="mx-auto mb-2.5 flex h-4 w-full items-center justify-center cursor-pointer"
-          >
-            <span className="h-1 w-10 rounded-full bg-neutral-300" />
-          </button>
 
           <div className="flex items-center justify-between">
             <div>
@@ -1085,8 +1008,8 @@ export default function GuestNavigationScreen({
             </div>
           </div>
 
-          {/* Expandable Turn-by-Turn Steps Drawer in Navigation Mode */}
-          {showStepsDrawer && upcomingSteps.length > 0 && (
+          {/* Expandable Turn-by-Turn Steps Drawer in Navigation Mode (transit only) */}
+          {mode === "transit" && showStepsDrawer && upcomingSteps.length > 0 && (
             <div
               className="mt-3 max-h-52 overflow-y-auto border-t pt-2"
               style={{ borderColor: BORDER }}
