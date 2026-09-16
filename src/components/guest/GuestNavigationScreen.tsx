@@ -103,7 +103,7 @@ import {
   googleMapsTransitUrl,
   googleMapsWalkingUrl,
 } from "@/lib/mapsHandoff";
-import { BRAND_GRADIENT, BORDER, INK, MUTED, SHADOW_FLOAT, SURFACE } from "@/lib/guestTheme";
+import { BORDER, INK, MUTED, SHADOW_FLOAT, SURFACE } from "@/lib/guestTheme";
 
 /** How close (metres, raw) to a WALKING step's endpoint counts as "reached it" — advances to the next instruction. */
 const STEP_ADVANCE_METERS = 25;
@@ -718,19 +718,21 @@ export default function GuestNavigationScreen({
     >
       {/* Header ------------------------------------------------------ */}
       {!isNavigating && (
-        <>
+        <header
+          style={{
+            flex: "0 0 auto",
+            background: "var(--brand-primary)",
+            paddingTop: "env(safe-area-inset-top)",
+            color: "#FFFFFF",
+          }}
+        >
           <div
             style={{
-              flex: "0 0 auto",
               display: "flex",
               alignItems: "center",
               gap: 8,
-              height: 52,
+              height: 48,
               padding: "0 8px",
-              background: BRAND_GRADIENT,
-              boxSizing: "content-box",
-              paddingTop: "env(safe-area-inset-top)",
-              color: "#FFFFFF",
             }}
           >
             <button
@@ -769,12 +771,9 @@ export default function GuestNavigationScreen({
               role="tablist"
               aria-label={t.navigation.modeSwitcherLabel}
               style={{
-                flex: "0 0 auto",
                 display: "flex",
                 gap: 6,
-                padding: "8px 10px",
-                background: "var(--brand-primary)",
-                borderBottom: "1px solid rgba(255,255,255,0.15)",
+                padding: "0 10px 10px 10px",
               }}
             >
               {(
@@ -825,7 +824,7 @@ export default function GuestNavigationScreen({
               })}
             </div>
           )}
-        </>
+        </header>
       )}
 
       {/* Map ----------------------------------------------------------- */}
