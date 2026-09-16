@@ -558,6 +558,15 @@ export default function GuestNavigationScreen({
     followGuest();
   }
 
+  // Ensure Google Maps re-evaluates viewport boundaries when expanding to fullscreen
+  useEffect(() => {
+    if (!map) return;
+    google.maps.event.trigger(map, "resize");
+    if (isNavigating && guest) {
+      map.panTo(guest);
+    }
+  }, [isNavigating, map, guest]);
+
   /* ---- Live progress --------------------------------------------- */
 
   const currentStep = route?.steps[stepIndex] ?? null;
@@ -814,8 +823,9 @@ export default function GuestNavigationScreen({
       {/* Map ----------------------------------------------------------- */}
       <div
         style={{
-          position: "relative",
-          flex: "1 1 auto",
+          position: isNavigating ? "absolute" : "relative",
+          inset: isNavigating ? 0 : undefined,
+          flex: isNavigating ? undefined : "1 1 auto",
           minHeight: 0,
           overflow: "hidden",
         }}
@@ -824,11 +834,6 @@ export default function GuestNavigationScreen({
           style={{
             position: "absolute",
             inset: 0,
-            transform: isNavigating
-              ? "perspective(900px) rotateX(28deg) scale(1.3)"
-              : "none",
-            transformOrigin: "50% 85%",
-            transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
           <BaseMap
@@ -915,7 +920,9 @@ export default function GuestNavigationScreen({
             className="pointer-events-auto absolute inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold"
             style={{
               left: 12,
-              bottom: 12,
+              bottom: isNavigating
+                ? "calc(env(safe-area-inset-bottom) + 82px)"
+                : 12,
               background: "rgba(255,255,255,0.95)",
               border: `1px solid ${BORDER}`,
               boxShadow: SHADOW_FLOAT,
@@ -924,7 +931,8 @@ export default function GuestNavigationScreen({
               cursor: "pointer",
               WebkitTapHighlightColor: "transparent",
               touchAction: "manipulation",
-              zIndex: 20,
+              zIndex: 35,
+              transition: "bottom 0.25s ease",
             }}
           >
             {cameraMode === "follow" ? (
@@ -950,10 +958,10 @@ export default function GuestNavigationScreen({
       {/* Active Navigation: Bottom ETA Bar */}
       {isNavigating && !arrived && (
         <div
-          className="relative z-30 flex-none rounded-t-2xl bg-white px-5 py-3 shadow-xl"
+          className="absolute inset-x-0 bottom-0 z-30 rounded-t-2xl bg-white px-5 py-3 shadow-2xl"
           style={{
             borderTop: `1px solid ${BORDER}`,
-            paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)",
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)",
           }}
         >
 
