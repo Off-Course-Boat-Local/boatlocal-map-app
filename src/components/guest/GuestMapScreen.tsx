@@ -430,7 +430,7 @@ export default function GuestMapScreen({
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full bg-[#E4E8D6]" style={{ backgroundColor: "#E4E8D6" }}>
       {/* The map fills the screen edge-to-edge; the header and filters float
           over its top (the reference design's layout language) instead of
           claiming their own rows above it. */}
@@ -440,7 +440,7 @@ export default function GuestMapScreen({
       <BaseMap
         center={AMSTERDAM_CENTER}
         zoom={12.7}
-        className="absolute inset-0"
+        className="absolute inset-0 bg-[#E4E8D6]"
         onMapReady={setMap}
       >
         <MapPins

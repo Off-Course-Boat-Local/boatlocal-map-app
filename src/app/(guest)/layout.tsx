@@ -68,6 +68,7 @@ export default async function GuestLayout({
     // the outermost element this layout owns).
     <main
       lang={locale}
+      className="h-full w-full"
       // Guards the new map-screen bottom drawer (GuestMapScreen/PlaceCard's
       // `asDrawer`, founder request 2026-09-01): a touch drag on it has
       // nothing of its own to scroll, and without this it can still be read

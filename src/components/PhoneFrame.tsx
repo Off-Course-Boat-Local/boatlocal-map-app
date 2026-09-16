@@ -45,19 +45,18 @@ export default function PhoneFrame({
         // Phone: plain full-bleed app, no frame, no surround. Falls back
         // to plain 100dvh wherever usePhoneViewportHeight is a no-op
         // (desktop, or any browser without visualViewport).
-        "h-[var(--app-vh,100dvh)] w-full",
+        "h-[var(--app-vh,100dvh)] w-full bg-[#E4E8D6]",
         // Desktop: centre the frame on the brand surround. Tailwind emits
         // md: utilities in a later @media block, so this wins over the
         // base h-[var(--app-vh,...)] class above at that breakpoint
         // regardless of source order.
-        "md:flex md:h-dvh md:items-center md:justify-center md:gap-12 md:p-10",
+        "md:flex md:h-dvh md:items-center md:justify-center md:gap-12 md:p-10 md:bg-[var(--brand-surround,#F6F6F3)]",
         className ?? "",
       ].join(" ")}
-      style={{ background: "var(--brand-surround, #F6F6F3)" }}
     >
       <div
         className={[
-          "relative h-full w-full overflow-hidden bg-white",
+          "relative h-full w-full overflow-hidden bg-[#E4E8D6] md:bg-white",
           // The frame itself — subtle, not a photoreal handset.
           "md:h-[812px] md:max-h-[92vh] md:w-[375px] md:shrink-0",
           "md:rounded-[2.25rem] md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.35)]",

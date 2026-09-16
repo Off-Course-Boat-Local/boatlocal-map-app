@@ -30,6 +30,11 @@ const hankenGrotesk = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "Map App",
   description: "A white-labelled local guide app, with Boat Local tours always one tap away.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Boat Local",
+  },
 };
 
 // `viewportFit: "cover"` is load-bearing, not cosmetic: every
@@ -37,10 +42,13 @@ export const metadata: Metadata = {
 // GuestPlaceDetail's scroller) resolves to 0 unless the viewport meta says
 // cover — which is why the tab bar used to sit flush against the iPhone
 // home indicator and read as cramped/cut off.
+// `themeColor: "#E4E8D6"` matches the map's paper/land color so Safari's
+// status bar tints seamlessly without a jarring white band at the top.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#E4E8D6",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

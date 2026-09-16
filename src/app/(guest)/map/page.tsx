@@ -7,11 +7,17 @@
 // actually renders the map, so geolocation/MapLibre/interaction stay
 // client-side where they must.
 
+import type { Viewport } from "next";
+
 import GuestMapScreen from "@/components/guest/GuestMapScreen";
 import { getActiveCompanyRecord, getMapPins } from "@/lib/data/source";
 import { getReviewOptions } from "@/lib/guestReview";
 import { getGuestContext } from "@/lib/guestServerContext";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
+
+export const viewport: Viewport = {
+  themeColor: "#E4E8D6",
+};
 
 export default async function MapPage() {
   const { brand, brandId, companyId, guide, guideSlug } = await getGuestContext();
