@@ -104,7 +104,6 @@ import {
   googleMapsWalkingUrl,
 } from "@/lib/mapsHandoff";
 import { BRAND_GRADIENT, BORDER, INK, MUTED, SHADOW_FLOAT, SURFACE } from "@/lib/guestTheme";
-import { simplifyInstruction } from "@/lib/navigationInstruction";
 
 /** How close (metres, raw) to a WALKING step's endpoint counts as "reached it" — advances to the next instruction. */
 const STEP_ADVANCE_METERS = 25;
@@ -861,8 +860,8 @@ export default function GuestNavigationScreen({
           </BaseMap>
         </div>
 
-        {/* Active Navigation: Top Instruction Card (Google Maps style) */}
-        {isNavigating && !arrived && currentStep && (
+        {/* Active Navigation: Top Instruction Card (for transit) */}
+        {isNavigating && !arrived && currentStep && mode === "transit" && (
           <div
             className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-3"
             style={{ paddingTop: "calc(env(safe-area-inset-top) + 10px)" }}
@@ -881,7 +880,7 @@ export default function GuestNavigationScreen({
                   className="text-lg font-bold leading-snug text-white"
                   style={{ fontFamily: displayFontFamily }}
                 >
-                  {simplifyInstruction(stepInstruction(currentStep))}
+                  {stepInstruction(currentStep)}
                 </p>
                 <p className="text-xs font-semibold text-white/80">
                   {currentStepSubtext(currentStep)}
@@ -1065,15 +1064,17 @@ export default function GuestNavigationScreen({
             </div>
 
             <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowStepsDrawer((v) => !v)}
-                aria-label={t.navigation.steps}
-                title={t.navigation.steps}
-                className="flex size-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition active:scale-95 cursor-pointer"
-              >
-                <Signpost size={18} />
-              </button>
+              {mode === "transit" && (
+                <button
+                  type="button"
+                  onClick={() => setShowStepsDrawer((v) => !v)}
+                  aria-label={t.navigation.steps}
+                  title={t.navigation.steps}
+                  className="flex size-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition active:scale-95 cursor-pointer"
+                >
+                  <Signpost size={18} />
+                </button>
+              )}
 
               <button
                 type="button"
@@ -1103,7 +1104,7 @@ export default function GuestNavigationScreen({
                     className="min-w-0 flex-1 text-xs font-medium leading-4"
                     style={{ color: INK, fontFamily: bodyFontFamily }}
                   >
-                    {simplifyInstruction(stepInstruction(step))}
+                    {stepInstruction(step)}
                   </span>
                   <span
                     className="shrink-0 text-[11px] leading-4"
@@ -1180,7 +1181,49 @@ export default function GuestNavigationScreen({
             </div>
           )}
 
-          {!arrived && !loadError && currentStep && (
+          {/* Walking / Biking: clean summary with ETA, distance, and Navigation button (direction instructions removed) */}
+          {!arrived && !loadError && mode !== "transit" && remaining && (
+            <div className="flex items-center justify-between p-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-2xl font-bold tracking-tight text-neutral-900"
+                    style={{ fontFamily: displayFontFamily }}
+                  >
+                    {remainingMinutes(remaining.seconds)} min
+                  </span>
+                  <span className="text-neutral-500">
+                    {mode === "bike" ? <Bike size={20} /> : <Footprints size={20} />}
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-neutral-500">
+                  {formatStepMeters(remaining.meters)} remaining
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={startNavigation}
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-md transition active:scale-95 cursor-pointer"
+                style={{
+                  background: "var(--brand-primary)",
+                  WebkitTapHighlightColor: "transparent",
+                  touchAction: "manipulation",
+                }}
+              >
+                <NavigationArrow
+                  size={15}
+                  className="fill-current"
+                  style={{ transform: "rotate(45deg)" }}
+                  aria-hidden
+                />
+                {t.navigation.startNavigation}
+              </button>
+            </div>
+          )}
+
+          {/* Public transport: full transit directions (boarding, stops, transfers) */}
+          {!arrived && !loadError && mode === "transit" && currentStep && (
             <>
               <div className="flex items-center gap-3.5 p-4">
                 <span
@@ -1195,7 +1238,7 @@ export default function GuestNavigationScreen({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 16, color: INK }}>
-                    {simplifyInstruction(stepInstruction(currentStep))}
+                    {stepInstruction(currentStep)}
                   </p>
                   <p className="text-[13px]" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
                     {currentStepSubtext(currentStep)}
@@ -1270,7 +1313,7 @@ export default function GuestNavigationScreen({
                         className="min-w-0 flex-1 text-[12.5px] leading-4"
                         style={{ color: INK, fontFamily: bodyFontFamily }}
                       >
-                        {simplifyInstruction(stepInstruction(step))}
+                        {stepInstruction(step)}
                       </span>
                       <span
                         className="shrink-0 text-[11.5px] leading-4"
