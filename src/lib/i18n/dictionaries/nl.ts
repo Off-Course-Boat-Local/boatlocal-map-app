@@ -109,6 +109,9 @@ const nl: Dictionary = {
     stopsCount: (n) => `${n} ${n === 1 ? "halte" : "haltes"}`,
     departsAt: (time) => `Vertrekt om ${time}`,
     nextStep: "Volgende stap",
+    startNavigation: "Navigatie",
+    exitNavigation: "Afsluiten",
+    steps: "Stappen",
   },
 
   saved: {

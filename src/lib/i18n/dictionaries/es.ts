@@ -108,6 +108,9 @@ const es: Dictionary = {
     stopsCount: (n) => `${n} ${n === 1 ? "parada" : "paradas"}`,
     departsAt: (time) => `Sale a las ${time}`,
     nextStep: "Siguiente paso",
+    startNavigation: "Navegación",
+    exitNavigation: "Salir",
+    steps: "Pasos",
   },
 
   saved: {

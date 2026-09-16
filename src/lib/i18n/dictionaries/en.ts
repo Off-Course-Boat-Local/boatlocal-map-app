@@ -128,6 +128,9 @@ const en = {
     stopsCount: (n: number) => `${n} ${n === 1 ? "stop" : "stops"}`,
     departsAt: (time: string) => `Departs ${time}`,
     nextStep: "Next step",
+    startNavigation: "Navigation",
+    exitNavigation: "Exit",
+    steps: "Steps",
   },
 
   saved: {

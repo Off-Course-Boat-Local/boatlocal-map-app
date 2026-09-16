@@ -52,7 +52,6 @@ import PlaceCardCarousel from "@/components/map/PlaceCardCarousel";
 import GuestDot from "@/components/map/GuestDot";
 import BoatBookingPicker from "@/components/guest/BoatBookingPicker";
 import GuestNavigationScreen from "@/components/guest/GuestNavigationScreen";
-import { LanguageSwitcher } from "@/components/guest/LanguageSwitcher";
 import ReviewPromptDrawer from "@/components/guest/ReviewPromptDrawer";
 
 import { useGuestLocation, guestPoint } from "@/hooks/useGuestLocation";
@@ -491,21 +490,6 @@ export default function GuestMapScreen({
         // standalone/notched phones, env() is 0 in a browser tab.
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
       >
-        {/* No header pill here (founder, 2026-09-15: removed from the map —
-            the company name/logo/count already live on every other guest
-            screen via GuestScreenHeader; the map is the one screen that
-            most wants its vertical space given entirely to the map itself).
-            The language switcher stays — it's a genuine action a guest
-            needs reachable from every screen, not branding, and this map
-            had NO way to reach it at all before (only List's header carried
-            it). Its own row, right-aligned, so it doesn't fight the
-            full-width scrolling filter row underneath for space. */}
-        <div className="flex justify-end px-4 pb-2">
-          <div className="pointer-events-auto">
-            <LanguageSwitcher tone="floating" />
-          </div>
-        </div>
-
         {/* Filters */}
         <FilterPills
           className="pointer-events-auto"
@@ -514,7 +498,7 @@ export default function GuestMapScreen({
           categories={localizedCategories}
           allLabel={t.common.all}
           ariaLabel={t.list.filterAriaLabel}
-          style={{ padding: "8px 16px 0" }}
+          style={{ padding: "0 16px" }}
         />
 
         {/* Arrival-triggered review prompt — see ARRIVAL_THRESHOLD_METERS

@@ -103,7 +103,8 @@ import {
   googleMapsTransitUrl,
   googleMapsWalkingUrl,
 } from "@/lib/mapsHandoff";
-import { BORDER, INK, MUTED, SHADOW_FLOAT, SURFACE } from "@/lib/guestTheme";
+import { BRAND_GRADIENT, BORDER, INK, MUTED, SHADOW_FLOAT, SURFACE } from "@/lib/guestTheme";
+import { simplifyInstruction } from "@/lib/navigationInstruction";
 
 /** How close (metres, raw) to a WALKING step's endpoint counts as "reached it" — advances to the next instruction. */
 const STEP_ADVANCE_METERS = 25;
@@ -365,6 +366,8 @@ export default function GuestNavigationScreen({
   const [arrived, setArrived] = useState(false);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [cameraMode, setCameraMode] = useState<CameraMode>("follow");
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [showStepsDrawer, setShowStepsDrawer] = useState(false);
 
   /** Tab tap handler — clears the previous mode's route/progress so nothing stale is shown while the new one loads. */
   function switchMode(next: "walk" | "bike" | "transit") {
@@ -374,6 +377,8 @@ export default function GuestNavigationScreen({
     setLoadError(false);
     setStepIndex(0);
     setCameraMode("follow");
+    setIsNavigating(false);
+    setShowStepsDrawer(false);
   }
 
   // A guest reading a route mid-walk should not have to fight their own
@@ -551,6 +556,11 @@ export default function GuestNavigationScreen({
     }
   }
 
+  function startNavigation() {
+    setIsNavigating(true);
+    followGuest();
+  }
+
   /* ---- Live progress --------------------------------------------- */
 
   const currentStep = route?.steps[stepIndex] ?? null;
@@ -708,132 +718,180 @@ export default function GuestNavigationScreen({
       }}
     >
       {/* Header ------------------------------------------------------ */}
-      <div
-        style={{
-          flex: "0 0 auto",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          height: 52,
-          padding: "0 8px",
-          borderBottom: `1px solid ${BORDER}`,
-          boxSizing: "content-box",
-          paddingTop: "env(safe-area-inset-top)",
-        }}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t.common.close}
-          style={{
-            width: 44,
-            height: 44,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: 0,
-            background: "transparent",
-            color: INK,
-            cursor: "pointer",
-            WebkitTapHighlightColor: "transparent",
-            touchAction: "manipulation",
-          }}
-        >
-          <ArrowLeft size={21} strokeWidth={2} aria-hidden />
-        </button>
-        <p
-          className="min-w-0 flex-1 truncate"
-          style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 15, color: INK }}
-        >
-          {t.navigation.title(destination.name)}
-        </p>
-      </div>
+      {!isNavigating && (
+        <>
+          <div
+            style={{
+              flex: "0 0 auto",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              height: 52,
+              padding: "0 8px",
+              background: BRAND_GRADIENT,
+              boxSizing: "content-box",
+              paddingTop: "env(safe-area-inset-top)",
+              color: "#FFFFFF",
+            }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t.common.close}
+              style={{
+                width: 44,
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: 0,
+                background: "transparent",
+                color: "#FFFFFF",
+                cursor: "pointer",
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "manipulation",
+              }}
+            >
+              <ArrowLeft size={21} strokeWidth={2.2} aria-hidden />
+            </button>
+            <p
+              className="min-w-0 flex-1 truncate"
+              style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 16, color: "#FFFFFF" }}
+            >
+              {t.navigation.title(destination.name)}
+            </p>
+          </div>
 
-      {/* Mode tabs — Google Maps-style: "Directions" always opens walking,
-          and this row is where the guest actually picks biking or transit
-          instead, rather than the map's own drawer offering a button per
-          mode. Hidden once arrived — there's nothing left to route. */}
-      {!arrived && (
-        <div
-          role="tablist"
-          aria-label={t.navigation.modeSwitcherLabel}
-          style={{
-            flex: "0 0 auto",
-            display: "flex",
-            gap: 6,
-            padding: "6px 10px",
-            borderBottom: `1px solid ${BORDER}`,
-          }}
-        >
-          {(
-            [
-              { id: "walk", label: t.navigation.modeWalk, Icon: Footprints },
-              { id: "bike", label: t.navigation.modeBike, Icon: Bike },
-              { id: "transit", label: t.navigation.modeTransit, Icon: Bus },
-            ] as const
-          ).map((tab) => {
-            const active = tab.id === mode;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-label={tab.label}
-                title={tab.label}
-                onClick={() => switchMode(tab.id)}
-                style={{
-                  flex: "1 1 0",
-                  minWidth: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 4,
-                  height: 30,
-                  borderRadius: 9999,
-                  border: `1px solid ${active ? "var(--brand-primary)" : BORDER}`,
-                  background: active ? "var(--brand-primary)" : "#FFFFFF",
-                  color: active ? "#FFFFFF" : INK,
-                  fontFamily: bodyFontFamily,
-                  fontSize: 11.5,
-                  fontWeight: 600,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  cursor: "pointer",
-                  WebkitTapHighlightColor: "transparent",
-                  touchAction: "manipulation",
-                }}
-              >
-                <tab.Icon size={13} strokeWidth={2} className="shrink-0" aria-hidden />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+          {/* Mode tabs — Google Maps-style: "Directions" always opens walking,
+              and this row is where the guest actually picks biking or transit
+              instead. Styled with crisp contrast over the brand color. */}
+          {!arrived && (
+            <div
+              role="tablist"
+              aria-label={t.navigation.modeSwitcherLabel}
+              style={{
+                flex: "0 0 auto",
+                display: "flex",
+                gap: 6,
+                padding: "8px 10px",
+                background: "var(--brand-primary)",
+                borderBottom: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              {(
+                [
+                  { id: "walk", label: t.navigation.modeWalk, Icon: Footprints },
+                  { id: "bike", label: t.navigation.modeBike, Icon: Bike },
+                  { id: "transit", label: t.navigation.modeTransit, Icon: Bus },
+                ] as const
+              ).map((tab) => {
+                const active = tab.id === mode;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-label={tab.label}
+                    title={tab.label}
+                    onClick={() => switchMode(tab.id)}
+                    style={{
+                      flex: "1 1 0",
+                      minWidth: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
+                      height: 32,
+                      borderRadius: 9999,
+                      border: active ? "1px solid #FFFFFF" : "1px solid rgba(255,255,255,0.22)",
+                      background: active ? "#FFFFFF" : "rgba(255,255,255,0.14)",
+                      color: active ? "var(--brand-primary)" : "#FFFFFF",
+                      fontFamily: bodyFontFamily,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      cursor: "pointer",
+                      WebkitTapHighlightColor: "transparent",
+                      touchAction: "manipulation",
+                      boxShadow: active ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+                    }}
+                  >
+                    <tab.Icon size={14} strokeWidth={2.2} className="shrink-0" aria-hidden />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Map ----------------------------------------------------------- */}
-      <div style={{ position: "relative", flex: "1 1 auto", minHeight: 0 }}>
-        <BaseMap
-          center={guest ?? destination}
-          zoom={17}
-          className="absolute inset-0"
-          onMapReady={setMap}
+      <div
+        style={{
+          position: "relative",
+          flex: "1 1 auto",
+          minHeight: 0,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            transform: isNavigating
+              ? "perspective(800px) rotateX(42deg) scale(1.24)"
+              : "none",
+            transformOrigin: "50% 85%",
+            transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
         >
-          {route ? <RoutePolyline path={route.path} color="var(--brand-primary)" /> : null}
-          <DestinationMarker position={destination} color="var(--brand-primary)" />
-          <GuestDot position={guest} />
-        </BaseMap>
+          <BaseMap
+            center={guest ?? destination}
+            zoom={17}
+            className="absolute inset-0"
+            onMapReady={setMap}
+          >
+            {route ? <RoutePolyline path={route.path} color="var(--brand-primary)" /> : null}
+            <DestinationMarker position={destination} color="var(--brand-primary)" />
+            <GuestDot position={guest} />
+          </BaseMap>
+        </div>
+
+        {/* Active Navigation: Top Instruction Card (Google Maps style) */}
+        {isNavigating && !arrived && currentStep && (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-3"
+            style={{ paddingTop: "calc(env(safe-area-inset-top) + 10px)" }}
+          >
+            <div
+              className="pointer-events-auto flex w-full max-w-md items-center gap-3.5 rounded-2xl p-4 text-white shadow-xl"
+              style={{
+                background: "var(--brand-primary)",
+              }}
+            >
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                <StepIcon step={currentStep} className="size-6 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-lg font-bold leading-snug text-white"
+                  style={{ fontFamily: displayFontFamily }}
+                >
+                  {simplifyInstruction(stepInstruction(currentStep))}
+                </p>
+                <p className="text-xs font-semibold text-white/80">
+                  {currentStepSubtext(currentStep)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {!guest && locationBlocked ? (
-          // No route can be fetched without an origin — surfacing this
-          // explicitly (with a way to retry) beats what this screen used to
-          // do, which was sit on "Finding the best route…" forever with no
-          // explanation whenever location was denied or unavailable. This is
-          // a SEPARATE geolocation watch from the map screen's own (see
-          // useGuestLocation's per-call-site state), so it starts fresh —
-          // and asks again — the moment a guest actually taps Directions,
-          // rather than only ever depending on whatever happened earlier.
           <div
             className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-8 text-center"
             style={{ background: "rgba(255,255,255,0.85)" }}
@@ -867,18 +925,15 @@ export default function GuestNavigationScreen({
           </div>
         ) : null}
 
-        {/* Camera control — one contextual button, because "recenter" and
-            "show me the whole route" are never both the useful next action:
-            if the camera is already following you, the thing you can't see
-            is the route; if it isn't, the thing you can't see is yourself. */}
+        {/* Camera control */}
         {!arrived && route && (
           <button
             type="button"
             onClick={cameraMode === "follow" ? () => setCameraMode("overview") : followGuest}
-            className="absolute inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold"
+            className="pointer-events-auto absolute inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold"
             style={{
               left: 12,
-              bottom: 12,
+              bottom: isNavigating ? 98 : 12,
               background: "rgba(255,255,255,0.95)",
               border: `1px solid ${BORDER}`,
               boxShadow: SHADOW_FLOAT,
@@ -887,6 +942,8 @@ export default function GuestNavigationScreen({
               cursor: "pointer",
               WebkitTapHighlightColor: "transparent",
               touchAction: "manipulation",
+              zIndex: 20,
+              transition: "bottom 0.3s ease",
             }}
           >
             {cameraMode === "follow" ? (
@@ -896,7 +953,12 @@ export default function GuestNavigationScreen({
               </>
             ) : (
               <>
-                <Crosshair size={14} aria-hidden />
+                <NavigationArrow
+                  size={13}
+                  className="fill-current"
+                  style={{ color: "var(--brand-primary)", transform: "rotate(45deg)" }}
+                  aria-hidden
+                />
                 {t.navigation.recenter}
               </>
             )}
@@ -909,9 +971,9 @@ export default function GuestNavigationScreen({
             style={{
               position: "absolute",
               right: 12,
-              bottom: 12,
-              width: 56,
-              height: 56,
+              bottom: isNavigating ? 98 : 12,
+              width: 52,
+              height: 52,
               borderRadius: "50%",
               background: "#FFFFFF",
               border: `1px solid ${BORDER}`,
@@ -919,10 +981,12 @@ export default function GuestNavigationScreen({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              zIndex: 20,
+              transition: "bottom 0.3s ease",
             }}
           >
             <NavigationArrow
-              size={26}
+              size={24}
               color="var(--brand-primary)"
               strokeWidth={2.25}
               style={{ transform: `rotate(${compassAngle}deg)`, transition: "transform 0.15s linear" }}
@@ -937,12 +1001,14 @@ export default function GuestNavigationScreen({
             className="absolute inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold"
             style={{
               right: 12,
-              bottom: 12,
+              bottom: isNavigating ? 98 : 12,
               background: "#FFFFFF",
               border: `1px solid ${BORDER}`,
               boxShadow: SHADOW_FLOAT,
               color: INK,
               fontFamily: bodyFontFamily,
+              zIndex: 20,
+              transition: "bottom 0.3s ease",
             }}
           >
             <Compass size={14} aria-hidden />
@@ -951,178 +1017,275 @@ export default function GuestNavigationScreen({
         )}
       </div>
 
-      {/* Turn-by-turn panel -------------------------------------------- */}
-      <div
-        style={{
-          flex: "0 0 auto",
-          borderTop: `1px solid ${BORDER}`,
-          boxShadow: SHADOW_FLOAT,
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-      >
-        {loadError && (
-          <div className="p-5 text-center">
-            <p className="text-sm" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
-              {t.navigation.loadError}
-            </p>
-            <a
-              href={fallbackUrl}
-              {...DIRECTIONS_LINK_PROPS}
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold"
-              style={{ color: "var(--brand-primary)" }}
-            >
-              <ExternalLink size={15} aria-hidden />
-              {t.navigation.openExternally}
-            </a>
-          </div>
-        )}
+      {/* Active Navigation: Bottom ETA Bar (Image 2 style) */}
+      {isNavigating && !arrived && (
+        <div
+          className="relative z-30 flex-none rounded-t-3xl bg-white px-5 pt-3 shadow-2xl"
+          style={{
+            borderTop: `1px solid ${BORDER}`,
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 14px)",
+          }}
+        >
+          {/* Drag indicator */}
+          <button
+            type="button"
+            aria-label={t.navigation.steps}
+            onClick={() => setShowStepsDrawer((v) => !v)}
+            className="mx-auto mb-2.5 flex h-4 w-full items-center justify-center cursor-pointer"
+          >
+            <span className="h-1 w-10 rounded-full bg-neutral-300" />
+          </button>
 
-        {/* Arrival is the one moment in the whole guest app where asking for
-            a review is genuinely well-timed — the guest is standing in the
-            place, not being interrupted somewhere unrelated. Same copy as
-            the map's own arrival banner (t.map.arrived*), and the same
-            once-per-place latch, so a guest only ever meets one of them.
-            Note there is no rating step here and no branch on sentiment:
-            everyone who arrives sees the same ask. */}
-        {arrived && (
-          <div className="flex flex-col items-center gap-2 px-6 pb-6 pt-7 text-center">
-            <CircleCheck size={40} strokeWidth={1.75} color="var(--brand-primary)" aria-hidden />
-            <p style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 17, color: INK }}>
-              {t.navigation.arrivedTitle(destination.name)}
-            </p>
-            <p className="text-[13px]" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
-              {t.map.arrivedBody(companyName)}
-            </p>
-            <div className="mt-3 flex w-full flex-col items-stretch gap-2">
-              <Link
-                href={withGuestQuery("/review", guestQueryString(searchParams))}
-                className="rounded-full px-6 py-3 text-center text-sm font-semibold text-white"
-                style={{ background: "var(--brand-primary)" }}
-              >
-                {t.map.arrivedCta}
-              </Link>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-2xl font-bold tracking-tight text-neutral-900"
+                  style={{ fontFamily: displayFontFamily }}
+                >
+                  {remainingMinutes(remaining?.seconds ?? 0)} min
+                </span>
+                <span className="text-neutral-500">
+                  {mode === "bike" ? (
+                    <Bike size={20} />
+                  ) : mode === "transit" ? (
+                    <Bus size={20} />
+                  ) : (
+                    <Footprints size={20} />
+                  )}
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-neutral-500">
+                {formatStepMeters(remaining?.meters ?? 0)} ·{" "}
+                {formatClockTime(
+                  new Date(Date.now() + (remaining?.seconds ?? 0) * 1000).toISOString(),
+                  locale,
+                )}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={onClose}
-                className="rounded-full px-6 py-3 text-sm font-semibold"
-                style={{
-                  background: "transparent",
-                  border: 0,
-                  color: MUTED,
-                  cursor: "pointer",
-                  WebkitTapHighlightColor: "transparent",
-                }}
+                onClick={() => setShowStepsDrawer((v) => !v)}
+                aria-label={t.navigation.steps}
+                title={t.navigation.steps}
+                className="flex size-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition active:scale-95 cursor-pointer"
               >
-                {t.common.close}
+                <Signpost size={18} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsNavigating(false)}
+                className="rounded-full bg-[#D93025] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition active:scale-95 hover:bg-[#c5221f] cursor-pointer"
+              >
+                {t.navigation.exitNavigation}
               </button>
             </div>
           </div>
-        )}
 
-        {!arrived && !loadError && currentStep && (
-          <>
-            <div className="flex items-center gap-3.5 p-4">
-              <span
-                className="flex shrink-0 items-center justify-center rounded-full"
-                style={
-                  currentStep.travelMode === "TRANSIT" && currentStep.transitDetails?.line.color
-                    ? { width: 44, height: 44, ...stepBadgeColors(currentStep) }
-                    : { width: 44, height: 44, background: "var(--brand-primary)", color: "#FFFFFF" }
-                }
+          {/* Expandable Turn-by-Turn Steps Drawer in Navigation Mode */}
+          {showStepsDrawer && upcomingSteps.length > 0 && (
+            <div
+              className="mt-3 max-h-52 overflow-y-auto border-t pt-2"
+              style={{ borderColor: BORDER }}
+            >
+              {upcomingSteps.map((step, i) => (
+                <div key={i} className="flex items-start gap-2.5 py-2">
+                  <span
+                    className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full"
+                    style={stepBadgeColors(step)}
+                  >
+                    <StepIcon step={step} className="size-3.5" />
+                  </span>
+                  <span
+                    className="min-w-0 flex-1 text-xs font-medium leading-4"
+                    style={{ color: INK, fontFamily: bodyFontFamily }}
+                  >
+                    {simplifyInstruction(stepInstruction(step))}
+                  </span>
+                  <span
+                    className="shrink-0 text-[11px] leading-4"
+                    style={{ color: MUTED, fontFamily: bodyFontFamily }}
+                  >
+                    {stepSubtext(step)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Overview Turn-by-turn panel -------------------------------------------- */}
+      {!isNavigating && (
+        <div
+          style={{
+            flex: "0 0 auto",
+            borderTop: `1px solid ${BORDER}`,
+            boxShadow: SHADOW_FLOAT,
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
+          {loadError && (
+            <div className="p-5 text-center">
+              <p className="text-sm" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
+                {t.navigation.loadError}
+              </p>
+              <a
+                href={fallbackUrl}
+                {...DIRECTIONS_LINK_PROPS}
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold"
+                style={{ color: "var(--brand-primary)" }}
               >
-                <StepIcon step={currentStep} className="size-6" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 16, color: INK }}>
-                  {stepInstruction(currentStep)}
-                </p>
-                <p className="text-[13px]" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
-                  {currentStepSubtext(currentStep)}
-                </p>
-              </div>
-              {/* Manual advance — the escape hatch for the one case GPS
-                  can't solve: a guest who surfaces from a metro station far
-                  enough from Google's platform coordinate that the (already
-                  generous) transit threshold never fires. Without it they'd
-                  be stuck reading "get off at X" for the rest of the walk. */}
-              {stepIndex < (route?.steps.length ?? 0) - 1 && (
+                <ExternalLink size={15} aria-hidden />
+                {t.navigation.openExternally}
+              </a>
+            </div>
+          )}
+
+          {arrived && (
+            <div className="flex flex-col items-center gap-2 px-6 pb-6 pt-7 text-center">
+              <CircleCheck size={40} strokeWidth={1.75} color="var(--brand-primary)" aria-hidden />
+              <p style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 17, color: INK }}>
+                {t.navigation.arrivedTitle(destination.name)}
+              </p>
+              <p className="text-[13px]" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
+                {t.map.arrivedBody(companyName)}
+              </p>
+              <div className="mt-3 flex w-full flex-col items-stretch gap-2">
+                <Link
+                  href={withGuestQuery("/review", guestQueryString(searchParams))}
+                  className="rounded-full px-6 py-3 text-center text-sm font-semibold text-white"
+                  style={{ background: "var(--brand-primary)" }}
+                >
+                  {t.map.arrivedCta}
+                </Link>
                 <button
                   type="button"
-                  onClick={() => setStepIndex((i) => Math.min(i + 1, (route?.steps.length ?? 1) - 1))}
-                  aria-label={t.navigation.nextStep}
-                  className="grid size-9 shrink-0 place-items-center rounded-full"
+                  onClick={onClose}
+                  className="rounded-full px-6 py-3 text-sm font-semibold"
                   style={{
-                    background: SURFACE,
-                    color: MUTED,
+                    background: "transparent",
                     border: 0,
+                    color: MUTED,
+                    cursor: "pointer",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  {t.common.close}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!arrived && !loadError && currentStep && (
+            <>
+              <div className="flex items-center gap-3.5 p-4">
+                <span
+                  className="flex shrink-0 items-center justify-center rounded-full"
+                  style={
+                    currentStep.travelMode === "TRANSIT" && currentStep.transitDetails?.line.color
+                      ? { width: 44, height: 44, ...stepBadgeColors(currentStep) }
+                      : { width: 44, height: 44, background: "var(--brand-primary)", color: "#FFFFFF" }
+                  }
+                >
+                  <StepIcon step={currentStep} className="size-6" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p style={{ fontFamily: displayFontFamily, fontWeight: 600, fontSize: 16, color: INK }}>
+                    {simplifyInstruction(stepInstruction(currentStep))}
+                  </p>
+                  <p className="text-[13px]" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
+                    {currentStepSubtext(currentStep)}
+                  </p>
+                </div>
+                {stepIndex < (route?.steps.length ?? 0) - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setStepIndex((i) => Math.min(i + 1, (route?.steps.length ?? 1) - 1))}
+                    aria-label={t.navigation.nextStep}
+                    className="grid size-9 shrink-0 place-items-center rounded-full"
+                    style={{
+                      background: SURFACE,
+                      color: MUTED,
+                      border: 0,
+                      cursor: "pointer",
+                      WebkitTapHighlightColor: "transparent",
+                      touchAction: "manipulation",
+                    }}
+                  >
+                    <ChevronRight size={18} aria-hidden />
+                  </button>
+                )}
+              </div>
+
+              <div
+                className="flex items-center justify-between px-4 pb-3 text-[12.5px]"
+                style={{ color: MUTED, fontFamily: bodyFontFamily }}
+              >
+                <span>
+                  <MapPinIcon size={13} className="mr-1 inline" aria-hidden />
+                  {t.navigation.remaining(
+                    remainingMinutes(remaining?.seconds ?? 0),
+                    formatStepMeters(remaining?.meters ?? 0),
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={startNavigation}
+                  className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95"
+                  style={{
+                    background: "var(--brand-primary)",
                     cursor: "pointer",
                     WebkitTapHighlightColor: "transparent",
                     touchAction: "manipulation",
                   }}
                 >
-                  <ChevronRight size={18} aria-hidden />
+                  <NavigationArrow
+                    size={13}
+                    className="fill-current"
+                    style={{ transform: "rotate(45deg)" }}
+                    aria-hidden
+                  />
+                  {t.navigation.startNavigation}
                 </button>
-              )}
-            </div>
-
-            <div
-              className="flex items-center justify-between px-4 pb-3 text-[12.5px]"
-              style={{ color: MUTED, fontFamily: bodyFontFamily }}
-            >
-              <span>
-                <MapPinIcon size={13} className="mr-1 inline" aria-hidden />
-                {t.navigation.remaining(
-                  remainingMinutes(remaining?.seconds ?? 0),
-                  formatStepMeters(remaining?.meters ?? 0),
-                )}
-              </span>
-              <a
-                href={fallbackUrl}
-                {...DIRECTIONS_LINK_PROPS}
-                className="inline-flex items-center gap-1 font-semibold"
-                style={{ color: "var(--brand-primary)" }}
-              >
-                <ExternalLink size={13} aria-hidden />
-                {t.navigation.openExternally}
-              </a>
-            </div>
-
-            {/* The rest of the route, vertically — a walking instruction is
-                a sentence, and sentences in a horizontal carousel get read
-                as "…" plus a swipe. Capped in height so the panel can never
-                grow taller than the map it is explaining. */}
-            {upcomingSteps.length > 0 && (
-              <div
-                className="overflow-y-auto px-4 pb-4"
-                style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 10, maxHeight: 132 }}
-              >
-                {upcomingSteps.map((step, i) => (
-                  <div key={i} className="flex items-start gap-2.5 py-1.5">
-                    <span
-                      className="mt-0.5 flex shrink-0 items-center justify-center rounded-full"
-                      style={{ width: 24, height: 24, ...stepBadgeColors(step) }}
-                    >
-                      <StepIcon step={step} className="size-3.5" />
-                    </span>
-                    <span
-                      className="min-w-0 flex-1 text-[12.5px] leading-4"
-                      style={{ color: INK, fontFamily: bodyFontFamily }}
-                    >
-                      {stepInstruction(step)}
-                    </span>
-                    <span
-                      className="shrink-0 text-[11.5px] leading-4"
-                      style={{ color: MUTED, fontFamily: bodyFontFamily }}
-                    >
-                      {stepSubtext(step)}
-                    </span>
-                  </div>
-                ))}
               </div>
-            )}
-          </>
-        )}
-      </div>
+
+              {upcomingSteps.length > 0 && (
+                <div
+                  className="overflow-y-auto px-4 pb-4"
+                  style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 10, maxHeight: 132 }}
+                >
+                  {upcomingSteps.map((step, i) => (
+                    <div key={i} className="flex items-start gap-2.5 py-1.5">
+                      <span
+                        className="mt-0.5 flex shrink-0 items-center justify-center rounded-full"
+                        style={{ width: 24, height: 24, ...stepBadgeColors(step) }}
+                      >
+                        <StepIcon step={step} className="size-3.5" />
+                      </span>
+                      <span
+                        className="min-w-0 flex-1 text-[12.5px] leading-4"
+                        style={{ color: INK, fontFamily: bodyFontFamily }}
+                      >
+                        {simplifyInstruction(stepInstruction(step))}
+                      </span>
+                      <span
+                        className="shrink-0 text-[11.5px] leading-4"
+                        style={{ color: MUTED, fontFamily: bodyFontFamily }}
+                      >
+                        {stepSubtext(step)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
