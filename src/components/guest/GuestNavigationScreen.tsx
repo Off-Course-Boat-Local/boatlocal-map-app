@@ -226,6 +226,8 @@ export interface GuestNavigationScreenProps {
   guideId?: string | null;
   /** Who the arrival prompt asks the guest to rate — the guide whose recommendation sent them here, never the venue they walked to. */
   companyName: string;
+  /** Existing position from the map screen, so navigation doesn't block if map already had a fix */
+  initialGuest?: { lng: number; lat: number } | null;
   onClose: () => void;
 }
 
@@ -334,12 +336,14 @@ export default function GuestNavigationScreen({
   companyId,
   guideId,
   companyName,
+  initialGuest,
   onClose,
 }: GuestNavigationScreenProps) {
   const { t, locale } = useI18n();
   const searchParams = useSearchParams();
   const { location, request: requestLocation } = useGuestLocation();
-  const rawGuest = guestPoint(location);
+  const liveGuest = guestPoint(location);
+  const rawGuest = liveGuest ?? initialGuest ?? null;
 
   // Pinned to primitives: guestPoint() builds a fresh object every render,
   // and this position is a dependency of the camera-follow effect — an
@@ -351,7 +355,7 @@ export default function GuestNavigationScreen({
     [guestLng, guestLat],
   );
   /** A denial or hard failure, as opposed to merely still waiting on a first fix — the two need very different UI (a retry button vs. a spinner). */
-  const locationBlocked = location.status === "denied" || location.status === "unavailable";
+  const locationBlocked = !rawGuest && (location.status === "denied" || location.status === "unavailable");
 
   // Always starts on foot — the Google Maps-style default — and is switched
   // by the mode tab row rendered below the header, never by a prop from the
@@ -894,18 +898,29 @@ export default function GuestNavigationScreen({
             </p>
             <p className="max-w-xs text-xs leading-relaxed" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
               {location.status === "denied"
-                ? "Location is turned off in your browser for this site. In Safari's address bar, tap the page settings icon to set Location to Allow, then tap Try again."
+                ? "Location is blocked by Safari or iOS Settings. If already set to Allow in Safari's menu, tap Reload page or check iPhone Settings > Privacy > Location Services > Safari Websites."
                 : "Turn on device location to get directions and see your live position."}
             </p>
-            <button
-              type="button"
-              onClick={requestLocation}
-              className="mt-1 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition active:scale-95 cursor-pointer"
-              style={{ background: "var(--brand-primary)" }}
-            >
-              <RotateCcw size={15} />
-              {t.map.tryAgain}
-            </button>
+            <div className="flex flex-col items-center gap-2 mt-1">
+              <button
+                type="button"
+                onClick={requestLocation}
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition active:scale-95 cursor-pointer"
+                style={{ background: "var(--brand-primary)" }}
+              >
+                <RotateCcw size={15} />
+                {t.map.tryAgain}
+              </button>
+              {location.status === "denied" && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="text-xs font-semibold underline text-neutral-600 hover:text-neutral-900 cursor-pointer pt-1"
+                >
+                  Reload page to apply settings
+                </button>
+              )}
+            </div>
           </div>
         ) : !map || (!route && !loadError) ? (
           <div

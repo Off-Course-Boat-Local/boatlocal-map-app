@@ -580,7 +580,7 @@ export default function GuestMapScreen({
               </div>
               {location.status === "denied" && (
                 <p className="mt-1 text-[11px] leading-tight text-neutral-500">
-                  Tap the website settings icon in your browser address bar to allow location.
+                  Allowed in Safari? Tap Try again, reload the page, or check iPhone Settings &gt; Privacy &gt; Location Services &gt; Safari Websites.
                 </p>
               )}
             </div>
@@ -719,6 +719,7 @@ export default function GuestMapScreen({
           companyId={companyId}
           guideId={guideId}
           companyName={brand.companyName}
+          initialGuest={guest}
           onClose={() => setNavigationTarget(null)}
         />
       )}
