@@ -16,28 +16,29 @@
 import "server-only";
 
 const SLACK_WEBHOOK_URL = process.env.SLACK_OUTREACH_WEBHOOK_URL;
+const SLACK_OPS_WEBHOOK_URL = process.env.SLACK_OPS_WEBHOOK_URL || process.env.SLACK_OUTREACH_WEBHOOK_URL;
 
 export function isSlackConfigured(): boolean {
   return Boolean(SLACK_WEBHOOK_URL);
 }
 
+export function isOpsSlackConfigured(): boolean {
+  return Boolean(SLACK_OPS_WEBHOOK_URL);
+}
+
 export type PostToSlackResult = { ok: true } | { ok: false; error: string };
 
-/**
- * Posts one plain-text message to the configured Incoming Webhook.
- *
- * Returns a result rather than throwing — same reasoning as sendEmail() in
- * src/lib/email/client.ts: this is always a best-effort notification about
- * something that already happened (a reminder became due), never a write
- * a caller should roll anything back over if it fails.
- */
-export async function postToSlack(text: string): Promise<PostToSlackResult> {
-  if (!SLACK_WEBHOOK_URL) {
-    return { ok: false, error: "SLACK_OUTREACH_WEBHOOK_URL is not set." };
+async function postToWebhook(
+  text: string,
+  webhookUrl: string | undefined,
+  envVarName: string,
+): Promise<PostToSlackResult> {
+  if (!webhookUrl) {
+    return { ok: false, error: `${envVarName} is not set.` };
   }
 
   try {
-    const response = await fetch(SLACK_WEBHOOK_URL, {
+    const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
@@ -53,4 +54,28 @@ export async function postToSlack(text: string): Promise<PostToSlackResult> {
       error: err instanceof Error ? err.message : "Unknown error posting to Slack.",
     };
   }
+}
+
+/**
+ * Posts one plain-text message to the configured Incoming Webhook.
+ *
+ * Returns a result rather than throwing — same reasoning as sendEmail() in
+ * src/lib/email/client.ts: this is always a best-effort notification about
+ * something that already happened (a reminder became due), never a write
+ * a caller should roll anything back over if it fails.
+ */
+export async function postToSlack(text: string): Promise<PostToSlackResult> {
+  return postToWebhook(text, SLACK_WEBHOOK_URL, "SLACK_OUTREACH_WEBHOOK_URL");
+}
+
+/**
+ * Posts one plain-text message to the ops Slack channel (#BoatLocal-ops).
+ * Uses SLACK_OPS_WEBHOOK_URL if set, falling back to SLACK_OUTREACH_WEBHOOK_URL.
+ */
+export async function postToOpsSlack(text: string): Promise<PostToSlackResult> {
+  return postToWebhook(
+    text,
+    SLACK_OPS_WEBHOOK_URL,
+    "SLACK_OPS_WEBHOOK_URL (or fallback SLACK_OUTREACH_WEBHOOK_URL)",
+  );
 }
