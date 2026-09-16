@@ -155,6 +155,55 @@ export function useGuestLocation(
     setWatchReason(null);
     setWatched({ status: "loading" });
     setAttempt((n) => n + 1);
+
+    // Call getCurrentPosition directly inside the user gesture handler.
+    // iOS Safari requires a user gesture for prompting, and calling this synchronously
+    // in the click handler preserves transitive user activation.
+    if (typeof navigator !== "undefined" && typeof navigator.geolocation?.getCurrentPosition === "function") {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          hasFixRef.current = true;
+          setWatchReason(null);
+          setWatched({
+            status: "granted",
+            lng: pos.coords.longitude,
+            lat: pos.coords.latitude,
+            accuracy: pos.coords.accuracy,
+          });
+        },
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) {
+            setWatchReason("permission-denied");
+            setWatched({ status: "denied" });
+          } else {
+            // High accuracy failed or timed out; try with standard accuracy
+            navigator.geolocation.getCurrentPosition(
+              (fallbackPos) => {
+                hasFixRef.current = true;
+                setWatchReason(null);
+                setWatched({
+                  status: "granted",
+                  lng: fallbackPos.coords.longitude,
+                  lat: fallbackPos.coords.latitude,
+                  accuracy: fallbackPos.coords.accuracy,
+                });
+              },
+              (fallbackErr) => {
+                if (fallbackErr.code === fallbackErr.PERMISSION_DENIED) {
+                  setWatchReason("permission-denied");
+                  setWatched({ status: "denied" });
+                } else {
+                  setWatchReason(fallbackErr.code === fallbackErr.TIMEOUT ? "timeout" : "position-unavailable");
+                  setWatched({ status: "unavailable" });
+                }
+              },
+              { enableHighAccuracy: false, timeout: 8_000, maximumAge: 30_000 }
+            );
+          }
+        },
+        { enableHighAccuracy: true, timeout: 8_000, maximumAge: 0 }
+      );
+    }
   }, []);
 
   const shouldWatch = enabled && !simulate && support === "ok";
@@ -180,9 +229,9 @@ export function useGuestLocation(
 
     const onError = (err: GeolocationPositionError) => {
       if (cancelled) return;
-      clearTimeout(watchdog);
 
       if (err.code === err.PERMISSION_DENIED) {
+        clearTimeout(watchdog);
         hasFixRef.current = false;
         setWatchReason("permission-denied");
         setWatched({ status: "denied" });
@@ -196,8 +245,36 @@ export function useGuestLocation(
 
       // Transient failure after we already had a fix: keep the dot rather than
       // blinking the whole location layer out of existence.
-      if (hasFixRef.current) return;
+      if (hasFixRef.current) {
+        clearTimeout(watchdog);
+        return;
+      }
 
+      // If high accuracy timed out or was unavailable, try standard accuracy fallback before giving up
+      if (
+        enableHighAccuracy &&
+        (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) &&
+        typeof navigator.geolocation?.getCurrentPosition === "function"
+      ) {
+        navigator.geolocation.getCurrentPosition(
+          onSuccess,
+          (fallbackErr) => {
+            if (cancelled || hasFixRef.current) return;
+            clearTimeout(watchdog);
+            if (fallbackErr.code === fallbackErr.PERMISSION_DENIED) {
+              setWatchReason("permission-denied");
+              setWatched({ status: "denied" });
+            } else {
+              setWatchReason(fallbackErr.code === fallbackErr.TIMEOUT ? "timeout" : "position-unavailable");
+              setWatched({ status: "unavailable" });
+            }
+          },
+          { enableHighAccuracy: false, timeout: 8_000, maximumAge: 30_000 }
+        );
+        return;
+      }
+
+      clearTimeout(watchdog);
       setWatchReason(err.code === err.TIMEOUT ? "timeout" : "position-unavailable");
       setWatched({ status: "unavailable" });
     };

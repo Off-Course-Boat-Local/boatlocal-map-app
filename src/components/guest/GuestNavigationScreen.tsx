@@ -884,17 +884,26 @@ export default function GuestNavigationScreen({
         {!guest && locationBlocked ? (
           <div
             className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-8 text-center"
-            style={{ background: "rgba(255,255,255,0.85)" }}
+            style={{ background: "rgba(255,255,255,0.92)" }}
           >
-            <p className="text-sm" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
-              {t.navigation.locationNeeded}
+            <div className="flex size-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-500">
+              <MapPinIcon size={24} />
+            </div>
+            <p className="text-base font-bold text-neutral-900" style={{ fontFamily: displayFontFamily }}>
+              {location.status === "denied" ? "Location access blocked" : t.navigation.locationNeeded}
+            </p>
+            <p className="max-w-xs text-xs leading-relaxed" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
+              {location.status === "denied"
+                ? "Location is turned off in your browser for this site. In Safari's address bar, tap the page settings icon to set Location to Allow, then tap Try again."
+                : "Turn on device location to get directions and see your live position."}
             </p>
             <button
               type="button"
               onClick={requestLocation}
-              className="rounded-full px-4 py-2 text-[13px] font-semibold text-white"
+              className="mt-1 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition active:scale-95 cursor-pointer"
               style={{ background: "var(--brand-primary)" }}
             >
+              <RotateCcw size={15} />
               {t.map.tryAgain}
             </button>
           </div>

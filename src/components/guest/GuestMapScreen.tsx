@@ -549,31 +549,40 @@ export default function GuestMapScreen({
         {(location.status === "denied" || location.status === "unavailable") && (
           <div className="mt-2 flex px-4">
             <div
-              className="pointer-events-auto rounded-full bg-white/95 px-3.5 py-1.5 text-[11px] backdrop-blur"
+              className="pointer-events-auto rounded-2xl bg-white/95 px-3.5 py-2 text-[12px] shadow-md backdrop-blur max-w-sm"
               style={{ boxShadow: CARD_SHADOW, color: MUTED_TEXT }}
             >
-              {location.status === "denied"
-                ? t.map.locationOff
-                : t.map.locationUnavailable}
-              <button
-                type="button"
-                // Asks for the compass in the SAME tap, not a second one:
-                // iOS gates deviceorientation behind its own user-gesture
-                // prompt, and a guest who just asked for their location is
-                // plainly willing to be located — making them hunt for a
-                // second, separate "enable compass" control after this is
-                // how the heading cone ended up never being switched on at
-                // all (founder, 2026-09-02: "the directional cone is still
-                // not working"). Harmless no-op off iOS.
-                onClick={() => {
-                  request();
-                  requestCompass();
-                }}
-                className="ml-2 font-semibold underline"
-                style={{ color: "var(--brand-primary)" }}
-              >
-                {t.map.tryAgain}
-              </button>
+              <div className="flex items-center justify-between gap-2">
+                <span>
+                  {location.status === "denied"
+                    ? t.map.locationOff
+                    : t.map.locationUnavailable}
+                </span>
+                <button
+                  type="button"
+                  // Asks for the compass in the SAME tap, not a second one:
+                  // iOS gates deviceorientation behind its own user-gesture
+                  // prompt, and a guest who just asked for their location is
+                  // plainly willing to be located — making them hunt for a
+                  // second, separate "enable compass" control after this is
+                  // how the heading cone ended up never being switched on at
+                  // all (founder, 2026-09-02: "the directional cone is still
+                  // not working"). Harmless no-op off iOS.
+                  onClick={() => {
+                    request();
+                    requestCompass();
+                  }}
+                  className="ml-2 font-semibold underline shrink-0 cursor-pointer"
+                  style={{ color: "var(--brand-primary)" }}
+                >
+                  {t.map.tryAgain}
+                </button>
+              </div>
+              {location.status === "denied" && (
+                <p className="mt-1 text-[11px] leading-tight text-neutral-500">
+                  Tap the website settings icon in your browser address bar to allow location.
+                </p>
+              )}
             </div>
           </div>
         )}
