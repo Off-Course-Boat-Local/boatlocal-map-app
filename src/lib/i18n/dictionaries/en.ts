@@ -114,7 +114,7 @@ const en = {
     /** Aria-label for the walk/bike/transit tab row at the top of the screen. */
     modeSwitcherLabel: "Choose how you're travelling",
     modeWalk: "Walking",
-    modeBike: "Bicycling",
+    modeBike: "Biking",
     modeTransit: "Public transport",
     arrivedTitle: (name: string) => `You've arrived at ${name}`,
     stepDistance: (distance: string) => `In ${distance}`,

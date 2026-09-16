@@ -428,10 +428,10 @@ export default function GuestNavigationScreen({
       originLat: String(guest.lat),
       destLng: String(destination.lng),
       destLat: String(destination.lat),
-      // Only walking routes gate their step list behind this; the transit
-      // endpoint always returns steps. Sent anyway so the cache key and the
-      // walking path stay identical to what they were.
-      steps: "1",
+      // Only request turn-by-turn steps for transit. For walking and biking,
+      // steps are omitted to save bandwidth, lower latency, and avoid
+      // computing/fetching unnecessary direction instruction text.
+      steps: mode === "transit" ? "1" : "0",
       mode,
       // Google localises its own instruction text when told which language
       // the guest is reading in — see walkingRoute.ts.
@@ -440,7 +440,7 @@ export default function GuestNavigationScreen({
     void fetch(`/api/guest/walking-route?${params.toString()}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((body: { route?: Route } | null) => {
-        if (body?.route && body.route.steps.length > 0) {
+        if (body?.route && (mode === "transit" ? body.route.steps.length > 0 : body.route.path.length > 0)) {
           setRoute(body.route);
         } else {
           setLoadError(true);
@@ -467,7 +467,7 @@ export default function GuestNavigationScreen({
   // lands on the right instruction instead of being stuck one behind
   // forever, with no way to catch up.
   useEffect(() => {
-    if (!route || !guest || arrived) return;
+    if (!route || !guest || arrived || route.steps.length === 0) return;
     let next = stepIndex;
     for (let i = stepIndex; i < route.steps.length - 1; i += 1) {
       if (haversineMeters(guest, route.steps[i].endLocation) <= advanceThreshold(route.steps[i])) {
@@ -587,6 +587,9 @@ export default function GuestNavigationScreen({
 
   const remaining = useMemo(() => {
     if (!route) return null;
+    if (mode !== "transit" || route.steps.length === 0) {
+      return { meters: route.distanceMeters, seconds: route.durationSeconds };
+    }
     const later = route.steps.slice(stepIndex + 1);
     const meters = (metersToTurn ?? currentStep?.distanceMeters ?? 0) + later.reduce((sum, step) => sum + step.distanceMeters, 0);
 
@@ -607,7 +610,7 @@ export default function GuestNavigationScreen({
       later.reduce((sum, step) => sum + step.durationSeconds, 0);
 
     return { meters, seconds };
-  }, [route, stepIndex, metersToTurn, currentStep]);
+  }, [route, stepIndex, metersToTurn, currentStep, mode]);
 
   const fallbackUrl =
     mode === "transit"
