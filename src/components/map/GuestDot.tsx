@@ -42,6 +42,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useCompassHeading } from "@/hooks/useCompassHeading";
+import { haversineMeters } from "@/lib/distance";
 import { useMapInstance } from "./BaseMap";
 import { createDomOverlay, type DomOverlayHandle } from "./DomOverlay";
 
@@ -123,10 +124,79 @@ export default function GuestDot({ position }: GuestDotProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, hasPosition]);
 
-  // Move the existing overlay instead of recreating it.
+  // Smoothly glide the dot from its current position to the new position
+  const currentPosRef = useRef<{ lng: number; lat: number } | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (lng === null || lat === null) return;
-    overlayRef.current?.setPosition({ lng, lat });
+    const target = { lng, lat };
+
+    // Very first fix: place immediately without animation
+    if (!currentPosRef.current) {
+      currentPosRef.current = target;
+      overlayRef.current?.setPosition(target);
+      return;
+    }
+
+    const start = { ...currentPosRef.current };
+    const distMeters = haversineMeters(start, target);
+
+    // If change is negligible (< 0.15m), do nothing
+    if (distMeters < 0.15) return;
+
+    // If jump is massive (> 400m, e.g. cross-city teleport or mock swap), snap directly
+    if (distMeters > 400) {
+      if (animFrameRef.current !== null) cancelAnimationFrame(animFrameRef.current);
+      currentPosRef.current = target;
+      overlayRef.current?.setPosition(target);
+      return;
+    }
+
+    // Cancel any previous in-flight animation
+    if (animFrameRef.current !== null) {
+      cancelAnimationFrame(animFrameRef.current);
+    }
+
+    // Smooth ease-out animation:
+    // Typical GPS updates arrive every ~1000ms.
+    // Animating over ~850ms creates a smooth, continuous stride without lagging behind.
+    const duration = Math.min(1000, Math.max(600, distMeters * 25 + 500));
+    const startTime = performance.now();
+
+    let dLng = target.lng - start.lng;
+    if (dLng > 180) dLng -= 360;
+    if (dLng < -180) dLng += 360;
+    const dLat = target.lat - start.lat;
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / duration);
+      // Cubic ease-out: starts with natural momentum and gently eases in
+      const ease = 1 - Math.pow(1 - t, 3);
+
+      const curLng = start.lng + dLng * ease;
+      const curLat = start.lat + dLat * ease;
+      currentPosRef.current = { lng: curLng, lat: curLat };
+
+      overlayRef.current?.setPosition({ lng: curLng, lat: curLat });
+
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        currentPosRef.current = target;
+        overlayRef.current?.setPosition(target);
+        animFrameRef.current = null;
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
   }, [lng, lat]);
 
   if (!container || lng === null || lat === null) return null;
