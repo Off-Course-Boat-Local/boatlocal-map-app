@@ -381,6 +381,7 @@ export default function GuestNavigationScreen({
   const initialAngleRef = useRef<number | null>(null);
   const initialHeadingRef = useRef(0);
   const isRotatingRef = useRef(false);
+  const isUsingGestureApiRef = useRef(false);
 
   useEffect(() => {
     const el = gestureContainerRef.current;
@@ -402,6 +403,9 @@ export default function GuestNavigationScreen({
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      // If WebKit gesture events are driving rotation, don't conflict with manual touchmove
+      if (isUsingGestureApiRef.current) return;
+
       if (e.touches.length === 2 && initialAngleRef.current !== null) {
         const t1 = e.touches[0];
         const t2 = e.touches[1];
@@ -442,8 +446,9 @@ export default function GuestNavigationScreen({
       }
     };
 
-    // Support Safari / WebKit trackpad rotation gestures
-    const onGestureStart = (e: any) => {
+    // Support Safari / WebKit trackpad and iOS pinch/rotation gestures
+    const onGestureStart = () => {
+      isUsingGestureApiRef.current = true;
       initialHeadingRef.current = mapHeadingRef.current;
       setIsGesturing(true);
       setCameraMode("free");
@@ -457,6 +462,7 @@ export default function GuestNavigationScreen({
 
     const onGestureEnd = () => {
       setIsGesturing(false);
+      isUsingGestureApiRef.current = false;
       setMapHeading((h) => {
         let norm = h % 360;
         if (norm > 180) norm -= 360;
@@ -466,10 +472,16 @@ export default function GuestNavigationScreen({
       });
     };
 
+    // On wheel/scroll zoom on desktop/trackpad, release follow camera to free
+    const onWheel = () => {
+      setCameraMode("free");
+    };
+
     el.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
     el.addEventListener("touchmove", onTouchMove, { capture: true, passive: true });
     el.addEventListener("touchend", onTouchEnd, { capture: true, passive: true });
     el.addEventListener("touchcancel", onTouchEnd, { capture: true, passive: true });
+    el.addEventListener("wheel", onWheel, { passive: true });
 
     el.addEventListener("gesturestart", onGestureStart);
     el.addEventListener("gesturechange", onGestureChange);
@@ -480,6 +492,7 @@ export default function GuestNavigationScreen({
       el.removeEventListener("touchmove", onTouchMove, { capture: true });
       el.removeEventListener("touchend", onTouchEnd, { capture: true });
       el.removeEventListener("touchcancel", onTouchEnd, { capture: true });
+      el.removeEventListener("wheel", onWheel);
 
       el.removeEventListener("gesturestart", onGestureStart);
       el.removeEventListener("gesturechange", onGestureChange);
@@ -995,25 +1008,23 @@ export default function GuestNavigationScreen({
         <div
           style={{
             position: "absolute",
-            inset: isNavigating
-              ? "-100% -120% -100% -120%"
-              : mapHeading !== 0
-                ? "-60% -70% -60% -70%"
-                : 0,
+            inset: "-100vmax",
+            transformOrigin: "center center",
             transform: isNavigating
-              ? `perspective(1000px) rotateX(26deg) rotateZ(${mapHeading}deg)`
+              ? `perspective(1000px) rotateX(22deg) rotateZ(${mapHeading}deg)`
               : mapHeading !== 0
                 ? `rotate(${mapHeading}deg)`
                 : "none",
-            transformOrigin: isNavigating ? "50% 75%" : "50% 50%",
             transition: isGesturing
               ? "none"
-              : "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), inset 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+              : "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
           <BaseMap
             center={guest ?? destination}
             zoom={17}
+            minZoom={3}
+            maxZoom={20}
             className="absolute inset-0 bg-[#E4E8D6]"
             onMapReady={setMap}
           >
