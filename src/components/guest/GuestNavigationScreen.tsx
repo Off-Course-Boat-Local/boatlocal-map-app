@@ -363,6 +363,7 @@ export default function GuestNavigationScreen({
   const [mode, setMode] = useState<"walk" | "bike" | "transit">("walk");
   const [route, setRoute] = useState<Route | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [stepIndex, setStepIndex] = useState(0);
   const [arrived, setArrived] = useState(false);
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -386,31 +387,42 @@ export default function GuestNavigationScreen({
   // screen timeout. Released automatically when this screen unmounts.
   useWakeLock(!arrived);
 
-  // Fetched once per (destination, mode, language), the moment a first guest
-  // fix is available — not refetched on subsequent GPS ticks (see this
-  // file's header comment). Also re-runs whenever the mode tabs change
-  // `mode`, since that changes the fetch key below.
-  //
-  // The ref holds a KEY rather than a boolean: with a plain `true` the
-  // effect's own dependencies were decorative, and switching mode via the
-  // tabs would have got the new mode's chrome wrapped around the previous
-  // mode's route, silently.
-  const fetchedRef = useRef<string | null>(null);
+  // Keep a live ref to guest coordinates so the fetch effect always uses the
+  // freshest available fix without re-running (and aborting an in-flight
+  // request) on every minor GPS coordinate jitter tick.
+  const guestRef = useRef(guest);
+  useEffect(() => {
+    guestRef.current = guest;
+  }, [guest]);
+
+  const inFlightRef = useRef<string | null>(null);
+  const loadedKeyRef = useRef<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     if (!guest) return;
-    const fetchKey = `${mode}|${locale}|${destination.lng},${destination.lat}`;
-    if (fetchedRef.current === fetchKey) return;
-    fetchedRef.current = fetchKey;
+    const origin = guestRef.current ?? guest;
+    if (!origin) return;
 
-    // Real data for the "Directions requested" row Report/Platform
-    // analytics have both had defined since before this screen existed —
-    // fired once per (mode, destination) actually fetched, which includes a
-    // guest switching mode via the tabs below, not just the initial
-    // "Directions" tap that opened this screen. Transit and biking bill on
-    // different Routes API tiers than walking, so this is the datum that
-    // later answers "is anyone using it, and is it worth what it costs?" —
-    // see directions_arrived's own comment for the matching other half of
-    // this funnel.
+    const fetchKey = `${mode}|${locale}|${destination.id}`;
+
+    // Already successfully loaded this route — don't refetch
+    if (loadedKeyRef.current === fetchKey && route) return;
+
+    // Already actively fetching this exact key — let it finish
+    if (inFlightRef.current === fetchKey) return;
+
+    // If a request for a different mode is in flight, abort it
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    inFlightRef.current = fetchKey;
+    setLoadError(false);
+
     recordGuestEvent({
       eventType: "directions_requested",
       companyId,
@@ -422,35 +434,58 @@ export default function GuestNavigationScreen({
       metadata: { mode },
     }).catch(() => {});
 
-    // Closing the screen mid-flight shouldn't leave a response nobody reads
-    // still downloading on a phone's mobile data — and the transit response
-    // is the larger of the two. Same intent as DirectionLine's own cancel
-    // flag, done with the platform's abort signal.
-    const controller = new AbortController();
     const params = new URLSearchParams({
-      originLng: String(guest.lng),
-      originLat: String(guest.lat),
+      originLng: String(origin.lng),
+      originLat: String(origin.lat),
       destLng: String(destination.lng),
       destLat: String(destination.lat),
       steps: "1",
       mode,
       lang: locale,
     });
+
     void fetch(`/api/guest/walking-route?${params.toString()}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((body: { route?: Route } | null) => {
+        if (controller.signal.aborted) return;
         if (body?.route && (body.route.steps.length > 0 || body.route.path.length > 0)) {
           setRoute(body.route);
+          loadedKeyRef.current = fetchKey;
+          setLoadError(false);
         } else {
           setLoadError(true);
+          loadedKeyRef.current = null;
         }
       })
       .catch((error: unknown) => {
         if ((error as { name?: string })?.name === "AbortError") return;
         setLoadError(true);
+        loadedKeyRef.current = null;
+      })
+      .finally(() => {
+        if (inFlightRef.current === fetchKey) {
+          inFlightRef.current = null;
+        }
       });
-    return () => controller.abort();
-  }, [guest, destination.id, destination.lng, destination.lat, mode, locale, companyId, guideId]);
+  }, [
+    Boolean(guest),
+    destination.id,
+    destination.lng,
+    destination.lat,
+    mode,
+    locale,
+    companyId,
+    guideId,
+    retryCount,
+    Boolean(route),
+  ]);
+
+  // Clean up any in-flight request when this screen unmounts
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   /** How close counts as "reached this step", which depends on how the guest got there. */
   function advanceThreshold(step: RouteStep): number {
@@ -1099,15 +1134,26 @@ export default function GuestNavigationScreen({
               <p className="text-sm" style={{ color: MUTED, fontFamily: bodyFontFamily }}>
                 {t.navigation.loadError}
               </p>
-              <a
-                href={fallbackUrl}
-                {...DIRECTIONS_LINK_PROPS}
-                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold"
-                style={{ color: "var(--brand-primary)" }}
-              >
-                <ExternalLink size={15} aria-hidden />
-                {t.navigation.openExternally}
-              </a>
+              <div className="mt-3 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRetryCount((c) => c + 1)}
+                  className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition active:scale-95 cursor-pointer"
+                  style={{ background: "var(--brand-primary)" }}
+                >
+                  <RotateCcw size={14} />
+                  {t.map.tryAgain}
+                </button>
+                <a
+                  href={fallbackUrl}
+                  {...DIRECTIONS_LINK_PROPS}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold"
+                  style={{ color: "var(--brand-primary)" }}
+                >
+                  <ExternalLink size={15} aria-hidden />
+                  {t.navigation.openExternally}
+                </a>
+              </div>
             </div>
           )}
 
