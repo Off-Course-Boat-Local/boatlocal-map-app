@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { verifyResendWebhook } from "@/lib/email/resendWebhook";
-import { getInboundEmail } from "@/lib/email/client";
+import { getInboundEmail, sendEmail } from "@/lib/email/client";
 import { recordInboundReplyByEmail } from "@/lib/data/outreach";
 import { postToSlack, isSlackConfigured } from "@/lib/slack/client";
 
@@ -39,14 +39,58 @@ export async function POST(request: Request) {
 
   // Handle email.received events
   if (payload.type === "email.received" && payload.data?.email_id) {
-    try {
-      const { data: emailData, error: fetchErr } = await getInboundEmail(payload.data.email_id);
+    const emailId = payload.data.email_id;
 
-      if (fetchErr || !emailData) {
+    // Fetching the full email is its own step so a Resend API hiccup here
+    // (network blip, timeout, transient error) can't silently swallow the
+    // whole reply. Without this split, a fetch failure fell straight into
+    // the catch below and returned 500 with no forward and no Slack post —
+    // the one path where an inbound reply could vanish with zero trace,
+    // exactly the failure mode this webhook exists to prevent.
+    let emailData: Awaited<ReturnType<typeof getInboundEmail>>["data"] | null = null;
+    try {
+      const { data, error: fetchErr } = await getInboundEmail(emailId);
+      if (fetchErr || !data) {
         console.error("[resend-inbound] Failed to fetch receiving email details:", fetchErr);
-        return NextResponse.json({ ok: false, error: "failed to fetch email" }, { status: 500 });
+      } else {
+        emailData = data;
+      }
+    } catch (err) {
+      console.error("[resend-inbound] Threw while fetching receiving email details:", err);
+    }
+
+    if (!emailData) {
+      // Can't get the body, but the webhook payload itself already named a
+      // sender/subject in most cases — forward what we have rather than
+      // nothing, and include email_id so it can be pulled up in the Resend
+      // dashboard by hand.
+      const fallbackFrom = payload.data.from || "unknown sender";
+      const fallbackSubject = payload.data.subject || "No subject";
+
+      try {
+        await sendEmail({
+          to: "info@boatlocal.nl",
+          subject: `[Inbound Email - details unavailable] ${fallbackSubject} (from ${fallbackFrom})`,
+          text: `An inbound reply arrived at reply@reply.boatlocal.nl but Resend's API failed when fetching its full content (email_id: ${emailId}). Look this event up in the Resend dashboard (Emails -> Receiving) to read the body.\n\nFrom: ${fallbackFrom}\nSubject: ${fallbackSubject}`,
+          html: `<p><strong>An inbound reply arrived but its full content could not be fetched from Resend</strong> (email_id: ${emailId}). Look this event up in the Resend dashboard (Emails &rarr; Receiving) to read the body.</p><p>From: ${fallbackFrom}<br/>Subject: ${fallbackSubject}</p>`,
+        });
+      } catch (fwdErr) {
+        console.error("[resend-inbound] Failed to send fetch-failure fallback email:", fwdErr);
       }
 
+      if (isSlackConfigured()) {
+        await postToSlack(
+          `:rotating_light: *Inbound reply received but details could not be fetched* (email_id: ${emailId})\n*From:* ${fallbackFrom}\n*Subject:* ${fallbackSubject}\nCheck the Resend dashboard (Emails → Receiving) for the full message.`,
+        );
+      }
+
+      return NextResponse.json(
+        { ok: false, error: "failed to fetch email", notified: true },
+        { status: 502 },
+      );
+    }
+
+    try {
       // Extract sender address from e.g. "Mikael <info@kingbikes.nl>" or "info@kingbikes.nl"
       const fromRaw = emailData.from || "";
       const emailMatch = fromRaw.match(/<([^>]+)>/) || [null, fromRaw.trim()];
