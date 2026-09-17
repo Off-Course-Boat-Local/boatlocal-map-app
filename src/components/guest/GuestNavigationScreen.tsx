@@ -564,6 +564,13 @@ export default function GuestNavigationScreen({
     if (isNavigating && guest) {
       map.panTo(guest);
     }
+    const timer = setTimeout(() => {
+      google.maps.event.trigger(map, "resize");
+      if (isNavigating && guest) {
+        map.panTo(guest);
+      }
+    }, 450);
+    return () => clearTimeout(timer);
   }, [isNavigating, map, guest]);
 
   /* ---- Live progress --------------------------------------------- */
@@ -707,7 +714,7 @@ export default function GuestNavigationScreen({
         zIndex: 50,
         display: "flex",
         flexDirection: "column",
-        background: "#FFFFFF",
+        background: isNavigating ? "#E4E8D6" : "#FFFFFF",
         fontFamily: bodyFontFamily,
       }}
     >
@@ -830,23 +837,24 @@ export default function GuestNavigationScreen({
           flex: isNavigating ? undefined : "1 1 auto",
           minHeight: 0,
           overflow: "hidden",
+          background: "#E4E8D6",
         }}
       >
         <div
           style={{
             position: "absolute",
-            inset: isNavigating ? "-35% -35% -15% -35%" : 0,
+            inset: isNavigating ? "-90% -60% -100% -60%" : 0,
             transform: isNavigating
-              ? "perspective(800px) rotateX(32deg)"
+              ? "perspective(1000px) rotateX(26deg)"
               : "none",
-            transformOrigin: "50% 85%",
+            transformOrigin: "50% 75%",
             transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), inset 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
           <BaseMap
             center={guest ?? destination}
             zoom={17}
-            className="absolute inset-0"
+            className="absolute inset-0 bg-[#E4E8D6]"
             onMapReady={setMap}
           >
             {route ? <RoutePolyline path={route.path} color="var(--brand-primary)" /> : null}
