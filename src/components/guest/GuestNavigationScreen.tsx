@@ -263,49 +263,68 @@ function StepIcon({ step, className }: { step: RouteStep; className?: string }) 
 
 /** Google's maneuver enum → a lucide icon. Unlisted values (roundabouts, ferries, merges — rare on foot) fall back to a plain forward arrow rather than guessing. */
 function ManeuverIcon({ maneuver, className }: { maneuver: string; className?: string }) {
+  const stroke = 2.75;
   switch (maneuver) {
     case "DEPART":
-      return <Signpost className={className} aria-hidden />;
+      return <Signpost className={className} strokeWidth={stroke} aria-hidden />;
     case "ARRIVE":
-      return <Flag className={className} aria-hidden />;
+      return <Flag className={className} strokeWidth={stroke} aria-hidden />;
     case "TURN_LEFT":
     case "TURN_SHARP_LEFT":
-      return <ArrowUpLeft className={className} aria-hidden />;
+      return <ArrowUpLeft className={className} strokeWidth={stroke} aria-hidden />;
     case "TURN_SLIGHT_LEFT":
-      return <ArrowUpLeft className={className} style={{ transform: "rotate(20deg)" }} aria-hidden />;
+      return <ArrowUpLeft className={className} strokeWidth={stroke} style={{ transform: "rotate(20deg)" }} aria-hidden />;
     case "TURN_RIGHT":
     case "TURN_SHARP_RIGHT":
-      return <ArrowUpRight className={className} aria-hidden />;
+      return <ArrowUpRight className={className} strokeWidth={stroke} aria-hidden />;
     case "TURN_SLIGHT_RIGHT":
-      return <ArrowUpRight className={className} style={{ transform: "rotate(-20deg)" }} aria-hidden />;
+      return <ArrowUpRight className={className} strokeWidth={stroke} style={{ transform: "rotate(-20deg)" }} aria-hidden />;
     case "UTURN_LEFT":
     case "UTURN_RIGHT":
-      return <RotateCcw className={className} aria-hidden />;
+      return <RotateCcw className={className} strokeWidth={stroke} aria-hidden />;
     default:
-      return <ArrowUp className={className} aria-hidden />;
+      return <ArrowUp className={className} strokeWidth={stroke} aria-hidden />;
   }
 }
 
-/** Draws the fetched route as a solid Polyline — same visual language as DirectionLine.tsx's real-route case, unrelated component (see this file's header for why they don't share a fetch). */
-function RoutePolyline({ path, color }: { path: Array<{ lng: number; lat: number }>; color: string }) {
+/** Draws the fetched route as Google Maps-style dual-stroke polyline: a crisp white casing line under a vibrant royal blue core. */
+function RoutePolyline({ path }: { path: Array<{ lng: number; lat: number }>; color?: string }) {
   const map = useMapInstance();
   useEffect(() => {
     if (!map || path.length === 0) return;
-    const polyline = new google.maps.Polyline({
+
+    // White outer casing
+    const casing = new google.maps.Polyline({
       path,
-      strokeColor: color,
-      strokeOpacity: 0.9,
+      strokeColor: "#FFFFFF",
+      strokeOpacity: 0.95,
+      strokeWeight: 8,
+      clickable: false,
+      zIndex: 10,
+    });
+    casing.setMap(map);
+
+    // Google royal blue core
+    const core = new google.maps.Polyline({
+      path,
+      strokeColor: "#1A73E8",
+      strokeOpacity: 1.0,
       strokeWeight: 5,
       clickable: false,
+      zIndex: 11,
     });
-    polyline.setMap(map);
-    return () => polyline.setMap(null);
-  }, [map, path, color]);
+    core.setMap(map);
+
+    return () => {
+      casing.setMap(null);
+      core.setMap(null);
+    };
+  }, [map, path]);
   return null;
 }
 
-/** Simple destination marker — not the full <Pin>, which is built for the filterable category pins on the main map, not a one-off route endpoint. Same portal-into-an-overlay pattern MapPins/GuestDot use. */
-function DestinationMarker({ position, color }: { position: { lng: number; lat: number }; color: string }) {
+/** Google Maps-style red destination pin with white inner circle. */
+function DestinationMarker({ position }: { position: { lng: number; lat: number }; color?: string }) {
   const map = useMapInstance();
   const [el, setEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -318,15 +337,27 @@ function DestinationMarker({ position, color }: { position: { lng: number; lat: 
   return createPortal(
     <div
       style={{
-        width: 30,
-        height: 30,
+        width: 32,
+        height: 32,
         borderRadius: "50% 50% 50% 0",
         transform: "rotate(-45deg)",
-        background: color,
-        border: "3px solid #FFFFFF",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
+        background: "#EA4335",
+        border: "2.5px solid #FFFFFF",
+        boxShadow: "0 3px 8px rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
-    />,
+    >
+      <div
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "#FFFFFF",
+        }}
+      />
+    </div>,
     el,
   );
 }
@@ -362,6 +393,7 @@ export default function GuestNavigationScreen({
   // caller. See this file's header comment.
   const [mode, setMode] = useState<"walk" | "bike" | "transit">("walk");
   const [route, setRoute] = useState<Route | null>(null);
+  const [modeDurations, setModeDurations] = useState<Partial<Record<"walk" | "bike" | "transit", number>>>({});
   const [loadError, setLoadError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [stepIndex, setStepIndex] = useState(0);
@@ -579,6 +611,7 @@ export default function GuestNavigationScreen({
         if (controller.signal.aborted) return;
         if (body?.route && (body.route.steps.length > 0 || body.route.path.length > 0)) {
           setRoute(body.route);
+          setModeDurations((prev) => ({ ...prev, [mode]: body.route!.durationSeconds }));
           loadedKeyRef.current = fetchKey;
           setLoadError(false);
         } else {
@@ -789,6 +822,31 @@ export default function GuestNavigationScreen({
         ? googleMapsBikingUrl({ destLat: destination.lat, destLng: destination.lng })
         : googleMapsWalkingUrl({ destLat: destination.lat, destLng: destination.lng });
 
+  const getModeDurationMinutes = (m: "walk" | "bike" | "transit"): number => {
+    if (modeDurations[m]) {
+      return remainingMinutes(modeDurations[m]!);
+    }
+    if (route?.durationSeconds) {
+      if (mode === "walk") {
+        if (m === "bike") return Math.max(1, Math.round((route.durationSeconds * 0.35) / 60));
+        if (m === "transit") return Math.max(3, Math.round((route.durationSeconds * 0.55 + 180) / 60));
+      } else if (mode === "bike") {
+        if (m === "walk") return Math.max(2, Math.round((route.durationSeconds * 2.8) / 60));
+        if (m === "transit") return Math.max(3, Math.round((route.durationSeconds * 1.5 + 120) / 60));
+      } else if (mode === "transit") {
+        if (m === "walk") return Math.max(2, Math.round((route.durationSeconds * 1.6) / 60));
+        if (m === "bike") return Math.max(1, Math.round((route.durationSeconds * 0.55) / 60));
+      }
+    }
+    if (guest) {
+      const dist = haversineMeters(guest, destination);
+      if (m === "walk") return Math.max(1, Math.round((dist * 1.3) / (1.33 * 60)));
+      if (m === "bike") return Math.max(1, Math.round((dist * 1.25) / (4.2 * 60)));
+      if (m === "transit") return Math.max(3, Math.round((dist * 1.3) / (4.0 * 60) + 3));
+    }
+    return m === "bike" ? 8 : m === "transit" ? 15 : 20;
+  };
+
   /**
    * What a step actually tells the guest to do. Walking steps use Google's
    * own sentence; transit steps have none, so one is composed from the
@@ -950,14 +1008,15 @@ export default function GuestNavigationScreen({
                 ] as const
               ).map((tab) => {
                 const active = tab.id === mode;
+                const durMin = getModeDurationMinutes(tab.id);
                 return (
                   <button
                     key={tab.id}
                     type="button"
                     role="tab"
                     aria-selected={active}
-                    aria-label={tab.label}
-                    title={tab.label}
+                    aria-label={`${tab.label} · ${durMin} min`}
+                    title={`${tab.label} · ${durMin} min`}
                     onClick={() => switchMode(tab.id)}
                     style={{
                       flex: "1 1 0",
@@ -965,26 +1024,26 @@ export default function GuestNavigationScreen({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: 5,
-                      height: 32,
+                      gap: 6,
+                      height: 34,
                       borderRadius: 9999,
-                      border: active ? "1px solid #FFFFFF" : "1px solid rgba(255,255,255,0.22)",
-                      background: active ? "#FFFFFF" : "rgba(255,255,255,0.14)",
+                      border: active ? "1.5px solid #FFFFFF" : "1px solid rgba(255,255,255,0.25)",
+                      background: active ? "#FFFFFF" : "rgba(255,255,255,0.16)",
                       color: active ? "var(--brand-primary)" : "#FFFFFF",
                       fontFamily: bodyFontFamily,
-                      fontSize: 12,
-                      fontWeight: 600,
+                      fontSize: 12.5,
+                      fontWeight: 700,
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       cursor: "pointer",
                       WebkitTapHighlightColor: "transparent",
                       touchAction: "manipulation",
-                      boxShadow: active ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+                      boxShadow: active ? "0 2px 8px rgba(0,0,0,0.18)" : "none",
                     }}
                   >
-                    <tab.Icon size={14} strokeWidth={2.2} className="shrink-0" aria-hidden />
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tab.label}</span>
+                    <tab.Icon size={15} strokeWidth={2.4} className="shrink-0" aria-hidden />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{durMin} min</span>
                   </button>
                 );
               })}
@@ -1034,32 +1093,48 @@ export default function GuestNavigationScreen({
           </BaseMap>
         </div>
 
-        {/* Active Navigation: Top Instruction Card (all travel modes) */}
+        {/* Active Navigation: Top Instruction Card (Google Maps Emerald Green) */}
         {isNavigating && !arrived && currentStep && (
           <div
             className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-3"
             style={{ paddingTop: "calc(env(safe-area-inset-top) + 10px)" }}
           >
             <div
-              className="pointer-events-auto flex w-full max-w-md items-center gap-3.5 rounded-2xl p-4 text-white shadow-xl"
+              className="pointer-events-auto flex w-full max-w-md flex-col rounded-2xl p-4 text-white shadow-2xl"
               style={{
-                background: "var(--brand-primary)",
+                background: "#137333", // Google Maps navigation emerald green
+                border: "1px solid rgba(255,255,255,0.18)",
               }}
             >
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/20">
-                <StepIcon step={currentStep} className="size-6 text-white" />
+              <div className="flex items-center gap-3.5">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                  <StepIcon step={currentStep} className="size-7 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  {/* Distance Prominence (Google Maps style) */}
+                  <div
+                    className="text-2xl font-black leading-tight tracking-tight text-white"
+                    style={{ fontFamily: displayFontFamily }}
+                  >
+                    {metersToTurn !== null ? formatStepMeters(metersToTurn) : formatStepMeters(currentStep.distanceMeters)}
+                  </div>
+                  <p
+                    className="text-[14.5px] font-semibold leading-snug text-white/95 truncate"
+                    style={{ fontFamily: bodyFontFamily }}
+                  >
+                    {stepInstruction(currentStep)}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p
-                  className="text-lg font-bold leading-snug text-white"
-                  style={{ fontFamily: displayFontFamily }}
-                >
-                  {stepInstruction(currentStep)}
-                </p>
-                <p className="text-xs font-semibold text-white/80">
-                  {currentStepSubtext(currentStep)}
-                </p>
-              </div>
+
+              {/* Next Turn Preview (Google Maps style: "Then turn left onto X") */}
+              {route?.steps && route.steps[stepIndex + 1] && (
+                <div className="mt-2.5 flex items-center gap-2 border-t border-white/20 pt-2 text-xs font-semibold text-white/85">
+                  <span className="text-white/60">Then</span>
+                  <StepIcon step={route.steps[stepIndex + 1]} className="size-3.5 shrink-0 text-white" />
+                  <span className="truncate">{stepInstruction(route.steps[stepIndex + 1])}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1118,104 +1193,91 @@ export default function GuestNavigationScreen({
           </div>
         ) : null}
 
-        {/* Camera control: recenter / overview */}
-        {!arrived && route && (
-          <button
-            type="button"
-            onClick={cameraMode === "follow" ? () => setCameraMode("overview") : followGuest}
-            className="pointer-events-auto absolute inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold"
-            style={{
-              left: 12,
-              bottom: isNavigating
-                ? "calc(env(safe-area-inset-bottom) + 82px)"
-                : 12,
-              background: "rgba(255,255,255,0.95)",
-              border: `1px solid ${BORDER}`,
-              boxShadow: SHADOW_FLOAT,
-              color: INK,
-              fontFamily: bodyFontFamily,
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-              touchAction: "manipulation",
-              zIndex: 35,
-              transition: "bottom 0.25s ease",
-            }}
-          >
-            {cameraMode === "follow" ? (
-              <>
-                <Maximize2 size={14} aria-hidden />
-                {t.navigation.overview}
-              </>
-            ) : (
-              <>
+        {/* Google Maps-style Circular Floating Action Buttons (Right-aligned) */}
+        <div
+          className="pointer-events-none absolute flex flex-col items-center gap-2.5 z-35"
+          style={{
+            right: 14,
+            bottom: isNavigating
+              ? "calc(env(safe-area-inset-bottom) + 90px)"
+              : 14,
+            transition: "bottom 0.25s ease",
+          }}
+        >
+          {/* Compass indicator & reset-to-North button (top FAB) */}
+          {(isNavigating || Math.abs(mapHeading) > 0.5) && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsGesturing(false);
+                setMapHeading(0);
+              }}
+              aria-label="Reset map orientation to North"
+              title="Reset North"
+              className="pointer-events-auto flex size-11 items-center justify-center rounded-full bg-white shadow-lg border border-neutral-200/80 transition active:scale-90 cursor-pointer"
+            >
+              <svg
+                width={26}
+                height={26}
+                viewBox="0 0 28 28"
+                aria-hidden
+                style={{
+                  transform: `rotate(${-mapHeading}deg)`,
+                  transition: isGesturing ? "none" : "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}
+              >
+                {/* North needle (red) */}
+                <polygon points="14,4 17.5,14 14,12.5 10.5,14" fill="#E53935" />
+                {/* South needle (silver) */}
+                <polygon points="14,24 17.5,14 14,15.5 10.5,14" fill="#9E9E9E" />
+                {/* Center pivot */}
+                <circle cx="14" cy="14" r="2" fill="#333333" />
+                {/* North "N" mark */}
+                <text
+                  x="14"
+                  y="3.5"
+                  textAnchor="middle"
+                  fontSize="5.5"
+                  fontWeight="900"
+                  fill="#E53935"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                >
+                  N
+                </text>
+              </svg>
+            </button>
+          )}
+
+          {/* Recenter Location FAB (bottom FAB) */}
+          {!arrived && route && (
+            <button
+              type="button"
+              onClick={cameraMode === "follow" ? () => setCameraMode("overview") : followGuest}
+              aria-label={cameraMode === "follow" ? t.navigation.overview : t.navigation.recenter}
+              title={cameraMode === "follow" ? t.navigation.overview : t.navigation.recenter}
+              className="pointer-events-auto flex size-11 items-center justify-center rounded-full bg-white shadow-lg border border-neutral-200/80 transition active:scale-90 cursor-pointer"
+            >
+              {cameraMode === "follow" ? (
                 <NavigationArrow
-                  size={13}
-                  className="fill-current"
-                  style={{ color: "var(--brand-primary)", transform: "rotate(45deg)" }}
+                  size={18}
+                  className="fill-[#1A73E8] text-[#1A73E8]"
+                  style={{ transform: "rotate(45deg)" }}
                   aria-hidden
                 />
-                {t.navigation.recenter}
-              </>
-            )}
-          </button>
-        )}
-
-        {/* Compass indicator & reset-to-North button */}
-        {(isNavigating || Math.abs(mapHeading) > 0.5) && (
-          <button
-            type="button"
-            onClick={() => {
-              setIsGesturing(false);
-              setMapHeading(0);
-            }}
-            aria-label="Reset map orientation to North"
-            title="Reset North"
-            className="pointer-events-auto absolute flex size-10 items-center justify-center rounded-full bg-white/95 shadow-md transition active:scale-90 cursor-pointer"
-            style={{
-              right: 12,
-              bottom: isNavigating
-                ? "calc(env(safe-area-inset-bottom) + 82px)"
-                : 12,
-              border: `1px solid ${BORDER}`,
-              boxShadow: SHADOW_FLOAT,
-              zIndex: 35,
-              transition: "bottom 0.25s ease, opacity 0.2s ease",
-            }}
-          >
-            <svg
-              width={26}
-              height={26}
-              viewBox="0 0 28 28"
-              aria-hidden
-              style={{
-                transform: `rotate(${-mapHeading}deg)`,
-                transition: isGesturing ? "none" : "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-              }}
-            >
-              {/* North needle (red) */}
-              <polygon points="14,4 17.5,14 14,12.5 10.5,14" fill="#E53935" />
-              {/* South needle (silver) */}
-              <polygon points="14,24 17.5,14 14,15.5 10.5,14" fill="#9E9E9E" />
-              {/* Center pivot */}
-              <circle cx="14" cy="14" r="2" fill="#333333" />
-              {/* North "N" mark */}
-              <text
-                x="14"
-                y="3.5"
-                textAnchor="middle"
-                fontSize="5.5"
-                fontWeight="900"
-                fill="#E53935"
-                fontFamily="system-ui, -apple-system, sans-serif"
-              >
-                N
-              </text>
-            </svg>
-          </button>
-        )}
+              ) : (
+                <NavigationArrow
+                  size={18}
+                  className="text-[#5F6368]"
+                  style={{ transform: "rotate(45deg)" }}
+                  aria-hidden
+                />
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Active Navigation: Bottom ETA Bar */}
+      {/* Active Navigation: Bottom ETA Bar (Google Maps Style) */}
       {isNavigating && !arrived && (
         <div
           className="absolute inset-x-0 bottom-0 z-30 rounded-t-2xl bg-white px-5 py-3 shadow-2xl"
@@ -1224,12 +1286,14 @@ export default function GuestNavigationScreen({
             paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)",
           }}
         >
+          {/* Google Maps Bottom Sheet Drag Handle */}
+          <div className="mx-auto mb-2.5 h-1 w-10 rounded-full bg-neutral-300" />
 
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <span
-                  className="text-2xl font-bold tracking-tight text-neutral-900"
+                  className="text-2xl font-extrabold tracking-tight text-[#188038]"
                   style={{ fontFamily: displayFontFamily }}
                 >
                   {remainingMinutes(remaining?.seconds ?? 0)} min
@@ -1245,11 +1309,11 @@ export default function GuestNavigationScreen({
                 </span>
               </div>
               <p className="text-xs font-semibold text-neutral-500">
-                {formatStepMeters(remaining?.meters ?? 0)} ·{" "}
                 {formatClockTime(
                   new Date(Date.now() + (remaining?.seconds ?? 0) * 1000).toISOString(),
                   locale,
-                )}
+                )}{" "}
+                · {formatStepMeters(remaining?.meters ?? 0)}
               </p>
             </div>
 
@@ -1269,9 +1333,9 @@ export default function GuestNavigationScreen({
               <button
                 type="button"
                 onClick={() => setIsNavigating(false)}
-                className="rounded-full bg-[#D93025] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition active:scale-95 hover:bg-[#c5221f] cursor-pointer"
+                className="rounded-full bg-[#D93025] px-5 py-2.5 text-sm font-bold text-white shadow-md transition active:scale-95 hover:bg-[#c5221f] cursor-pointer"
               >
-                {t.navigation.exitNavigation}
+                ✕ {t.navigation.exitNavigation}
               </button>
             </div>
           </div>
@@ -1388,7 +1452,7 @@ export default function GuestNavigationScreen({
               <div>
                 <div className="flex items-center gap-2">
                   <span
-                    className="text-2xl font-bold tracking-tight text-neutral-900"
+                    className="text-2xl font-extrabold tracking-tight text-[#188038]"
                     style={{ fontFamily: displayFontFamily }}
                   >
                     {remainingMinutes(remaining.seconds)} min
@@ -1405,9 +1469,9 @@ export default function GuestNavigationScreen({
               <button
                 type="button"
                 onClick={startNavigation}
-                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-md transition active:scale-95 cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-md transition active:scale-95 cursor-pointer"
                 style={{
-                  background: "var(--brand-primary)",
+                  background: "#1A73E8", // Google Maps Blue
                   WebkitTapHighlightColor: "transparent",
                   touchAction: "manipulation",
                 }}
