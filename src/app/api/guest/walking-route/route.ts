@@ -37,12 +37,18 @@ import type { NextRequest } from "next/server";
 
 import { getWalkingRoute, getBikingRoute } from "@/lib/walkingRoute";
 import { getTransitRoute } from "@/lib/transitRoute";
+import { haversineMeters } from "@/lib/distance";
 import { isLocale } from "@/lib/i18n/locales";
 
 /** Rounded to ~11 m before it becomes a cache key — finer than that is noise a guest can't perceive, and a coarser key would mean handing someone a route that visibly starts down the street. */
 const CACHE_COORD_DECIMALS = 4;
-const CACHE_TTL_MS = 60_000;
-const CACHE_MAX_ENTRIES = 200;
+/** 30-minute cache for walking/biking routes (static road network), 5-minute for transit (schedule-sensitive). */
+const CACHE_TTL_WALK_BIKE_MS = 30 * 60_000;
+const CACHE_TTL_TRANSIT_MS = 5 * 60_000;
+const CACHE_MAX_ENTRIES = 500;
+
+/** Maximum reasonable navigation route distance (50 km). Rejects global open-proxy abuse. */
+const MAX_ROUTE_DISTANCE_METERS = 50_000;
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 30;
@@ -62,12 +68,22 @@ function parseCoord(value: string | null, max: number): number | null {
   return Math.abs(n) <= max ? n : null;
 }
 
+/** Extracts the client IP securely without trusting user-spoofed X-Forwarded-For headers. */
+function getClientIp(request: NextRequest): string {
+  const vercelIp = request.headers.get("x-vercel-forwarded-for") || request.headers.get("x-real-ip");
+  if (vercelIp) return vercelIp.trim();
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const ips = forwarded.split(",").map((s) => s.trim()).filter(Boolean);
+    if (ips.length > 0) return ips[ips.length - 1];
+  }
+  return "unknown";
+}
+
 /** True when this caller has already had its allowance this minute. */
 function isRateLimited(request: NextRequest): boolean {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
+  const ip = getClientIp(request);
   const now = Date.now();
   const seen = requestCounts.get(ip);
 
@@ -78,6 +94,9 @@ function isRateLimited(request: NextRequest): boolean {
       for (const [key, value] of requestCounts) {
         if (now - value.windowStart > RATE_LIMIT_WINDOW_MS) requestCounts.delete(key);
       }
+    }
+    if (requestCounts.size > 10_000) {
+      requestCounts.clear();
     }
     return false;
   }
@@ -97,18 +116,18 @@ function readCache(key: string): unknown | null {
     routeCache.delete(key);
     return null;
   }
+  // LRU renewal: delete and re-insert so frequently accessed routes stay at the tail
+  routeCache.delete(key);
+  routeCache.set(key, hit);
   return hit.route;
 }
 
-function writeCache(key: string, route: unknown): void {
+function writeCache(key: string, route: unknown, ttlMs: number): void {
   if (routeCache.size >= CACHE_MAX_ENTRIES) {
-    // Cheapest possible eviction: drop the oldest insertion. Map preserves
-    // insertion order, and this cache is a cost optimisation, not a
-    // correctness mechanism, so a smarter policy would be over-engineering.
     const oldest = routeCache.keys().next().value;
     if (oldest !== undefined) routeCache.delete(oldest);
   }
-  routeCache.set(key, { expires: Date.now() + CACHE_TTL_MS, route });
+  routeCache.set(key, { expires: Date.now() + ttlMs, route });
 }
 
 export async function GET(request: NextRequest) {
@@ -122,10 +141,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing or invalid coordinates." }, { status: 400 });
   }
 
-  // Only GuestNavigationScreen's in-app turn-by-turn asks for steps — the
-  // map's own line/distance-pill usage (DirectionLine.tsx) never does, to
-  // keep that far-more-frequent call's response small.
-  const includeSteps = searchParams.get("steps") === "1";
+  if (
+    haversineMeters({ lng: originLng, lat: originLat }, { lng: destLng, lat: destLat }) >
+    MAX_ROUTE_DISTANCE_METERS
+  ) {
+    return NextResponse.json({ error: "Route exceeds maximum allowed distance." }, { status: 400 });
+  }
 
   // Validated against the guest app's own locale registry rather than passed
   // through: this reaches a Google request body, and an arbitrary caller
@@ -139,10 +160,13 @@ export async function GET(request: NextRequest) {
   const modeParam = searchParams.get("mode");
   const mode = modeParam === "transit" ? "transit" : modeParam === "bike" ? "bike" : "walk";
 
+  // Cache key unifies requests with and without steps. Google Routes API does
+  // not charge extra for steps in ComputeRoutes, so we always fetch with steps
+  // and cache the complete route. DirectionLine and GuestNavigationScreen now
+  // share the exact same cached route without redundant API calls.
   const key = cacheKey([
     mode,
     languageCode ?? "-",
-    includeSteps ? "steps" : "-",
     originLng.toFixed(CACHE_COORD_DECIMALS),
     originLat.toFixed(CACHE_COORD_DECIMALS),
     destLng.toFixed(CACHE_COORD_DECIMALS),
@@ -169,12 +193,12 @@ export async function GET(request: NextRequest) {
         ? await getBikingRoute(
             { lng: originLng, lat: originLat },
             { lng: destLng, lat: destLat },
-            { includeSteps, languageCode },
+            { includeSteps: true, languageCode },
           )
         : await getWalkingRoute(
             { lng: originLng, lat: originLat },
             { lng: destLng, lat: destLat },
-            { includeSteps, languageCode },
+            { includeSteps: true, languageCode },
           );
 
   if (!route) {
@@ -184,6 +208,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No route found.", mode }, { status: 502 });
   }
 
-  writeCache(key, route);
+  const ttlMs = mode === "transit" ? CACHE_TTL_TRANSIT_MS : CACHE_TTL_WALK_BIKE_MS;
+  writeCache(key, route, ttlMs);
   return NextResponse.json({ route });
 }

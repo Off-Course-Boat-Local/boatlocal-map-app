@@ -129,7 +129,14 @@ export default function GuestDot({ position }: GuestDotProps) {
   const animFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (lng === null || lat === null) return;
+    if (lng === null || lat === null) {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      currentPosRef.current = null;
+      return;
+    }
     const target = { lng, lat };
 
     // Very first fix: place immediately without animation
@@ -147,7 +154,10 @@ export default function GuestDot({ position }: GuestDotProps) {
 
     // If jump is massive (> 400m, e.g. cross-city teleport or mock swap), snap directly
     if (distMeters > 400) {
-      if (animFrameRef.current !== null) cancelAnimationFrame(animFrameRef.current);
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
       currentPosRef.current = target;
       overlayRef.current?.setPosition(target);
       return;
@@ -156,6 +166,7 @@ export default function GuestDot({ position }: GuestDotProps) {
     // Cancel any previous in-flight animation
     if (animFrameRef.current !== null) {
       cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
     }
 
     // Smooth ease-out animation:
@@ -195,6 +206,7 @@ export default function GuestDot({ position }: GuestDotProps) {
     return () => {
       if (animFrameRef.current !== null) {
         cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
       }
     };
   }, [lng, lat]);

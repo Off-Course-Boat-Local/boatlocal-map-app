@@ -331,7 +331,10 @@ function DestinationMarker({ position }: { position: { lng: number; lat: number 
     if (!map) return;
     const overlay = createDomOverlay(map, position, "bottom");
     setEl(overlay.element);
-    return () => overlay.remove();
+    return () => {
+      overlay.remove();
+      setEl(null);
+    };
   }, [map, position.lng, position.lat]);
   if (!el) return null;
   return createPortal(
@@ -400,6 +403,10 @@ export default function GuestNavigationScreen({
   const [arrived, setArrived] = useState(false);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [cameraMode, setCameraMode] = useState<CameraMode>("follow");
+  const cameraModeRef = useRef(cameraMode);
+  useEffect(() => {
+    cameraModeRef.current = cameraMode;
+  }, [cameraMode]);
   const [isNavigating, setIsNavigating] = useState(false);
   const [showStepsDrawer, setShowStepsDrawer] = useState(false);
 
@@ -407,13 +414,15 @@ export default function GuestNavigationScreen({
   const [mapHeading, setMapHeading] = useState(0);
   const [isGesturing, setIsGesturing] = useState(false);
   const mapHeadingRef = useRef(0);
-  mapHeadingRef.current = mapHeading;
+  useEffect(() => {
+    mapHeadingRef.current = mapHeading;
+  }, [mapHeading]);
 
   const gestureContainerRef = useRef<HTMLDivElement | null>(null);
-  const initialAngleRef = useRef<number | null>(null);
-  const initialHeadingRef = useRef(0);
+  const previousTouchAngleRef = useRef<number | null>(null);
   const isRotatingRef = useRef(false);
   const isUsingGestureApiRef = useRef(false);
+  const previousGestureRotationRef = useRef(0);
 
   useEffect(() => {
     const el = gestureContainerRef.current;
@@ -425,11 +434,10 @@ export default function GuestNavigationScreen({
         const t2 = e.touches[1];
         const dx = t2.clientX - t1.clientX;
         const dy = t2.clientY - t1.clientY;
-        initialAngleRef.current = Math.atan2(dy, dx) * (180 / Math.PI);
-        initialHeadingRef.current = mapHeadingRef.current;
+        previousTouchAngleRef.current = Math.atan2(dy, dx) * (180 / Math.PI);
         isRotatingRef.current = false;
       } else {
-        initialAngleRef.current = null;
+        previousTouchAngleRef.current = null;
         isRotatingRef.current = false;
       }
     };
@@ -438,26 +446,27 @@ export default function GuestNavigationScreen({
       // If WebKit gesture events are driving rotation, don't conflict with manual touchmove
       if (isUsingGestureApiRef.current) return;
 
-      if (e.touches.length === 2 && initialAngleRef.current !== null) {
+      if (e.touches.length === 2 && previousTouchAngleRef.current !== null) {
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         const dx = t2.clientX - t1.clientX;
         const dy = t2.clientY - t1.clientY;
         const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-        let delta = currentAngle - initialAngleRef.current;
-        while (delta > 180) delta -= 360;
-        while (delta < -180) delta += 360;
+        let stepDelta = currentAngle - previousTouchAngleRef.current;
+        while (stepDelta > 180) stepDelta -= 360;
+        while (stepDelta < -180) stepDelta += 360;
 
-        // 3-degree threshold to avoid accidental rotation during straight pinch-zoom
-        if (!isRotatingRef.current && Math.abs(delta) > 3) {
+        // 1.5-degree threshold to avoid accidental rotation during straight pinch-zoom
+        if (!isRotatingRef.current && Math.abs(stepDelta) > 1.5) {
           isRotatingRef.current = true;
           setIsGesturing(true);
           setCameraMode("free");
         }
 
         if (isRotatingRef.current) {
-          setMapHeading(initialHeadingRef.current + delta);
+          setMapHeading((prev) => prev + stepDelta);
         }
+        previousTouchAngleRef.current = currentAngle;
       }
     };
 
@@ -466,7 +475,7 @@ export default function GuestNavigationScreen({
         if (isRotatingRef.current) {
           setIsGesturing(false);
           isRotatingRef.current = false;
-          initialAngleRef.current = null;
+          previousTouchAngleRef.current = null;
           setMapHeading((h) => {
             let norm = h % 360;
             if (norm > 180) norm -= 360;
@@ -481,20 +490,25 @@ export default function GuestNavigationScreen({
     // Support Safari / WebKit trackpad and iOS pinch/rotation gestures
     const onGestureStart = () => {
       isUsingGestureApiRef.current = true;
-      initialHeadingRef.current = mapHeadingRef.current;
+      previousGestureRotationRef.current = 0;
       setIsGesturing(true);
       setCameraMode("free");
     };
 
     const onGestureChange = (e: any) => {
       if (typeof e.rotation === "number") {
-        setMapHeading(initialHeadingRef.current + e.rotation);
+        let stepDelta = e.rotation - previousGestureRotationRef.current;
+        while (stepDelta > 180) stepDelta -= 360;
+        while (stepDelta < -180) stepDelta += 360;
+        setMapHeading((prev) => prev + stepDelta);
+        previousGestureRotationRef.current = e.rotation;
       }
     };
 
     const onGestureEnd = () => {
       setIsGesturing(false);
       isUsingGestureApiRef.current = false;
+      previousGestureRotationRef.current = 0;
       setMapHeading((h) => {
         let norm = h % 360;
         if (norm > 180) norm -= 360;
@@ -539,6 +553,7 @@ export default function GuestNavigationScreen({
     setRoute(null);
     setLoadError(false);
     setStepIndex(0);
+    setArrived(false);
     setCameraMode("follow");
     setIsNavigating(false);
     setShowStepsDrawer(false);
@@ -556,9 +571,7 @@ export default function GuestNavigationScreen({
     guestRef.current = guest;
   }, [guest]);
 
-  const inFlightRef = useRef<string | null>(null);
   const loadedKeyRef = useRef<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!guest) return;
@@ -570,18 +583,7 @@ export default function GuestNavigationScreen({
     // Already successfully loaded this route — don't refetch
     if (loadedKeyRef.current === fetchKey && route) return;
 
-    // Already actively fetching this exact key — let it finish
-    if (inFlightRef.current === fetchKey) return;
-
-    // If a request for a different mode is in flight, abort it
-    if (abortRef.current) {
-      abortRef.current.abort();
-      abortRef.current = null;
-    }
-
     const controller = new AbortController();
-    abortRef.current = controller;
-    inFlightRef.current = fetchKey;
     setLoadError(false);
 
     recordGuestEvent({
@@ -620,15 +622,14 @@ export default function GuestNavigationScreen({
         }
       })
       .catch((error: unknown) => {
-        if ((error as { name?: string })?.name === "AbortError") return;
+        if ((error as { name?: string })?.name === "AbortError" || controller.signal.aborted) return;
         setLoadError(true);
         loadedKeyRef.current = null;
-      })
-      .finally(() => {
-        if (inFlightRef.current === fetchKey) {
-          inFlightRef.current = null;
-        }
       });
+
+    return () => {
+      controller.abort();
+    };
   }, [
     Boolean(guest),
     destination.id,
@@ -642,13 +643,6 @@ export default function GuestNavigationScreen({
     Boolean(route),
   ]);
 
-  // Clean up any in-flight request when this screen unmounts
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
-
   /** How close counts as "reached this step", which depends on how the guest got there. */
   function advanceThreshold(step: RouteStep): number {
     return step.travelMode === "TRANSIT" ? TRANSIT_STEP_ADVANCE_METERS : STEP_ADVANCE_METERS;
@@ -656,18 +650,18 @@ export default function GuestNavigationScreen({
 
   // Advance the current step once the guest passes its endpoint.
   //
-  // SCANS FORWARD rather than stepping one at a time: on transit, GPS goes
-  // quiet in a tunnel and comes back several steps later, and even above
-  // ground a vehicle covers the 25 m window between two ~1 Hz fixes. Taking
-  // the FURTHEST satisfied step means a guest who reappears past two of them
-  // lands on the right instruction instead of being stuck one behind
-  // forever, with no way to catch up.
+  // SCANS FORWARD sequentially up to 2 steps ahead to handle brief GPS dropouts
+  // (e.g. entering a tunnel or between 1Hz fixes), but breaks if an intermediate
+  // step is unsatisfied to prevent skipping transit connections or route legs.
   useEffect(() => {
     if (!route || !guest || arrived || route.steps.length === 0) return;
     let next = stepIndex;
-    for (let i = stepIndex; i < route.steps.length - 1; i += 1) {
+    const maxLookahead = Math.min(stepIndex + 2, route.steps.length - 1);
+    for (let i = stepIndex; i <= maxLookahead; i += 1) {
       if (haversineMeters(guest, route.steps[i].endLocation) <= advanceThreshold(route.steps[i])) {
         next = i + 1;
+      } else {
+        break;
       }
     }
     if (next !== stepIndex) setStepIndex(next);
@@ -686,16 +680,17 @@ export default function GuestNavigationScreen({
   // ends navigation, releases the wake lock, swaps the turn-by-turn panel
   // for the review ask, fires `directions_arrived`, and burns the shared
   // once-per-place prompt latch so the map's own arrival banner never shows
-  // either. So: not while the current step is a ride.
+  // either. So: not while riding transit, and in transit mode only on the final leg.
   const destLng = destination.lng;
   const destLat = destination.lat;
   const ridingTransit = route?.steps[stepIndex]?.travelMode === "TRANSIT";
   useEffect(() => {
     if (!guest || arrived || ridingTransit) return;
+    if (mode === "transit" && route && stepIndex < route.steps.length - 1) return;
     if (haversineMeters(guest, { lng: destLng, lat: destLat }) <= ARRIVAL_METERS) {
       setArrived(true);
     }
-  }, [guest, arrived, ridingTransit, destLng, destLat]);
+  }, [guest, arrived, ridingTransit, destLng, destLat, mode, route, stepIndex]);
 
   // The "a guest actually got there" signal behind Admin's Platform
   // analytics and Studio's Report page. Latched through the same
@@ -758,13 +753,13 @@ export default function GuestNavigationScreen({
   useEffect(() => {
     if (!map) return;
     google.maps.event.trigger(map, "resize");
-    if (cameraMode === "follow" && guest) {
-      map.panTo(guest);
+    if (cameraModeRef.current === "follow" && guestRef.current) {
+      map.panTo(guestRef.current);
     }
     const timer = setTimeout(() => {
       google.maps.event.trigger(map, "resize");
-      if (cameraMode === "follow" && guest) {
-        map.panTo(guest);
+      if (cameraModeRef.current === "follow" && guestRef.current) {
+        map.panTo(guestRef.current);
       }
     }, 450);
     return () => clearTimeout(timer);
@@ -1067,7 +1062,10 @@ export default function GuestNavigationScreen({
         <div
           style={{
             position: "absolute",
-            inset: "-100vmax",
+            top: "-25%",
+            left: "-25%",
+            width: "150%",
+            height: "150%",
             transformOrigin: "center center",
             transform: isNavigating
               ? `perspective(1000px) rotateX(22deg) rotateZ(${mapHeading}deg)`

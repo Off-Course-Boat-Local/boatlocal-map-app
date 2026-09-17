@@ -205,10 +205,16 @@ export default function BaseMap({
       idleListener = null;
       mapRef.current = null;
       setMap(null);
-      // Google Maps has no `.remove()`/dispose — clearing listeners and
-      // letting the container (and the Map instance with it) get garbage
-      // collected on unmount is the documented cleanup story.
-      void created;
+
+      if (created) {
+        google.maps.event.clearInstanceListeners(created);
+      }
+      if (container) {
+        container.replaceChildren();
+      }
+      if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+        delete (window as unknown as { __map?: google.maps.Map }).__map;
+      }
     };
     // Intentionally mount-only. See `initialRef` above.
     // eslint-disable-next-line react-hooks/exhaustive-deps

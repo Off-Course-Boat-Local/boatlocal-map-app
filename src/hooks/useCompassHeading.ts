@@ -111,6 +111,13 @@ function iosOrientationStatic(): IOSDeviceOrientationEventStatic | undefined {
  * result matches a real compass regardless of how the phone is held.
  */
 function tiltCompensatedHeading(alphaDeg: number, betaDeg: number, gammaDeg: number): number {
+  // If the device is lying flat, Euler tilt-compensation components rA and rB
+  // collapse towards 0, causing atan2(0, 0) = 0 (locking compass to north).
+  // In this flat plane, the true-north heading is simply (360 - alpha) % 360.
+  if (Math.abs(betaDeg) < 5 && Math.abs(gammaDeg) < 5) {
+    return (360 - alphaDeg) % 360;
+  }
+
   const alpha = (alphaDeg * Math.PI) / 180;
   const beta = (betaDeg * Math.PI) / 180;
   const gamma = (gammaDeg * Math.PI) / 180;
@@ -125,6 +132,10 @@ function tiltCompensatedHeading(alphaDeg: number, betaDeg: number, gammaDeg: num
   // device's own frame after undoing its alpha/beta/gamma rotation.
   const rA = -cA * sG - sA * sB * cG;
   const rB = -sA * sG + cA * sB * cG;
+
+  if (Math.abs(rA) < 1e-6 && Math.abs(rB) < 1e-6) {
+    return (360 - alphaDeg) % 360;
+  }
 
   let heading = Math.atan2(rA, rB);
   if (heading < 0) heading += 2 * Math.PI;
