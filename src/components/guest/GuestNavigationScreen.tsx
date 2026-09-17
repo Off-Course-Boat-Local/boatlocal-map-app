@@ -371,6 +371,122 @@ export default function GuestNavigationScreen({
   const [isNavigating, setIsNavigating] = useState(false);
   const [showStepsDrawer, setShowStepsDrawer] = useState(false);
 
+  // Free-form map rotation via two-finger twist gesture or trackpad
+  const [mapHeading, setMapHeading] = useState(0);
+  const [isGesturing, setIsGesturing] = useState(false);
+  const mapHeadingRef = useRef(0);
+  mapHeadingRef.current = mapHeading;
+
+  const gestureContainerRef = useRef<HTMLDivElement | null>(null);
+  const initialAngleRef = useRef<number | null>(null);
+  const initialHeadingRef = useRef(0);
+  const isRotatingRef = useRef(false);
+
+  useEffect(() => {
+    const el = gestureContainerRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dx = t2.clientX - t1.clientX;
+        const dy = t2.clientY - t1.clientY;
+        initialAngleRef.current = Math.atan2(dy, dx) * (180 / Math.PI);
+        initialHeadingRef.current = mapHeadingRef.current;
+        isRotatingRef.current = false;
+      } else {
+        initialAngleRef.current = null;
+        isRotatingRef.current = false;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && initialAngleRef.current !== null) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dx = t2.clientX - t1.clientX;
+        const dy = t2.clientY - t1.clientY;
+        const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+        let delta = currentAngle - initialAngleRef.current;
+        while (delta > 180) delta -= 360;
+        while (delta < -180) delta += 360;
+
+        // 3-degree threshold to avoid accidental rotation during straight pinch-zoom
+        if (!isRotatingRef.current && Math.abs(delta) > 3) {
+          isRotatingRef.current = true;
+          setIsGesturing(true);
+          setCameraMode("free");
+        }
+
+        if (isRotatingRef.current) {
+          setMapHeading(initialHeadingRef.current + delta);
+        }
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        if (isRotatingRef.current) {
+          setIsGesturing(false);
+          isRotatingRef.current = false;
+          initialAngleRef.current = null;
+          setMapHeading((h) => {
+            let norm = h % 360;
+            if (norm > 180) norm -= 360;
+            if (norm < -180) norm += 360;
+            if (Math.abs(norm) < 6) return 0;
+            return norm;
+          });
+        }
+      }
+    };
+
+    // Support Safari / WebKit trackpad rotation gestures
+    const onGestureStart = (e: any) => {
+      initialHeadingRef.current = mapHeadingRef.current;
+      setIsGesturing(true);
+      setCameraMode("free");
+    };
+
+    const onGestureChange = (e: any) => {
+      if (typeof e.rotation === "number") {
+        setMapHeading(initialHeadingRef.current + e.rotation);
+      }
+    };
+
+    const onGestureEnd = () => {
+      setIsGesturing(false);
+      setMapHeading((h) => {
+        let norm = h % 360;
+        if (norm > 180) norm -= 360;
+        if (norm < -180) norm += 360;
+        if (Math.abs(norm) < 6) return 0;
+        return norm;
+      });
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
+    el.addEventListener("touchmove", onTouchMove, { capture: true, passive: true });
+    el.addEventListener("touchend", onTouchEnd, { capture: true, passive: true });
+    el.addEventListener("touchcancel", onTouchEnd, { capture: true, passive: true });
+
+    el.addEventListener("gesturestart", onGestureStart);
+    el.addEventListener("gesturechange", onGestureChange);
+    el.addEventListener("gestureend", onGestureEnd);
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart, { capture: true });
+      el.removeEventListener("touchmove", onTouchMove, { capture: true });
+      el.removeEventListener("touchend", onTouchEnd, { capture: true });
+      el.removeEventListener("touchcancel", onTouchEnd, { capture: true });
+
+      el.removeEventListener("gesturestart", onGestureStart);
+      el.removeEventListener("gesturechange", onGestureChange);
+      el.removeEventListener("gestureend", onGestureEnd);
+    };
+  }, []);
+
   /** Tab tap handler — clears the previous mode's route/progress so nothing stale is shown while the new one loads. */
   function switchMode(next: "walk" | "bike" | "transit") {
     if (next === mode) return;
@@ -596,17 +712,17 @@ export default function GuestNavigationScreen({
   useEffect(() => {
     if (!map) return;
     google.maps.event.trigger(map, "resize");
-    if (isNavigating && guest) {
+    if (cameraMode === "follow" && guest) {
       map.panTo(guest);
     }
     const timer = setTimeout(() => {
       google.maps.event.trigger(map, "resize");
-      if (isNavigating && guest) {
+      if (cameraMode === "follow" && guest) {
         map.panTo(guest);
       }
     }, 450);
     return () => clearTimeout(timer);
-  }, [isNavigating, map, guest]);
+  }, [isNavigating, map]);
 
   /* ---- Live progress --------------------------------------------- */
 
@@ -866,6 +982,7 @@ export default function GuestNavigationScreen({
 
       {/* Map ----------------------------------------------------------- */}
       <div
+        ref={gestureContainerRef}
         style={{
           position: isNavigating ? "absolute" : "relative",
           inset: isNavigating ? 0 : undefined,
@@ -878,12 +995,20 @@ export default function GuestNavigationScreen({
         <div
           style={{
             position: "absolute",
-            inset: isNavigating ? "-90% -60% -100% -60%" : 0,
+            inset: isNavigating
+              ? "-100% -120% -100% -120%"
+              : mapHeading !== 0
+                ? "-60% -70% -60% -70%"
+                : 0,
             transform: isNavigating
-              ? "perspective(1000px) rotateX(26deg)"
-              : "none",
-            transformOrigin: "50% 75%",
-            transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), inset 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+              ? `perspective(1000px) rotateX(26deg) rotateZ(${mapHeading}deg)`
+              : mapHeading !== 0
+                ? `rotate(${mapHeading}deg)`
+                : "none",
+            transformOrigin: isNavigating ? "50% 75%" : "50% 50%",
+            transition: isGesturing
+              ? "none"
+              : "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), inset 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
           <BaseMap
@@ -1021,6 +1146,60 @@ export default function GuestNavigationScreen({
                 {t.navigation.recenter}
               </>
             )}
+          </button>
+        )}
+
+        {/* Compass indicator & reset-to-North button */}
+        {(isNavigating || Math.abs(mapHeading) > 0.5) && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsGesturing(false);
+              setMapHeading(0);
+            }}
+            aria-label="Reset map orientation to North"
+            title="Reset North"
+            className="pointer-events-auto absolute flex size-10 items-center justify-center rounded-full bg-white/95 shadow-md transition active:scale-90 cursor-pointer"
+            style={{
+              right: 12,
+              bottom: isNavigating
+                ? "calc(env(safe-area-inset-bottom) + 82px)"
+                : 12,
+              border: `1px solid ${BORDER}`,
+              boxShadow: SHADOW_FLOAT,
+              zIndex: 35,
+              transition: "bottom 0.25s ease, opacity 0.2s ease",
+            }}
+          >
+            <svg
+              width={26}
+              height={26}
+              viewBox="0 0 28 28"
+              aria-hidden
+              style={{
+                transform: `rotate(${-mapHeading}deg)`,
+                transition: isGesturing ? "none" : "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
+            >
+              {/* North needle (red) */}
+              <polygon points="14,4 17.5,14 14,12.5 10.5,14" fill="#E53935" />
+              {/* South needle (silver) */}
+              <polygon points="14,24 17.5,14 14,15.5 10.5,14" fill="#9E9E9E" />
+              {/* Center pivot */}
+              <circle cx="14" cy="14" r="2" fill="#333333" />
+              {/* North "N" mark */}
+              <text
+                x="14"
+                y="3.5"
+                textAnchor="middle"
+                fontSize="5.5"
+                fontWeight="900"
+                fill="#E53935"
+                fontFamily="system-ui, -apple-system, sans-serif"
+              >
+                N
+              </text>
+            </svg>
           </button>
         )}
       </div>
