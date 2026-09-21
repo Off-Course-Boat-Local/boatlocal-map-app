@@ -4,16 +4,29 @@ import { COMPANY_NAV, GUIDE_NAV, navForRole } from "./nav";
 
 describe("Studio nav gating", () => {
   it("gives company the full nav, in the specified order", () => {
-    expect(navForRole("company")).toBe(COMPANY_NAV);
+    expect(navForRole("company")).toEqual(COMPANY_NAV);
     expect(COMPANY_NAV.map((i) => i.label)).toEqual([
       "Dashboard",
       "Branding",
       "Guides",
       "Recommendations",
-      "Boat tours",
+      "Tours",
+      "Routes",
+      "Events",
       "Campaign",
       "Report",
+      "Settings",
     ]);
+  });
+
+  it("filters routes or events when disabled in company modules", () => {
+    const navWithoutRoutes = navForRole("company", { routes: false, events: true });
+    expect(navWithoutRoutes.some((i) => i.key === "routes")).toBe(false);
+    expect(navWithoutRoutes.some((i) => i.key === "events")).toBe(true);
+
+    const navWithoutEvents = navForRole("company", { routes: true, events: false });
+    expect(navWithoutEvents.some((i) => i.key === "routes")).toBe(true);
+    expect(navWithoutEvents.some((i) => i.key === "events")).toBe(false);
   });
 
   it("gives guide only Dashboard, Recommendations, Profile and Settings", () => {

@@ -143,7 +143,7 @@ export default async function AdminAnalyticsPage({
           title="Effectiveness (PRD §2.3 supporting metrics)"
           description="Live counts aggregated from events, scoped to the filters above."
         />
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {effectiveness.map((metric) => (
             <div key={metric.key}>
               <Eyebrow>{metric.label}</Eyebrow>

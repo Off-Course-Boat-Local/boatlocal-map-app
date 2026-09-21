@@ -87,7 +87,9 @@ import { groupPinsByLocation } from "@/lib/mapPinClusters";
 import { AMSTERDAM_CENTER } from "@/lib/data";
 import type { MapPin } from "@/lib/data";
 import { bodyFontFamily, displayFontFamily } from "@/lib/fonts";
-import type { Brand, CategoryId } from "@/lib/types";
+import type { Brand, CategoryId, CompanyEvent, Route } from "@/lib/types";
+import { GuestEventsSection } from "./GuestEventsSection";
+import { GuestRoutesSection } from "./GuestRoutesSection";
 
 /* Neutral chrome — never re-skins (brand colour only via --brand-primary). */
 const INK = "#0B1421";
@@ -126,6 +128,8 @@ export interface GuestMapScreenProps {
   /** Who that drawer is signed by — the guide, else the company. */
   reviewSignature?: string;
   pins: MapPin[];
+  routes?: Route[];
+  events?: CompanyEvent[];
 }
 
 export default function GuestMapScreen({
@@ -136,7 +140,11 @@ export default function GuestMapScreen({
   reviewUrl,
   reviewSignature,
   pins: allPins,
+  routes = [],
+  events = [],
 }: GuestMapScreenProps) {
+  const [showRoutesDrawer, setShowRoutesDrawer] = useState(false);
+  const [showEventsDrawer, setShowEventsDrawer] = useState(false);
   const { filter, setFilter } = useGuestFilter();
   const { t } = useI18n();
   const searchParams = useSearchParams();
@@ -501,6 +509,34 @@ export default function GuestMapScreen({
           style={{ padding: "0 16px" }}
         />
 
+        {/* Quick Access to Routes / Events if company has any */}
+        {(routes.length > 0 || events.length > 0) && (
+          <div className="mt-2 flex gap-2 px-4 pointer-events-auto overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {routes.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowRoutesDrawer(true)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur transition-transform active:scale-95 cursor-pointer"
+                style={{ boxShadow: CARD_SHADOW, color: INK }}
+              >
+                <span className="flex size-2 rounded-full bg-emerald-500" />
+                <span>Routes ({routes.length})</span>
+              </button>
+            )}
+            {events.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowEventsDrawer(true)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur transition-transform active:scale-95 cursor-pointer"
+                style={{ boxShadow: CARD_SHADOW, color: INK }}
+              >
+                <span className="flex size-2 rounded-full bg-purple-500" />
+                <span>Events ({events.length})</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Arrival-triggered review prompt — see ARRIVAL_THRESHOLD_METERS
             and the detection effect above. Dismissing it is permanent for
             this place this session (markArrivalPromptShown already fired
@@ -711,6 +747,58 @@ export default function GuestMapScreen({
           logoUrl={brand.logoUrl}
           onClose={() => setShowReviewPrompt(false)}
         />
+      )}
+
+      {showRoutesDrawer && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-xs sm:items-center sm:p-4"
+          onClick={() => setShowRoutesDrawer(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-t-3xl bg-white pb-6 pt-4 shadow-2xl sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#F1F3F6] px-5 pb-3">
+              <h3 className="text-base font-bold text-[#0B1421]">Curated Routes</h3>
+              <button
+                type="button"
+                onClick={() => setShowRoutesDrawer(false)}
+                className="grid size-8 place-items-center rounded-full bg-[#F1F3F6] text-[#657386]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="mt-2 max-h-[70vh] overflow-y-auto">
+              <GuestRoutesSection routes={routes} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEventsDrawer && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-xs sm:items-center sm:p-4"
+          onClick={() => setShowEventsDrawer(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-t-3xl bg-white pb-6 pt-4 shadow-2xl sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#F1F3F6] px-5 pb-3">
+              <h3 className="text-base font-bold text-[#0B1421]">Upcoming Events & Specials</h3>
+              <button
+                type="button"
+                onClick={() => setShowEventsDrawer(false)}
+                className="grid size-8 place-items-center rounded-full bg-[#F1F3F6] text-[#657386]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="mt-2 max-h-[70vh] overflow-y-auto">
+              <GuestEventsSection events={events} />
+            </div>
+          </div>
+        </div>
       )}
 
       {navigationTarget && (

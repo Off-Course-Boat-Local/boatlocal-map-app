@@ -128,6 +128,12 @@ export function parseRecommendationForm(formData: FormData): ParseRecommendation
       ? Number(googleReviewCountRaw)
       : undefined;
 
+  const cuisineTypes = formData
+    .getAll("cuisineTypes")
+    .flatMap((c) => String(c).split(","))
+    .map((c) => c.trim())
+    .filter(Boolean);
+
   return {
     ok: true,
     value: {
@@ -144,6 +150,7 @@ export function parseRecommendationForm(formData: FormData): ParseRecommendation
       visible,
       googleRating,
       googleReviewCount,
+      cuisineTypes,
     },
   };
 }

@@ -120,10 +120,12 @@ export default async function AdminCompanyDetailPage({
           title="Performance"
           description="Last 30 days."
         />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard label="App opens" value={performance.appOpens} />
           <StatCard label="Tips saved" value={performance.tipsSaved} />
           <StatCard label="Book clicks" value={performance.bookClicks} />
+          <StatCard label="Directions asked" value={performance.directionsAsked} />
+          <StatCard label="Directions finished" value={performance.directionsFinished} />
         </div>
       </section>
 

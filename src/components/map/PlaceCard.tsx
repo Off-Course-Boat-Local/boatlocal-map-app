@@ -44,6 +44,7 @@ export interface PlaceCardItem {
   photos: string[];
   isBoat: boolean;
   bookingUrl?: string;
+  cuisineTypes?: string[];
   googleRating: number | null;
   googleReviewCount: number | null;
 }
@@ -417,9 +418,8 @@ export function PlaceCard({
             />
           )}
           {/* No locator text (e.g. a BoatLocal-synced cruise, whose feed has
-              no location name — area is "") means no row at all: an orphaned
-              icon with nothing after it reads as a glitch. */}
-          {locator.trim() !== "" && (
+          {/* Location & cuisine sub-labels line */}
+          {(locator.trim() !== "" || (item.cuisineTypes && item.cuisineTypes.length > 0)) && (
             <p
               style={{
                 margin: "4px 0 0",
@@ -439,7 +439,15 @@ export function PlaceCard({
               ) : (
                 <MapPinIcon size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
               )}
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{locator}</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                {locator.trim() !== "" && <span>{locator}</span>}
+                {locator.trim() !== "" && item.cuisineTypes && item.cuisineTypes.length > 0 ? " · " : ""}
+                {item.cuisineTypes && item.cuisineTypes.length > 0 ? (
+                  <span style={{ fontWeight: 600, color: "var(--brand-primary)" }}>
+                    {item.cuisineTypes.join(", ")}
+                  </span>
+                ) : null}
+              </span>
             </p>
           )}
           <p

@@ -70,6 +70,7 @@ const FUNNEL = [
   ["tip_saved", 28],
   ["tip_unsaved", 5],
   ["directions_requested", 22],
+  ["directions_arrived", 16],
   ["boat_book_click", 14],
   ["booking_outcome", 2],
   ["review_click_google", 6],

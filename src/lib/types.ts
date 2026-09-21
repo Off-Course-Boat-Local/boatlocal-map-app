@@ -76,7 +76,11 @@ export interface Place {
    */
   googleRating: number | null;
   googleReviewCount: number | null;
+  /** Cuisine sub-labels (e.g. Dutch, Indonesian, Italian) for food/drink establishments. */
+  cuisineTypes: string[];
 }
+
+export type TourTransportType = "boat" | "bike" | "walk" | "food" | "other";
 
 export interface BoatTour {
   id: string;
@@ -95,6 +99,63 @@ export interface BoatTour {
   bookingUrl: string;
   photos: string[];
   position: number;
+  companyId?: string | null;
+  tourType?: TourTransportType;
+}
+
+export type RouteTransportMode = "bike" | "walk" | "boat" | "drive";
+
+export interface RouteStop {
+  id: string;
+  routeId: string;
+  recommendationId?: string | null;
+  title: string;
+  description: string;
+  lng: number;
+  lat: number;
+  address: string;
+  photos: string[];
+  stopOrder: number;
+}
+
+export interface Route {
+  id: string;
+  companyId: string;
+  title: string;
+  slug?: string | null;
+  transportMode: RouteTransportMode;
+  summary: string;
+  description: string;
+  durationMinutes?: number | null;
+  distanceMeters?: number | null;
+  polyline?: string | null;
+  photos: string[];
+  position: number;
+  isPublished: boolean;
+  stops: RouteStop[];
+}
+
+export interface CompanyEvent {
+  id: string;
+  companyId: string;
+  title: string;
+  description: string;
+  startTime: string;
+  endTime?: string | null;
+  venueName?: string | null;
+  address: string;
+  lng: number;
+  lat: number;
+  photos: string[];
+  ticketUrl?: string | null;
+  priceLabel?: string | null;
+  isPublished: boolean;
+}
+
+export interface CompanyModules {
+  routes?: boolean;
+  events?: boolean;
+  custom_tours?: boolean;
 }
 
 export interface Guide {

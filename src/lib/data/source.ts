@@ -64,7 +64,7 @@ import { CATEGORY_MAP } from "../categories";
 import type { MapPin } from "../data";
 import { parseBoatLocalCruise } from "../boatlocalCatalog";
 import { initialFromName, uniqueSlug } from "../slug";
-import type { Brand, CategoryId, Guide, Place } from "../types";
+import type { Brand, CategoryId, CompanyEvent, CompanyModules, Guide, Place, Route, RouteStop, RouteTransportMode, TourTransportType } from "../types";
 import type { BoatTour as BoatTourView } from "../types";
 import { fakeId, fakeStore } from "./fakeStore";
 import type {
@@ -73,6 +73,7 @@ import type {
   BoatLocalCruise,
   BoatTourRecord,
   BoatTourStatus,
+  CompanyEventRecord,
   CompanyRecord,
   CompanyStatus,
   CompanyType,
@@ -87,8 +88,13 @@ import type {
   NewGuestReviewInput,
   RecommendationOwnerType,
   RecommendationRecord,
+  RouteRecord,
+  RouteStopRecord,
   SaveBoatTourInput,
+  SaveCompanyEventInput,
   SaveRecommendationInput,
+  SaveRouteInput,
+  SaveRouteStopInput,
   StudioActor,
   UpdateGuideProfileInput,
 } from "./types";
@@ -244,6 +250,7 @@ interface CompanyRow {
   status: CompanyStatus;
   owner_email: string | null;
   owner_status: "invited" | "active" | null;
+  modules?: CompanyModules | null;
   // owner_invite_token is deliberately NOT declared here. This interface
   // shapes every `select("*")` result this module works with, and
   // fromCompanyRow() below is the ONLY place a CompanyRow becomes a
@@ -275,6 +282,7 @@ function fromCompanyRow(row: CompanyRow): CompanyRecord {
     status: row.status,
     ownerEmail: row.owner_email,
     ownerStatus: row.owner_status,
+    modules: row.modules ?? { routes: false, events: false, custom_tours: false },
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -329,6 +337,7 @@ interface RecommendationRow {
   visible: boolean;
   google_rating: number | null;
   google_review_count: number | null;
+  cuisine_types: string[] | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -352,6 +361,7 @@ function fromRecommendationRow(row: RecommendationRow): RecommendationRecord {
     visible: row.visible,
     googleRating: row.google_rating,
     googleReviewCount: row.google_review_count,
+    cuisineTypes: row.cuisine_types ?? [],
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -384,6 +394,8 @@ interface BoatTourRow {
   cruise_duration: string | null;
   starting_price_cents: number | null;
   price_currency: string | null;
+  company_id?: string | null;
+  tour_type?: string | null;
 }
 
 function fromBoatTourRow(row: BoatTourRow): BoatTourRecord {
@@ -413,6 +425,117 @@ function fromBoatTourRow(row: BoatTourRow): BoatTourRecord {
     cruiseDuration: row.cruise_duration,
     startingPriceCents: row.starting_price_cents,
     priceCurrency: row.price_currency,
+    companyId: row.company_id ?? null,
+    tourType: (row.tour_type as TourTransportType) ?? "boat",
+  };
+}
+
+interface RouteStopRow {
+  id: string;
+  route_id: string;
+  recommendation_id: string | null;
+  title: string;
+  description: string;
+  lng: number;
+  lat: number;
+  address: string;
+  photos: string[];
+  stop_order: number;
+  created_at: string;
+}
+
+function fromRouteStopRow(row: RouteStopRow): RouteStop {
+  return {
+    id: row.id,
+    routeId: row.route_id,
+    recommendationId: row.recommendation_id,
+    title: row.title,
+    description: row.description,
+    lng: row.lng,
+    lat: row.lat,
+    address: row.address,
+    photos: row.photos ?? [],
+    stopOrder: row.stop_order,
+  };
+}
+
+interface RouteRow {
+  id: string;
+  company_id: string;
+  title: string;
+  slug: string | null;
+  transport_mode: RouteTransportMode;
+  summary: string;
+  description: string;
+  duration_minutes: number | null;
+  distance_meters: number | null;
+  polyline: string | null;
+  photos: string[];
+  position: number;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+  route_stops?: RouteStopRow[];
+}
+
+function fromRouteRow(row: RouteRow, stops: RouteStop[] = []): Route {
+  const mergedStops = stops.length > 0
+    ? stops
+    : (row.route_stops ?? []).map(fromRouteStopRow);
+
+  return {
+    id: row.id,
+    companyId: row.company_id,
+    title: row.title,
+    slug: row.slug,
+    transportMode: row.transport_mode ?? "bike",
+    summary: row.summary,
+    description: row.description,
+    durationMinutes: row.duration_minutes,
+    distanceMeters: row.distance_meters,
+    polyline: row.polyline,
+    photos: row.photos ?? [],
+    position: row.position,
+    isPublished: row.is_published,
+    stops: mergedStops.sort((a, b) => a.stopOrder - b.stopOrder),
+  };
+}
+
+interface CompanyEventRow {
+  id: string;
+  company_id: string;
+  title: string;
+  description: string;
+  start_time: string;
+  end_time: string | null;
+  venue_name: string | null;
+  address: string;
+  lng: number;
+  lat: number;
+  photos: string[];
+  ticket_url: string | null;
+  price_label: string | null;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+function fromCompanyEventRow(row: CompanyEventRow): CompanyEvent {
+  return {
+    id: row.id,
+    companyId: row.company_id,
+    title: row.title,
+    description: row.description,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    venueName: row.venue_name,
+    address: row.address,
+    lng: row.lng,
+    lat: row.lat,
+    photos: row.photos ?? [],
+    ticketUrl: row.ticket_url,
+    priceLabel: row.price_label,
+    isPublished: row.is_published,
   };
 }
 
@@ -471,6 +594,7 @@ function toPlace(rec: RecommendationRecord): Place {
     photos: rec.photos,
     googleRating: rec.googleRating,
     googleReviewCount: rec.googleReviewCount,
+    cuisineTypes: rec.cuisineTypes ?? [],
   };
 }
 
@@ -491,6 +615,8 @@ function toBoatTourView(tour: BoatTourRecord): BoatTourView {
     bookingUrl: tour.bookingUrl,
     photos: tour.photos,
     position: tour.position,
+    companyId: tour.companyId ?? null,
+    tourType: tour.tourType ?? "boat",
   };
 }
 
@@ -752,25 +878,49 @@ export async function getBoatTours(companyId: string): Promise<BoatTourView[]> {
         .filter((f) => f.companyId === companyId && f.isFeatured)
         .map((f) => [f.boatTourId, f]),
     );
-    return fakeStore.boatTours
-      .filter((t) => features.has(t.id) && t.status === "active")
+    const featuredTours = fakeStore.boatTours
+      .filter((t) => features.has(t.id) && t.status === "active" && !t.companyId)
       .sort((a, b) => features.get(a.id)!.position - features.get(b.id)!.position)
       .map(toBoatTourView);
+
+    const customTours = fakeStore.boatTours
+      .filter((t) => t.companyId === companyId && t.status === "active")
+      .sort((a, b) => a.position - b.position)
+      .map(toBoatTourView);
+
+    return [...customTours, ...featuredTours];
   }
 
-  const { data, error } = await anonClient()
-    .from("company_boat_features")
-    .select("position, boat_tours(*)")
-    .eq("company_id", companyId)
-    .eq("is_featured", true)
-    .order("position");
-  if (error) throw error;
+  const anon = anonClient();
+  const [featRes, customRes] = await Promise.all([
+    anon
+      .from("company_boat_features")
+      .select("position, boat_tours(*)")
+      .eq("company_id", companyId)
+      .eq("is_featured", true)
+      .order("position"),
+    anon
+      .from("boat_tours")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("status", "active")
+      .order("position"),
+  ]);
 
-  const rows = (data ?? []) as unknown as CompanyBoatFeatureJoinRow[];
-  return rows
+  if (featRes.error) throw featRes.error;
+  if (customRes.error) throw customRes.error;
+
+  const featRows = (featRes.data ?? []) as unknown as CompanyBoatFeatureJoinRow[];
+  const featured = featRows
     .map((row) => (Array.isArray(row.boat_tours) ? row.boat_tours[0] : row.boat_tours))
     .filter((tour): tour is BoatTourRow => !!tour && tour.status === "active")
     .map((tour) => toBoatTourView(fromBoatTourRow(tour)));
+
+  const custom = ((customRes.data ?? []) as BoatTourRow[]).map((t) =>
+    toBoatTourView(fromBoatTourRow(t)),
+  );
+
+  return [...custom, ...featured];
 }
 
 interface MapPinRow {
@@ -790,6 +940,7 @@ interface MapPinRow {
   booking_url: string | null;
   google_rating: number | null;
   google_review_count: number | null;
+  cuisine_types: string[] | null;
 }
 
 /**
@@ -835,6 +986,7 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
       bookingUrl: t.bookingUrl,
       googleRating: null,
       googleReviewCount: null,
+      cuisineTypes: [],
     }));
 
     const placePins: MapPin[] = places.map((p) => ({
@@ -850,6 +1002,7 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
       isBoat: false,
       googleRating: p.googleRating,
       googleReviewCount: p.googleReviewCount,
+      cuisineTypes: p.cuisineTypes ?? [],
     }));
 
     return [...boatPins, ...placePins];
@@ -876,6 +1029,7 @@ export async function getMapPins(companyId: string): Promise<MapPin[]> {
     bookingUrl: row.is_boat ? (row.booking_url ?? undefined) : undefined,
     googleRating: row.google_rating,
     googleReviewCount: row.google_review_count,
+    cuisineTypes: row.cuisine_types ?? [],
   }));
 }
 
@@ -2147,6 +2301,8 @@ export async function saveRecommendation(
           input.googleReviewCount !== undefined
             ? input.googleReviewCount
             : existing.googleReviewCount,
+        cuisineTypes:
+          input.cuisineTypes !== undefined ? input.cuisineTypes : existing.cuisineTypes ?? [],
         updatedAt: new Date().toISOString(),
       });
       return existing;
@@ -2170,6 +2326,7 @@ export async function saveRecommendation(
       visible: input.visible ?? true,
       googleRating: input.googleRating ?? null,
       googleReviewCount: input.googleReviewCount ?? null,
+      cuisineTypes: input.cuisineTypes ?? [],
       createdBy: null,
       createdAt: created,
       updatedAt: created,
@@ -2217,6 +2374,10 @@ export async function saveRecommendation(
           input.googleReviewCount !== undefined
             ? input.googleReviewCount
             : existing.google_review_count,
+        cuisine_types:
+          input.cuisineTypes !== undefined
+            ? input.cuisineTypes
+            : existing.cuisine_types ?? [],
       })
       .eq("id", input.id)
       .select("*")
@@ -2248,6 +2409,7 @@ export async function saveRecommendation(
       visible: input.visible ?? true,
       google_rating: input.googleRating ?? null,
       google_review_count: input.googleReviewCount ?? null,
+      cuisine_types: input.cuisineTypes ?? [],
     })
     .select("*")
     .single();
@@ -3596,3 +3758,721 @@ export async function deleteCompany(actor: StudioActor, companyId: string): Prom
 export function categoryLabel(id: CategoryId): string {
   return CATEGORY_MAP[id]?.label ?? id;
 }
+
+// =============================================================================
+// Tour Operator Modules, Custom Tours, Routes & Events
+// =============================================================================
+
+/** Updates company modules configuration (routes, events, custom_tours). */
+export async function updateCompanyModules(
+  actor: StudioActor,
+  companyId: string,
+  modules: CompanyModules,
+): Promise<CompanyRecord> {
+  if (actor.role === "guide") {
+    throw new StudioPermissionError("Only company owners or admin may change module settings.");
+  }
+  if (actor.role === "company" && actor.companyId !== companyId) {
+    throw new StudioPermissionError("Cannot modify modules for another company.");
+  }
+
+  if (isTestEnv) {
+    const company = fakeStore.companies.find((c) => c.id === companyId);
+    if (!company) throw new StudioPermissionError(`Company ${companyId} not found.`);
+    company.modules = { ...company.modules, ...modules };
+    company.updatedAt = new Date().toISOString();
+    return company;
+  }
+
+  const supabase = await authedClient();
+  const { data, error } = await supabase
+    .from("companies")
+    .update({ modules })
+    .eq("id", companyId)
+    .select("*")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new StudioPermissionError(`Company ${companyId} not found.`);
+  return fromCompanyRow(data as CompanyRow);
+}
+
+/** Saves an operator custom tour (boat, bike, walk, etc.). */
+export async function saveCustomTour(
+  actor: StudioActor,
+  input: SaveBoatTourInput,
+): Promise<BoatTourRecord> {
+  if (actor.role === "guide") {
+    throw new StudioPermissionError("Only company owners or admin may save custom tours.");
+  }
+  const companyId = actor.role === "admin" ? (input.companyId ?? null) : actor.companyId;
+  if (!companyId) {
+    throw new StudioPermissionError("Custom tours must belong to a company.");
+  }
+
+  if (isTestEnv) {
+    if (input.id) {
+      const existing = fakeStore.boatTours.find((t) => t.id === input.id);
+      if (!existing) throw new StudioPermissionError(`Tour ${input.id} not found.`);
+      if (actor.role === "company" && existing.companyId !== actor.companyId) {
+        throw new StudioPermissionError("Cannot edit another company's tour.");
+      }
+      Object.assign(existing, {
+        name: input.name,
+        area: input.area,
+        lng: input.lng,
+        lat: input.lat,
+        meta: input.meta,
+        note: input.note,
+        bookingUrl: input.bookingUrl,
+        photos: input.photos ?? existing.photos,
+        position: input.position ?? existing.position,
+        status: input.status ?? existing.status,
+        tourType: input.tourType ?? existing.tourType ?? "boat",
+        updatedAt: new Date().toISOString(),
+      });
+      return existing;
+    }
+
+    const created = new Date().toISOString();
+    const maxPosition = fakeStore.boatTours
+      .filter((t) => t.companyId === companyId)
+      .reduce((max, t) => Math.max(max, t.position), 0);
+
+    const record: BoatTourRecord = {
+      id: fakeId("custom-tour"),
+      name: input.name,
+      area: input.area,
+      lng: input.lng,
+      lat: input.lat,
+      meta: input.meta,
+      note: input.note,
+      bookingUrl: input.bookingUrl,
+      photos: input.photos ?? [],
+      position: input.position ?? maxPosition + 1,
+      status: input.status ?? "active",
+      companyId,
+      tourType: input.tourType ?? "boat",
+      createdAt: created,
+      updatedAt: created,
+      boatlocalId: null,
+      fareharborPk: null,
+      slug: null,
+      cruiseType: null,
+      boatlocalActive: null,
+      deactivationReason: null,
+      boatlocalUpdatedAt: null,
+      boatlocalHeadline: null,
+      locationSource: null,
+      cruiseDuration: null,
+      startingPriceCents: null,
+      priceCurrency: null,
+    };
+    fakeStore.boatTours.push(record);
+    return record;
+  }
+
+  const supabase = await authedClient();
+
+  if (input.id) {
+    const updates: Partial<BoatTourRow> = {
+      name: input.name,
+      area: input.area,
+      lng: input.lng,
+      lat: input.lat,
+      meta: input.meta,
+      note: input.note,
+      booking_url: input.bookingUrl,
+      photos: input.photos,
+      tour_type: input.tourType,
+    };
+    if (input.position !== undefined) updates.position = input.position;
+    if (input.status !== undefined) updates.status = input.status;
+
+    let query = supabase.from("boat_tours").update(updates).eq("id", input.id);
+    if (actor.role === "company") {
+      query = query.eq("company_id", actor.companyId);
+    }
+    const { data, error } = await query.select("*").maybeSingle();
+    if (error) throw error;
+    if (!data) throw new StudioPermissionError(`Tour ${input.id} not found.`);
+    return fromBoatTourRow(data as BoatTourRow);
+  }
+
+  const { data: maxRow, error: maxError } = await supabase
+    .from("boat_tours")
+    .select("position")
+    .eq("company_id", companyId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (maxError) throw maxError;
+  const maxPosition = (maxRow as Pick<BoatTourRow, "position"> | null)?.position ?? 0;
+
+  const { data, error } = await supabase
+    .from("boat_tours")
+    .insert({
+      company_id: companyId,
+      name: input.name,
+      area: input.area,
+      lng: input.lng,
+      lat: input.lat,
+      meta: input.meta,
+      note: input.note,
+      booking_url: input.bookingUrl,
+      photos: input.photos ?? [],
+      position: input.position ?? maxPosition + 1,
+      status: input.status ?? "active",
+      tour_type: input.tourType ?? "boat",
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return fromBoatTourRow(data as BoatTourRow);
+}
+
+/** Deletes an operator custom tour. */
+export async function deleteCustomTour(actor: StudioActor, id: string): Promise<void> {
+  if (actor.role === "guide") {
+    throw new StudioPermissionError("Only company owners or admin may delete custom tours.");
+  }
+
+  if (isTestEnv) {
+    const idx = fakeStore.boatTours.findIndex((t) => t.id === id);
+    if (idx === -1) return;
+    const tour = fakeStore.boatTours[idx];
+    if (actor.role === "company" && tour.companyId !== actor.companyId) {
+      throw new StudioPermissionError("Cannot delete another company's tour.");
+    }
+    fakeStore.boatTours.splice(idx, 1);
+    return;
+  }
+
+  const supabase = await authedClient();
+  let query = supabase.from("boat_tours").delete().eq("id", id);
+  if (actor.role === "company") {
+    query = query.eq("company_id", actor.companyId);
+  }
+  const { error } = await query;
+  if (error) throw error;
+}
+
+/** Guest/public fetch of published routes for a company. */
+export async function getRoutesForCompany(companyId: string): Promise<Route[]> {
+  if (isTestEnv) {
+    return fakeStore.routes
+      .filter((r) => r.companyId === companyId && r.isPublished)
+      .sort((a, b) => a.position - b.position)
+      .map((r) => {
+        const stops = fakeStore.routeStops
+          .filter((s) => s.routeId === r.id)
+          .sort((a, b) => a.stopOrder - b.stopOrder);
+        return {
+          ...r,
+          stops,
+        };
+      });
+  }
+
+  const { data, error } = await anonClient()
+    .from("routes")
+    .select("*, route_stops(*)")
+    .eq("company_id", companyId)
+    .eq("is_published", true)
+    .order("position");
+  if (error) throw error;
+
+  return ((data ?? []) as RouteRow[]).map((row) => fromRouteRow(row));
+}
+
+/** Studio fetch of all routes for a company. */
+export async function getRoutesForStudio(
+  actor: StudioActor,
+  companyId: string,
+): Promise<Route[]> {
+  if (actor.role === "company" && actor.companyId !== companyId) {
+    throw new StudioPermissionError("Cannot view routes for another company.");
+  }
+
+  if (isTestEnv) {
+    return fakeStore.routes
+      .filter((r) => r.companyId === companyId)
+      .sort((a, b) => a.position - b.position)
+      .map((r) => {
+        const stops = fakeStore.routeStops
+          .filter((s) => s.routeId === r.id)
+          .sort((a, b) => a.stopOrder - b.stopOrder);
+        return {
+          ...r,
+          stops,
+        };
+      });
+  }
+
+  const supabase = await authedClient();
+  const { data, error } = await supabase
+    .from("routes")
+    .select("*, route_stops(*)")
+    .eq("company_id", companyId)
+    .order("position");
+  if (error) throw error;
+
+  return ((data ?? []) as RouteRow[]).map((row) => fromRouteRow(row));
+}
+
+/** Saves a route along with its stops. */
+export async function saveRoute(
+  actor: StudioActor,
+  input: SaveRouteInput,
+): Promise<Route> {
+  if (actor.role === "guide") {
+    throw new StudioPermissionError("Only company owners or admin may save routes.");
+  }
+  const companyId = actor.role === "admin" ? (input.companyId ?? null) : actor.companyId;
+  if (!companyId) {
+    throw new StudioPermissionError("Routes must belong to a company.");
+  }
+
+  if (isTestEnv) {
+    let routeRecord: RouteRecord;
+    const now = new Date().toISOString();
+
+    if (input.id) {
+      const existing = fakeStore.routes.find((r) => r.id === input.id);
+      if (!existing) throw new StudioPermissionError(`Route ${input.id} not found.`);
+      if (actor.role === "company" && existing.companyId !== actor.companyId) {
+        throw new StudioPermissionError("Cannot edit another company's route.");
+      }
+      Object.assign(existing, {
+        title: input.title,
+        slug: input.slug ?? existing.slug,
+        transportMode: input.transportMode ?? existing.transportMode,
+        summary: input.summary ?? existing.summary,
+        description: input.description ?? existing.description,
+        durationMinutes: input.durationMinutes !== undefined ? input.durationMinutes : existing.durationMinutes,
+        distanceMeters: input.distanceMeters !== undefined ? input.distanceMeters : existing.distanceMeters,
+        polyline: input.polyline !== undefined ? input.polyline : existing.polyline,
+        photos: input.photos ?? existing.photos,
+        position: input.position ?? existing.position,
+        isPublished: input.isPublished ?? existing.isPublished,
+        updatedAt: now,
+      });
+      routeRecord = existing;
+    } else {
+      const maxPosition = fakeStore.routes
+        .filter((r) => r.companyId === companyId)
+        .reduce((max, r) => Math.max(max, r.position), 0);
+      const taken = fakeStore.routes
+        .filter((r) => r.companyId === companyId)
+        .map((r) => r.slug)
+        .filter((s): s is string => typeof s === "string");
+
+      routeRecord = {
+        id: fakeId("route"),
+        companyId,
+        title: input.title,
+        slug: input.slug ?? uniqueSlug(input.title, taken),
+        transportMode: input.transportMode ?? "bike",
+        summary: input.summary ?? "",
+        description: input.description ?? "",
+        durationMinutes: input.durationMinutes ?? null,
+        distanceMeters: input.distanceMeters ?? null,
+        polyline: input.polyline ?? null,
+        photos: input.photos ?? [],
+        position: input.position ?? maxPosition + 1,
+        isPublished: input.isPublished ?? true,
+        createdAt: now,
+        updatedAt: now,
+      };
+      fakeStore.routes.push(routeRecord);
+    }
+
+    // Replace stops if provided
+    if (input.stops) {
+      fakeStore.routeStops = fakeStore.routeStops.filter((s) => s.routeId !== routeRecord.id);
+      const newStops: RouteStopRecord[] = input.stops.map((s, idx) => ({
+        id: s.id ?? fakeId("stop"),
+        routeId: routeRecord.id,
+        recommendationId: s.recommendationId ?? null,
+        title: s.title,
+        description: s.description ?? "",
+        lng: s.lng,
+        lat: s.lat,
+        address: s.address ?? "",
+        photos: s.photos ?? [],
+        stopOrder: s.stopOrder ?? idx + 1,
+        createdAt: now,
+      }));
+      fakeStore.routeStops.push(...newStops);
+    }
+
+    const stops = fakeStore.routeStops
+      .filter((s) => s.routeId === routeRecord.id)
+      .sort((a, b) => a.stopOrder - b.stopOrder);
+
+    return {
+      ...routeRecord,
+      stops,
+    };
+  }
+
+  const supabase = await authedClient();
+  let routeId = input.id;
+
+  if (routeId) {
+    const updates: Partial<RouteRow> = {
+      title: input.title,
+      summary: input.summary,
+      description: input.description,
+      transport_mode: input.transportMode,
+      duration_minutes: input.durationMinutes,
+      distance_meters: input.distanceMeters,
+      polyline: input.polyline,
+      photos: input.photos,
+    };
+    if (input.slug !== undefined) updates.slug = input.slug;
+    if (input.position !== undefined) updates.position = input.position;
+    if (input.isPublished !== undefined) updates.is_published = input.isPublished;
+
+    let query = supabase.from("routes").update(updates).eq("id", routeId);
+    if (actor.role === "company") query = query.eq("company_id", actor.companyId);
+    const { error } = await query;
+    if (error) throw error;
+  } else {
+    const { data: maxRow } = await supabase
+      .from("routes")
+      .select("position")
+      .eq("company_id", companyId)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const maxPosition = (maxRow as Pick<RouteRow, "position"> | null)?.position ?? 0;
+
+    const { data: existingSlugs } = await supabase
+      .from("routes")
+      .select("slug")
+      .eq("company_id", companyId);
+    const taken = ((existingSlugs as Array<Pick<RouteRow, "slug">> | null) ?? [])
+      .map((r) => r.slug)
+      .filter((s): s is string => typeof s === "string");
+
+    const { data: inserted, error: insertError } = await supabase
+      .from("routes")
+      .insert({
+        company_id: companyId,
+        title: input.title,
+        slug: input.slug ?? uniqueSlug(input.title, taken),
+        transport_mode: input.transportMode ?? "bike",
+        summary: input.summary ?? "",
+        description: input.description ?? "",
+        duration_minutes: input.durationMinutes ?? null,
+        distance_meters: input.distanceMeters ?? null,
+        polyline: input.polyline ?? null,
+        photos: input.photos ?? [],
+        position: input.position ?? maxPosition + 1,
+        is_published: input.isPublished ?? true,
+      })
+      .select("id")
+      .single();
+    if (insertError) throw insertError;
+    routeId = inserted.id;
+  }
+
+  // Handle stops
+  if (input.stops && routeId) {
+    await supabase.from("route_stops").delete().eq("route_id", routeId);
+    if (input.stops.length > 0) {
+      const stopRows = input.stops.map((s, idx) => ({
+        route_id: routeId!,
+        recommendation_id: s.recommendationId ?? null,
+        title: s.title,
+        description: s.description ?? "",
+        lng: s.lng,
+        lat: s.lat,
+        address: s.address ?? "",
+        photos: s.photos ?? [],
+        stop_order: s.stopOrder ?? idx + 1,
+      }));
+      const { error: stopsError } = await supabase.from("route_stops").insert(stopRows);
+      if (stopsError) throw stopsError;
+    }
+  }
+
+  const { data: finalRoute, error: finalError } = await supabase
+    .from("routes")
+    .select("*, route_stops(*)")
+    .eq("id", routeId!)
+    .single();
+  if (finalError) throw finalError;
+  return fromRouteRow(finalRoute as RouteRow);
+}
+
+/** Deletes a route. */
+export async function deleteRoute(actor: StudioActor, id: string): Promise<void> {
+  if (actor.role === "guide") {
+    throw new StudioPermissionError("Only company owners or admin may delete routes.");
+  }
+
+  if (isTestEnv) {
+    const idx = fakeStore.routes.findIndex((r) => r.id === id);
+    if (idx === -1) return;
+    const route = fakeStore.routes[idx];
+    if (actor.role === "company" && route.companyId !== actor.companyId) {
+      throw new StudioPermissionError("Cannot delete another company's route.");
+    }
+    fakeStore.routes.splice(idx, 1);
+    fakeStore.routeStops = fakeStore.routeStops.filter((s) => s.routeId !== id);
+    return;
+  }
+
+  const supabase = await authedClient();
+  let query = supabase.from("routes").delete().eq("id", id);
+  if (actor.role === "company") {
+    query = query.eq("company_id", actor.companyId);
+  }
+  const { error } = await query;
+  if (error) throw error;
+}
+
+/** Guest/public fetch of published upcoming events for a company. */
+export async function getEventsForCompany(companyId: string): Promise<CompanyEvent[]> {
+  if (isTestEnv) {
+    return fakeStore.companyEvents
+      .filter((e) => e.companyId === companyId && e.isPublished)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+      .map((e) => ({
+        id: e.id,
+        companyId: e.companyId,
+        title: e.title,
+        description: e.description,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        venueName: e.venueName,
+        address: e.address,
+        lng: e.lng,
+        lat: e.lat,
+        photos: e.photos,
+        ticketUrl: e.ticketUrl,
+        priceLabel: e.priceLabel,
+        isPublished: e.isPublished,
+      }));
+  }
+
+  const { data, error } = await anonClient()
+    .from("company_events")
+    .select("*")
+    .eq("company_id", companyId)
+    .eq("is_published", true)
+    .order("start_time");
+  if (error) throw error;
+
+  return ((data ?? []) as CompanyEventRow[]).map(fromCompanyEventRow);
+}
+
+/** Studio fetch of all events for a company. */
+export async function getEventsForStudio(
+  actor: StudioActor,
+  companyId: string,
+): Promise<CompanyEvent[]> {
+  if (actor.role === "company" && actor.companyId !== companyId) {
+    throw new StudioPermissionError("Cannot view events for another company.");
+  }
+
+  if (isTestEnv) {
+    return fakeStore.companyEvents
+      .filter((e) => e.companyId === companyId)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+      .map((e) => ({
+        id: e.id,
+        companyId: e.companyId,
+        title: e.title,
+        description: e.description,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        venueName: e.venueName,
+        address: e.address,
+        lng: e.lng,
+        lat: e.lat,
+        photos: e.photos,
+        ticketUrl: e.ticketUrl,
+        priceLabel: e.priceLabel,
+        isPublished: e.isPublished,
+      }));
+  }
+
+  const supabase = await authedClient();
+  const { data, error } = await supabase
+    .from("company_events")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("start_time");
+  if (error) throw error;
+
+  return ((data ?? []) as CompanyEventRow[]).map(fromCompanyEventRow);
+}
+
+/** Saves a company event. */
+export async function saveCompanyEvent(
+  actor: StudioActor,
+  input: SaveCompanyEventInput,
+): Promise<CompanyEvent> {
+  if (actor.role === "guide") {
+    throw new StudioPermissionError("Only company owners or admin may save events.");
+  }
+  const companyId = actor.role === "admin" ? (input.companyId ?? null) : actor.companyId;
+  if (!companyId) {
+    throw new StudioPermissionError("Events must belong to a company.");
+  }
+
+  if (isTestEnv) {
+    const now = new Date().toISOString();
+    if (input.id) {
+      const existing = fakeStore.companyEvents.find((e) => e.id === input.id);
+      if (!existing) throw new StudioPermissionError(`Event ${input.id} not found.`);
+      if (actor.role === "company" && existing.companyId !== actor.companyId) {
+        throw new StudioPermissionError("Cannot edit another company's event.");
+      }
+      Object.assign(existing, {
+        title: input.title,
+        description: input.description ?? existing.description,
+        startTime: input.startTime,
+        endTime: input.endTime !== undefined ? input.endTime : existing.endTime,
+        venueName: input.venueName !== undefined ? input.venueName : existing.venueName,
+        address: input.address,
+        lng: input.lng,
+        lat: input.lat,
+        photos: input.photos ?? existing.photos,
+        ticketUrl: input.ticketUrl !== undefined ? input.ticketUrl : existing.ticketUrl,
+        priceLabel: input.priceLabel !== undefined ? input.priceLabel : existing.priceLabel,
+        isPublished: input.isPublished ?? existing.isPublished,
+        updatedAt: now,
+      });
+      return {
+        id: existing.id,
+        companyId: existing.companyId,
+        title: existing.title,
+        description: existing.description,
+        startTime: existing.startTime,
+        endTime: existing.endTime,
+        venueName: existing.venueName,
+        address: existing.address,
+        lng: existing.lng,
+        lat: existing.lat,
+        photos: existing.photos,
+        ticketUrl: existing.ticketUrl,
+        priceLabel: existing.priceLabel,
+        isPublished: existing.isPublished,
+      };
+    }
+
+    const record: CompanyEventRecord = {
+      id: fakeId("event"),
+      companyId,
+      title: input.title,
+      description: input.description ?? "",
+      startTime: input.startTime,
+      endTime: input.endTime ?? null,
+      venueName: input.venueName ?? null,
+      address: input.address,
+      lng: input.lng,
+      lat: input.lat,
+      photos: input.photos ?? [],
+      ticketUrl: input.ticketUrl ?? null,
+      priceLabel: input.priceLabel ?? null,
+      isPublished: input.isPublished ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    fakeStore.companyEvents.push(record);
+    return {
+      id: record.id,
+      companyId: record.companyId,
+      title: record.title,
+      description: record.description,
+      startTime: record.startTime,
+      endTime: record.endTime,
+      venueName: record.venueName,
+      address: record.address,
+      lng: record.lng,
+      lat: record.lat,
+      photos: record.photos,
+      ticketUrl: record.ticketUrl,
+      priceLabel: record.priceLabel,
+      isPublished: record.isPublished,
+    };
+  }
+
+  const supabase = await authedClient();
+
+  if (input.id) {
+    const updates: Partial<CompanyEventRow> = {
+      title: input.title,
+      description: input.description,
+      start_time: input.startTime,
+      end_time: input.endTime,
+      venue_name: input.venueName,
+      address: input.address,
+      lng: input.lng,
+      lat: input.lat,
+      photos: input.photos,
+      ticket_url: input.ticketUrl,
+      price_label: input.priceLabel,
+    };
+    if (input.isPublished !== undefined) updates.is_published = input.isPublished;
+
+    let query = supabase.from("company_events").update(updates).eq("id", input.id);
+    if (actor.role === "company") query = query.eq("company_id", actor.companyId);
+    const { data, error } = await query.select("*").maybeSingle();
+    if (error) throw error;
+    if (!data) throw new StudioPermissionError(`Event ${input.id} not found.`);
+    return fromCompanyEventRow(data as CompanyEventRow);
+  }
+
+  const { data, error } = await supabase
+    .from("company_events")
+    .insert({
+      company_id: companyId,
+      title: input.title,
+      description: input.description ?? "",
+      start_time: input.startTime,
+      end_time: input.endTime ?? null,
+      venue_name: input.venueName ?? null,
+      address: input.address,
+      lng: input.lng,
+      lat: input.lat,
+      photos: input.photos ?? [],
+      ticket_url: input.ticketUrl ?? null,
+      price_label: input.priceLabel ?? null,
+      is_published: input.isPublished ?? true,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return fromCompanyEventRow(data as CompanyEventRow);
+}
+
+/** Deletes a company event. */
+export async function deleteCompanyEvent(actor: StudioActor, id: string): Promise<void> {
+  if (actor.role === "guide") {
+    throw new StudioPermissionError("Only company owners or admin may delete events.");
+  }
+
+  if (isTestEnv) {
+    const idx = fakeStore.companyEvents.findIndex((e) => e.id === id);
+    if (idx === -1) return;
+    const event = fakeStore.companyEvents[idx];
+    if (actor.role === "company" && event.companyId !== actor.companyId) {
+      throw new StudioPermissionError("Cannot delete another company's event.");
+    }
+    fakeStore.companyEvents.splice(idx, 1);
+    return;
+  }
+
+  const supabase = await authedClient();
+  let query = supabase.from("company_events").delete().eq("id", id);
+  if (actor.role === "company") {
+    query = query.eq("company_id", actor.companyId);
+  }
+  const { error } = await query;
+  if (error) throw error;
+}
+

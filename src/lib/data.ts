@@ -42,6 +42,7 @@ export const PLACES: Place[] = [
     photos: photo("bakers"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: ["Breakfast & Brunch", "Bakery"],
   },
   {
     id: "mook-pancakes",
@@ -56,6 +57,7 @@ export const PLACES: Place[] = [
     photos: photo("mook"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: ["Dutch", "Pancakes"],
   },
   {
     id: "cafe-de-jaren",
@@ -70,6 +72,7 @@ export const PLACES: Place[] = [
     photos: photo("jaren"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: ["Dutch", "European"],
   },
   {
     id: "pendergast",
@@ -84,6 +87,7 @@ export const PLACES: Place[] = [
     photos: photo("pender"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: ["American", "Sandwiches"],
   },
   {
     id: "foodhallen",
@@ -98,6 +102,7 @@ export const PLACES: Place[] = [
     photos: photo("foodhal"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: ["Street Food", "International"],
   },
   {
     id: "lot-sixty-one",
@@ -112,6 +117,7 @@ export const PLACES: Place[] = [
     photos: photo("lot61"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: ["Coffee & Bakery"],
   },
   {
     id: "screaming-beans",
@@ -126,6 +132,7 @@ export const PLACES: Place[] = [
     photos: photo("beans"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: ["Coffee & Bakery"],
   },
   {
     id: "brouwerij-ij",
@@ -140,6 +147,7 @@ export const PLACES: Place[] = [
     photos: photo("brouwerij"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: ["Craft Beer", "Bar Snacks"],
   },
   {
     id: "cafe-papeneiland",
@@ -154,6 +162,7 @@ export const PLACES: Place[] = [
     photos: photo("papen"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: ["Dutch", "Traditional Bar"],
   },
   {
     id: "rijksmuseum",
@@ -168,6 +177,7 @@ export const PLACES: Place[] = [
     photos: photo("rijks"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: [],
   },
   {
     id: "anne-frank",
@@ -182,6 +192,7 @@ export const PLACES: Place[] = [
     photos: photo("anne"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: [],
   },
   {
     id: "ndsm-werf",
@@ -196,6 +207,7 @@ export const PLACES: Place[] = [
     photos: photo("ndsm"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: [],
   },
   {
     id: "nine-streets",
@@ -210,6 +222,7 @@ export const PLACES: Place[] = [
     photos: photo("negen"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: [],
   },
   {
     id: "waterlooplein",
@@ -224,6 +237,7 @@ export const PLACES: Place[] = [
     photos: photo("waterloo"),
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: [],
   },
 ];
 
@@ -339,6 +353,7 @@ export interface MapPin {
   /** See Place's own doc comment — null for a boat (no Google rating concept here) and for anything typed in by hand. */
   googleRating: number | null;
   googleReviewCount: number | null;
+  cuisineTypes?: string[];
 }
 
 export const ALL_PINS: MapPin[] = [
@@ -356,6 +371,7 @@ export const ALL_PINS: MapPin[] = [
     bookingUrl: b.bookingUrl,
     googleRating: null,
     googleReviewCount: null,
+    cuisineTypes: [],
   })),
   ...PLACES.map((p) => ({
     id: p.id,
@@ -370,5 +386,6 @@ export const ALL_PINS: MapPin[] = [
     isBoat: false,
     googleRating: p.googleRating,
     googleReviewCount: p.googleReviewCount,
+    cuisineTypes: p.cuisineTypes ?? [],
   })),
 ];

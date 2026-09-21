@@ -217,28 +217,49 @@ export function GuestPlaceDetail({
               style={{ marginTop: 4, fontSize: 13 }}
             />
           )}
-          {/* No locator text (e.g. a BoatLocal-synced cruise, whose feed has
-              no location name — area is "") means no row at all: an orphaned
-              icon with nothing after it reads as a glitch. */}
-          {locator.trim() !== "" && (
-            <p
+          {(locator.trim() !== "" || (item.cuisineTypes && item.cuisineTypes.length > 0)) && (
+            <div
               style={{
-                margin: "4px 0 0",
+                margin: "6px 0 0",
                 display: "flex",
+                flexWrap: "wrap",
                 alignItems: "center",
-                gap: 5,
+                gap: 6,
                 fontSize: 13,
                 lineHeight: "18px",
                 color: MUTED,
               }}
             >
-              {item.isBoat ? (
-                <Clock size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
-              ) : (
-                <MapPinIcon size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+              {locator.trim() !== "" && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  {item.isBoat ? (
+                    <Clock size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+                  ) : (
+                    <MapPinIcon size={14} strokeWidth={2} aria-hidden style={{ flex: "0 0 auto" }} />
+                  )}
+                  {locator}
+                </span>
               )}
-              {locator}
-            </p>
+              {item.cuisineTypes && item.cuisineTypes.length > 0 && (
+                <div style={{ display: "inline-flex", flexWrap: "wrap", gap: 4 }}>
+                  {item.cuisineTypes.map((c) => (
+                    <span
+                      key={c}
+                      style={{
+                        padding: "1px 8px",
+                        borderRadius: 9999,
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        background: "rgba(15, 111, 166, 0.08)",
+                        color: "var(--brand-primary)",
+                      }}
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           <p style={{ margin: "14px 0 0", fontSize: 14.5, lineHeight: "21px", color: "#334051" }}>

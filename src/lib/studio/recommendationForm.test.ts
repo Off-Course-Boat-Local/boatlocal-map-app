@@ -72,7 +72,22 @@ describe("parseRecommendationForm — happy path", () => {
       hours: "Daily 9:00–20:00",
       photos: ["data:image/png;base64,aaa"],
       visible: true,
+      cuisineTypes: [],
+      googleRating: undefined,
+      googleReviewCount: undefined,
     });
+  });
+
+  it("parses cuisineTypes array and comma-separated entries", () => {
+    const result = parseRecommendationForm(
+      formData({
+        ...validFields,
+        cuisineTypes: ["Dutch", "Pancakes, Breakfast"],
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.value.cuisineTypes).toEqual(["Dutch", "Pancakes", "Breakfast"]);
   });
 
   it("carries the id through for edits", () => {

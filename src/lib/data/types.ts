@@ -11,7 +11,12 @@
 // NOTE: no rating/review_count/stars field appears anywhere in here, on
 // purpose and permanently — see CLAUDE project rules.
 
-import type { CategoryId } from "../types";
+import type {
+  CategoryId,
+  CompanyModules,
+  RouteTransportMode,
+  TourTransportType,
+} from "../types";
 
 export type AppRole = "admin" | "company" | "guide";
 // Free text, admin-entered, optional ("Hotel", "Shop", "Bar", ...) — see
@@ -115,6 +120,8 @@ export interface CompanyRecord {
    * fromCompanyRow's comment in src/lib/data/source.ts for why.
    */
   ownerStatus: "invited" | "active" | null;
+  /** Enabled feature modules (routes, events, custom tours). */
+  modules?: CompanyModules;
   createdAt: string;
   updatedAt: string;
 }
@@ -169,6 +176,8 @@ export interface RecommendationRecord {
    */
   googleRating: number | null;
   googleReviewCount: number | null;
+  /** Cuisine sub-labels (e.g. Dutch, Indonesian, Italian) for food/drink recommendations. */
+  cuisineTypes: string[];
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -265,6 +274,10 @@ export interface BoatTourRecord {
    * `departure` — never touched again after that, same as those fields).
    */
   locationSource: string | null;
+  /** Null for global catalog tours, set for operator-owned custom tours. */
+  companyId?: string | null;
+  /** Transport mode: boat, bike, walk, food, other. Defaults to 'boat'. */
+  tourType?: TourTransportType;
 }
 
 /**
@@ -411,6 +424,7 @@ export interface SaveRecommendationInput {
   /** Optional — only set when this row came from Google Places enrichment. */
   googleRating?: number | null;
   googleReviewCount?: number | null;
+  cuisineTypes?: string[];
 }
 
 export interface SaveBoatTourInput {
@@ -425,6 +439,106 @@ export interface SaveBoatTourInput {
   photos: string[];
   position?: number;
   status?: BoatTourStatus;
+  companyId?: string | null;
+  tourType?: TourTransportType;
+}
+
+export interface RouteRecord {
+  id: string;
+  companyId: string;
+  title: string;
+  slug: string | null;
+  transportMode: RouteTransportMode;
+  summary: string;
+  description: string;
+  durationMinutes: number | null;
+  distanceMeters: number | null;
+  polyline: string | null;
+  photos: string[];
+  position: number;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RouteStopRecord {
+  id: string;
+  routeId: string;
+  recommendationId: string | null;
+  title: string;
+  description: string;
+  lng: number;
+  lat: number;
+  address: string;
+  photos: string[];
+  stopOrder: number;
+  createdAt: string;
+}
+
+export interface SaveRouteStopInput {
+  id?: string;
+  routeId?: string;
+  recommendationId?: string | null;
+  title: string;
+  description?: string;
+  lng: number;
+  lat: number;
+  address?: string;
+  photos?: string[];
+  stopOrder?: number;
+}
+
+export interface SaveRouteInput {
+  id?: string;
+  companyId?: string;
+  title: string;
+  slug?: string;
+  transportMode?: RouteTransportMode;
+  summary: string;
+  description?: string;
+  durationMinutes?: number | null;
+  distanceMeters?: number | null;
+  polyline?: string | null;
+  photos?: string[];
+  position?: number;
+  isPublished?: boolean;
+  stops?: SaveRouteStopInput[];
+}
+
+export interface CompanyEventRecord {
+  id: string;
+  companyId: string;
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string | null;
+  venueName: string | null;
+  address: string;
+  lng: number;
+  lat: number;
+  photos: string[];
+  ticketUrl: string | null;
+  priceLabel: string | null;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveCompanyEventInput {
+  id?: string;
+  companyId?: string;
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime?: string | null;
+  venueName?: string | null;
+  address: string;
+  lng: number;
+  lat: number;
+  photos?: string[];
+  ticketUrl?: string | null;
+  priceLabel?: string | null;
+  isPublished?: boolean;
 }
 
 export interface InviteGuideInput {

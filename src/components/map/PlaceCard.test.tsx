@@ -36,7 +36,7 @@ describe("PlaceCard", () => {
     // A place with an empty area (e.g. a BoatLocal-synced cruise, whose feed
     // has no location name) must not render a pin icon with nothing after it.
     const { container: emptyArea, unmount: unmount2 } = render(
-      <PlaceCard item={{ ...place, area: "" }} />,
+      <PlaceCard item={{ ...place, area: "", cuisineTypes: [] }} />,
     );
     expect(emptyArea.querySelector(".lucide-map-pin")).toBeNull();
     unmount2();

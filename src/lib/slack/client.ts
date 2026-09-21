@@ -15,7 +15,7 @@
 
 import "server-only";
 
-const SLACK_WEBHOOK_URL = process.env.SLACK_OUTREACH_WEBHOOK_URL;
+const SLACK_WEBHOOK_URL = process.env.SLACK_OUTREACH_WEBHOOK_URL || process.env.SLACK_OPS_WEBHOOK_URL;
 const SLACK_OPS_WEBHOOK_URL = process.env.SLACK_OPS_WEBHOOK_URL || process.env.SLACK_OUTREACH_WEBHOOK_URL;
 
 export function isSlackConfigured(): boolean {
@@ -65,7 +65,11 @@ async function postToWebhook(
  * a caller should roll anything back over if it fails.
  */
 export async function postToSlack(text: string): Promise<PostToSlackResult> {
-  return postToWebhook(text, SLACK_WEBHOOK_URL, "SLACK_OUTREACH_WEBHOOK_URL");
+  return postToWebhook(
+    text,
+    SLACK_WEBHOOK_URL,
+    "SLACK_OUTREACH_WEBHOOK_URL (or fallback SLACK_OPS_WEBHOOK_URL)",
+  );
 }
 
 /**

@@ -20,6 +20,7 @@
 // which had room for them. /studio/link-qr still resolves — it redirects to
 // /studio/profile so existing bookmarks and QR-era links don't 404.
 
+import type { CompanyModules } from "../types";
 import type { StudioRole } from "./devAuth";
 
 export interface StudioNavItem {
@@ -28,15 +29,20 @@ export interface StudioNavItem {
   href: string;
 }
 
-export const COMPANY_NAV: StudioNavItem[] = [
+export const BASE_COMPANY_NAV: StudioNavItem[] = [
   { key: "dashboard", label: "Dashboard", href: "/studio" },
   { key: "branding", label: "Branding", href: "/studio/branding" },
   { key: "guides", label: "Guides", href: "/studio/guides" },
   { key: "recommendations", label: "Recommendations", href: "/studio/recommendations" },
-  { key: "boat-tours", label: "Boat tours", href: "/studio/boat-tours" },
+  { key: "boat-tours", label: "Tours", href: "/studio/boat-tours" },
+  { key: "routes", label: "Routes", href: "/studio/routes" },
+  { key: "events", label: "Events", href: "/studio/events" },
   { key: "campaign", label: "Campaign", href: "/studio/campaign" },
   { key: "report", label: "Report", href: "/studio/report" },
+  { key: "settings", label: "Settings", href: "/studio/settings" },
 ];
+
+export const COMPANY_NAV: StudioNavItem[] = BASE_COMPANY_NAV;
 
 export const GUIDE_NAV: StudioNavItem[] = [
   { key: "dashboard", label: "Dashboard", href: "/studio" },
@@ -45,6 +51,12 @@ export const GUIDE_NAV: StudioNavItem[] = [
   { key: "settings", label: "Settings", href: "/studio/settings" },
 ];
 
-export function navForRole(role: StudioRole): StudioNavItem[] {
-  return role === "company" ? COMPANY_NAV : GUIDE_NAV;
+export function navForRole(role: StudioRole, modules?: CompanyModules): StudioNavItem[] {
+  if (role === "guide") return GUIDE_NAV;
+
+  return BASE_COMPANY_NAV.filter((item) => {
+    if (item.key === "routes" && modules && modules.routes === false) return false;
+    if (item.key === "events" && modules && modules.events === false) return false;
+    return true;
+  });
 }

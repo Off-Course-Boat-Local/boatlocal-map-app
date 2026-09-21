@@ -46,6 +46,8 @@ export default async function AdminGuidesPage() {
           String(performance.appOpens),
           String(performance.tipsSaved),
           String(performance.bookClicks),
+          String(performance.directionsAsked),
+          String(performance.directionsFinished),
           <AdminGuideRowActions
             key="actions"
             guideId={guide.id}
@@ -65,7 +67,7 @@ export default async function AdminGuidesPage() {
       <PageHeader
         title="Guides"
         description={`${totalGuides} guide${totalGuides === 1 ? "" : "s"} across ${companies.length} compan${companies.length === 1 ? "y" : "ies"}.`}
-        hint="App opens, tips saved and book clicks are live counts from events, over the last 30 days."
+        hint="App opens, tips saved, book clicks, directions asked and directions finished are live counts from events, over the last 30 days."
       />
 
       <AdminTable
@@ -78,6 +80,8 @@ export default async function AdminGuidesPage() {
           "App opens",
           "Tips saved",
           "Book clicks",
+          "Directions asked",
+          "Directions finished",
           "Actions",
         ]}
         rows={rows}

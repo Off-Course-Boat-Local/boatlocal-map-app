@@ -41,11 +41,13 @@ export function companyDashboardKpis(rows: AnalyticsSummaryRow[], activeGuides: 
     { key: "active-guides", label: "Active guides", value: activeGuides },
     { key: "app-opens", label: "App opens", value: sum(rows, ["app_open"]) },
     { key: "tips-saved", label: "Tips saved", value: sum(rows, ["tip_saved"]) },
+    { key: "directions-asked", label: "Directions asked", value: sum(rows, ["directions_requested"]) },
+    { key: "directions-finished", label: "Directions finished", value: sum(rows, ["directions_arrived"]) },
   ];
 }
 
 /**
- * Guide-level KPI row (PRD §6.4: app opens, book-clicks, number of places).
+ * Guide-level KPI row (PRD §6.4: app opens, book-clicks, number of places, directions asked/finished).
  * `placesCount` is passed in rather than derived here since it comes from
  * the recommendation list, not the events table.
  */
@@ -54,6 +56,8 @@ export function guideDashboardKpis(rows: AnalyticsSummaryRow[], placesCount: num
     { key: "app-opens", label: "App opens", value: sum(rows, ["app_open"]) },
     { key: "book-clicks", label: "Book clicks", value: sum(rows, ["boat_book_click"]) },
     { key: "places", label: "Places on your link", value: placesCount },
+    { key: "directions-asked", label: "Directions asked", value: sum(rows, ["directions_requested"]) },
+    { key: "directions-finished", label: "Directions finished", value: sum(rows, ["directions_arrived"]) },
   ];
 }
 

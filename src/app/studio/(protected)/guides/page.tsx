@@ -29,12 +29,22 @@ export default async function StudioGuidesPage() {
   // Per-guide performance (PRD §7.3 "status & performance"): tips saved and
   // book clicks are the two counters PRD §6.4 already names for the guide's
   // own dashboard, so the company sees the same two per guide here.
-  const statsByGuide = new Map<string, { tipsSaved: number; bookClicks: number }>();
+  const statsByGuide = new Map<
+    string,
+    { tipsSaved: number; bookClicks: number; directionsAsked: number; directionsFinished: number }
+  >();
   for (const row of analytics) {
     if (!row.guideId) continue;
-    const entry = statsByGuide.get(row.guideId) ?? { tipsSaved: 0, bookClicks: 0 };
+    const entry = statsByGuide.get(row.guideId) ?? {
+      tipsSaved: 0,
+      bookClicks: 0,
+      directionsAsked: 0,
+      directionsFinished: 0,
+    };
     if (row.eventType === "tip_saved") entry.tipsSaved += row.count;
     if (row.eventType === "boat_book_click") entry.bookClicks += row.count;
+    if (row.eventType === "directions_requested") entry.directionsAsked += row.count;
+    if (row.eventType === "directions_arrived") entry.directionsFinished += row.count;
     statsByGuide.set(row.guideId, entry);
   }
 
@@ -53,6 +63,8 @@ export default async function StudioGuidesPage() {
         : null,
     tipsSaved: statsByGuide.get(guide.id)?.tipsSaved ?? 0,
     bookClicks: statsByGuide.get(guide.id)?.bookClicks ?? 0,
+    directionsAsked: statsByGuide.get(guide.id)?.directionsAsked ?? 0,
+    directionsFinished: statsByGuide.get(guide.id)?.directionsFinished ?? 0,
   }));
 
   const companyShareUrl = company ? buildCompanyShareUrl({ origin, companyId: company.id }) : null;

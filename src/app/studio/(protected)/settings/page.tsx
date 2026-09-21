@@ -1,16 +1,10 @@
-// Settings — guide only. The account itself, as distinct from Profile,
-// which is the guest-facing identity (photo, welcome message, share link).
-//
-// Deliberately modest right now, and honest about it. A guide's account has
-// genuinely few knobs: Studio has no password to change (sign-in is a magic
-// link — see src/components/studio/LoginForm.tsx), the email is the
-// identity the company's invite was issued to, and status is the company's
-// call, not the guide's. Rather than invent settings to fill the page, this
-// shows what actually governs the account and says who to ask for the
-// things a guide can't change themselves.
+// Settings — both company and guide accounts.
+// Companies manage module settings (Routes, Events, Custom Tours) and company details.
+// Guides manage their personal account settings.
 
+import CompanySettingsManager from "@/components/studio/CompanySettingsManager";
 import { getCompanyForStudio, getGuidesForCompany } from "@/lib/data/source";
-import { actorFromSession, requireDevSession, requireGuideRole } from "@/lib/studio/devAuth";
+import { actorFromSession, requireDevSession } from "@/lib/studio/devAuth";
 import { logoutAction } from "@/lib/studio/actions";
 import { CARD_SHADOW, Eyebrow, GhostButton, PageHeader } from "@/components/studio/primitives";
 
@@ -38,13 +32,24 @@ function Row({
 
 export default async function StudioSettingsPage() {
   const session = await requireDevSession();
-  requireGuideRole(session);
   const actor = actorFromSession(session);
 
   const [company, guides] = await Promise.all([
     getCompanyForStudio(actor, session.companyId),
     getGuidesForCompany(actor, session.companyId),
   ]);
+
+  if (session.role === "company") {
+    return (
+      <CompanySettingsManager
+        companyId={session.companyId}
+        companyName={company?.name ?? session.companyName}
+        appName={company?.appName ?? ""}
+        ownerEmail={session.email}
+        initialModules={company?.modules ?? { routes: true, events: true, custom_tours: true }}
+      />
+    );
+  }
 
   const guide = guides.find((g) => g.id === session.guideId);
 

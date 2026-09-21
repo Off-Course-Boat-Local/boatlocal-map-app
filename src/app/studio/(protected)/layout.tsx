@@ -64,7 +64,7 @@ export default async function StudioLayout({ children }: { children: ReactNode }
       ? `${pins.length} picks curated by ${session.guideName}`
       : `${pins.length} picks across ${session.companyName}`;
 
-  const navItems = navForRole(session.role);
+  const navItems = navForRole(session.role, company?.modules);
   const roleLabel = session.role === "guide" ? "Guide" : "Company";
   const name = session.role === "guide" ? session.guideName : session.companyName;
   const isGuide = session.role === "guide";

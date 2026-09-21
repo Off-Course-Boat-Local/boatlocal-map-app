@@ -46,7 +46,18 @@ import {
   setRecommendationVisibility,
   syncCruiseFromBoatLocal,
   updateCompanyBranding,
+  updateCompanyModules,
   updateGuideProfile,
+  saveCustomTour,
+  deleteCustomTour,
+  getRoutesForCompany,
+  getRoutesForStudio,
+  saveRoute,
+  deleteRoute,
+  getEventsForCompany,
+  getEventsForStudio,
+  saveCompanyEvent,
+  deleteCompanyEvent,
 } from "./source";
 import { StudioPermissionError } from "./types";
 
@@ -1983,3 +1994,150 @@ describe("deleteCompany", () => {
     );
   });
 });
+
+describe("Company Modules", () => {
+  it("updates module settings for a company", async () => {
+    const updated = await updateCompanyModules(
+      { role: "company", companyId: COMPANY_ID },
+      COMPANY_ID,
+      { routes: true, events: false, custom_tours: true },
+    );
+    expect(updated.modules).toEqual({ routes: true, events: false, custom_tours: true });
+  });
+
+  it("prevents guides from updating company modules", async () => {
+    await expect(
+      updateCompanyModules(
+        { role: "guide", companyId: COMPANY_ID, guideId: GUIDE_ID },
+        COMPANY_ID,
+        { routes: false },
+      ),
+    ).rejects.toThrow(StudioPermissionError);
+  });
+});
+
+describe("Custom Tours", () => {
+  it("creates and retrieves a custom tour for a company", async () => {
+    const tour = await saveCustomTour(
+      { role: "company", companyId: COMPANY_ID },
+      {
+        name: "Secret Canal Cruise",
+        area: "Jordaan",
+        lng: 4.88,
+        lat: 52.37,
+        meta: "60 min · €25",
+        note: "Hidden route through tiny quiet canals",
+        bookingUrl: "https://example.com/book-secret",
+        photos: ["https://example.com/photo.jpg"],
+        tourType: "boat",
+      },
+    );
+
+    expect(tour.id).toBeTruthy();
+    expect(tour.companyId).toBe(COMPANY_ID);
+    expect(tour.tourType).toBe("boat");
+
+    const allTours = await getBoatTours(COMPANY_ID);
+    expect(allTours.some((t) => t.id === tour.id)).toBe(true);
+  });
+
+  it("deletes a custom tour", async () => {
+    const tour = await saveCustomTour(
+      { role: "company", companyId: COMPANY_ID },
+      {
+        name: "Temporary Tour",
+        area: "Oost",
+        lng: 4.92,
+        lat: 52.36,
+        meta: "45 min",
+        note: "Temp tour note",
+        bookingUrl: "https://example.com/book-temp",
+        photos: [],
+      },
+    );
+
+    await deleteCustomTour({ role: "company", companyId: COMPANY_ID }, tour.id);
+    const allTours = await getBoatTours(COMPANY_ID);
+    expect(allTours.some((t) => t.id === tour.id)).toBe(false);
+  });
+});
+
+describe("Routes and Stops", () => {
+  it("creates, retrieves, and updates routes with stops", async () => {
+    const route = await saveRoute(
+      { role: "company", companyId: COMPANY_ID },
+      {
+        title: "Amsterdam Highlights Bike Ride",
+        transportMode: "bike",
+        summary: "Top sights on 2 wheels",
+        description: "A wonderful bike route across the canals",
+        durationMinutes: 60,
+        distanceMeters: 7500,
+        stops: [
+          {
+            title: "Central Station Start",
+            description: "Meet outside the main hall",
+            lng: 4.9003,
+            lat: 52.3791,
+            address: "Stationsplein 1",
+            photos: [],
+            stopOrder: 1,
+          },
+          {
+            title: "Vondelpark Finish",
+            description: "Relax on the grass",
+            lng: 4.8686,
+            lat: 52.3579,
+            address: "Vondelpark",
+            photos: [],
+            stopOrder: 2,
+          },
+        ],
+      },
+    );
+
+    expect(route.id).toBeTruthy();
+    expect(route.stops).toHaveLength(2);
+    expect(route.stops[0].title).toBe("Central Station Start");
+
+    const guestRoutes = await getRoutesForCompany(COMPANY_ID);
+    expect(guestRoutes.some((r) => r.id === route.id)).toBe(true);
+
+    const studioRoutes = await getRoutesForStudio({ role: "company", companyId: COMPANY_ID }, COMPANY_ID);
+    expect(studioRoutes.some((r) => r.id === route.id)).toBe(true);
+
+    await deleteRoute({ role: "company", companyId: COMPANY_ID }, route.id);
+    const afterDelete = await getRoutesForCompany(COMPANY_ID);
+    expect(afterDelete.some((r) => r.id === route.id)).toBe(false);
+  });
+});
+
+describe("Company Events", () => {
+  it("creates, retrieves, and deletes company events", async () => {
+    const event = await saveCompanyEvent(
+      { role: "company", companyId: COMPANY_ID },
+      {
+        title: "Live Jazz on the Water",
+        description: "Enjoy an evening of live music",
+        startTime: "2026-10-01T19:00:00Z",
+        venueName: "Canal Pavilion",
+        address: "Singel 100",
+        lng: 4.89,
+        lat: 52.37,
+        ticketUrl: "https://example.com/jazz",
+        priceLabel: "€15 ticket",
+      },
+    );
+
+    expect(event.id).toBeTruthy();
+    expect(event.title).toBe("Live Jazz on the Water");
+
+    const guestEvents = await getEventsForCompany(COMPANY_ID);
+    expect(guestEvents.some((e) => e.id === event.id)).toBe(true);
+
+    await deleteCompanyEvent({ role: "company", companyId: COMPANY_ID }, event.id);
+    const afterDelete = await getEventsForCompany(COMPANY_ID);
+    expect(afterDelete.some((e) => e.id === event.id)).toBe(false);
+  });
+});
+

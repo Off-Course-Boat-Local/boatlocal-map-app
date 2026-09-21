@@ -47,6 +47,7 @@ import { GhostButton, PrimaryButton, inputClass, labelClass } from "./primitives
 import AddressField from "@/components/AddressField";
 import RecommendationPhotosField from "./RecommendationPhotosField";
 import GooglePlaceSearchField from "./GooglePlaceSearchField";
+import CuisineTagField from "@/components/CuisineTagField";
 
 const initialState: RecommendationFormState = {};
 
@@ -103,6 +104,10 @@ export default function RecommendationForm({
   const [googleReviewCount, setGoogleReviewCount] = useState<number | null>(
     recommendation?.googleReviewCount ?? null,
   );
+  const [cuisineTypes, setCuisineTypes] = useState<string[]>(
+    recommendation?.cuisineTypes ?? [],
+  );
+  const [suggestedCuisines, setSuggestedCuisines] = useState<string[]>([]);
 
   function toggleCategory(id: CategoryId) {
     setCategories((prev) =>
@@ -120,6 +125,16 @@ export default function RecommendationForm({
         const merged = [...prev];
         for (const c of details.suggestedCategories) {
           if (!merged.includes(c as CategoryId)) merged.push(c as CategoryId);
+        }
+        return merged;
+      });
+    }
+    if (details.suggestedCuisines && details.suggestedCuisines.length > 0) {
+      setSuggestedCuisines(details.suggestedCuisines);
+      setCuisineTypes((prev) => {
+        const merged = [...prev];
+        for (const c of details.suggestedCuisines) {
+          if (!merged.includes(c)) merged.push(c);
         }
         return merged;
       });
@@ -240,6 +255,15 @@ export default function RecommendationForm({
             className={inputClass}
           />
         </label>
+      </div>
+
+      <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-bg)] p-3.5">
+        <CuisineTagField
+          value={cuisineTypes}
+          onChange={setCuisineTypes}
+          suggested={suggestedCuisines}
+          theme="studio"
+        />
       </div>
 
       <AddressField

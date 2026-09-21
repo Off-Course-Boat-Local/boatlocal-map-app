@@ -122,7 +122,7 @@ export async function POST(request: Request) {
         }
 
         if (isSlackConfigured()) {
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://map.boatlocal.nl";
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL || "https://map.boatlocal.nl";
           const slackText = `📬 *New Outreach Reply from ${result.prospect.name}* (${senderEmail})\n> *Subject:* ${emailData.subject || "No subject"}\n\n${snippet.slice(0, 500)}\n\n🔗 <${appUrl}/admin/outreach/${result.prospect.id}|View & reply in Map App>`;
           await postToSlack(slackText);
         }

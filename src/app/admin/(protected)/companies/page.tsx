@@ -36,6 +36,8 @@ const COLUMN_WIDTHS = [
   "w-24",
   "w-24",
   "w-24",
+  "w-28",
+  "w-28",
   "w-24",
   "w-16",
 ];
@@ -117,6 +119,8 @@ export default async function AdminCompaniesPage() {
         String(performance.appOpens),
         String(performance.tipsSaved),
         String(performance.bookClicks),
+        String(performance.directionsAsked),
+        String(performance.directionsFinished),
         <StatusBadge
           key="status"
           status={STATUS_LABEL[company.status]}
@@ -138,7 +142,7 @@ export default async function AdminCompaniesPage() {
       <PageHeader
         title="Companies"
         description={`${companies.length} tenant${companies.length === 1 ? "" : "s"} on the platform.`}
-        hint="App opens, tips saved and book clicks are live counts from events, over the last 30 days."
+        hint="App opens, tips saved, book clicks, directions asked and directions finished are live counts from events, over the last 30 days."
         action={<CreateCompanyButton />}
       />
 
@@ -152,6 +156,8 @@ export default async function AdminCompaniesPage() {
           "App opens",
           "Tips saved",
           "Book clicks",
+          "Directions asked",
+          "Directions finished",
           "Status",
           "Actions",
         ]}

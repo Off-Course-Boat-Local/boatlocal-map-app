@@ -7,14 +7,18 @@
 // (src/lib/data/source.ts), same pattern as src/app/(guest)/map/page.tsx.
 
 import GuestListScreen from "@/components/guest/GuestListScreen";
-import { getActiveCompanyRecord, getMapPins } from "@/lib/data/source";
+import { getActiveCompanyRecord, getEventsForCompany, getMapPins, getRoutesForCompany } from "@/lib/data/source";
 import { getReviewOptions } from "@/lib/guestReview";
 import { getGuestContext } from "@/lib/guestServerContext";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 
 export default async function ListPage() {
   const { brand, brandId, companyId, guide, guideSlug } = await getGuestContext();
-  const pins = companyId ? await getMapPins(companyId) : [];
+  const [pins, routes, events] = await Promise.all([
+    companyId ? getMapPins(companyId) : Promise.resolve([]),
+    companyId ? getRoutesForCompany(companyId) : Promise.resolve([]),
+    companyId ? getEventsForCompany(companyId) : Promise.resolve([]),
+  ]);
   // Where the browse-triggered review drawer's stars lead — the
   // tenant's own configured platform, resolved server-side exactly as
   // the Review screen does it (see (guest)/review/page.tsx).
@@ -37,6 +41,8 @@ export default async function ListPage() {
       // the company — never the generic "your guide" placeholder.
       reviewSignature={guide?.name ?? companyName}
       pins={pins}
+      routes={routes}
+      events={events}
     />
   );
 }

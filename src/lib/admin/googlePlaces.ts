@@ -161,6 +161,46 @@ export async function searchPlaces(query: string): Promise<PlaceSearchResult[]> 
 /*  Place details + photos                                             */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/*  Cuisine guessing                                                   */
+/* ------------------------------------------------------------------ */
+
+const GOOGLE_TYPE_TO_CUISINE: Array<{ type: string; cuisine: string }> = [
+  { type: "indonesian_restaurant", cuisine: "Indonesian" },
+  { type: "italian_restaurant", cuisine: "Italian" },
+  { type: "dutch_restaurant", cuisine: "Dutch" },
+  { type: "french_restaurant", cuisine: "French" },
+  { type: "japanese_restaurant", cuisine: "Japanese" },
+  { type: "sushi_restaurant", cuisine: "Sushi" },
+  { type: "ramen_restaurant", cuisine: "Ramen" },
+  { type: "mexican_restaurant", cuisine: "Mexican" },
+  { type: "thai_restaurant", cuisine: "Thai" },
+  { type: "vietnamese_restaurant", cuisine: "Vietnamese" },
+  { type: "chinese_restaurant", cuisine: "Chinese" },
+  { type: "indian_restaurant", cuisine: "Indian" },
+  { type: "mediterranean_restaurant", cuisine: "Mediterranean" },
+  { type: "middle_eastern_restaurant", cuisine: "Middle Eastern" },
+  { type: "greek_restaurant", cuisine: "Greek" },
+  { type: "spanish_restaurant", cuisine: "Spanish" },
+  { type: "seafood_restaurant", cuisine: "Seafood" },
+  { type: "steak_house", cuisine: "Steakhouse" },
+  { type: "vegetarian_restaurant", cuisine: "Vegetarian" },
+  { type: "vegan_restaurant", cuisine: "Vegan" },
+  { type: "pizza_restaurant", cuisine: "Pizza" },
+  { type: "bakery", cuisine: "Bakery" },
+  { type: "sandwich_shop", cuisine: "Sandwiches" },
+];
+
+export function guessCuisines(types: string[]): string[] {
+  const matches: string[] = [];
+  for (const rule of GOOGLE_TYPE_TO_CUISINE) {
+    if (types.includes(rule.type) && !matches.includes(rule.cuisine)) {
+      matches.push(rule.cuisine);
+    }
+  }
+  return matches;
+}
+
 export interface PlaceDetails {
   name: string;
   address: string;
@@ -169,6 +209,7 @@ export interface PlaceDetails {
   lng: number;
   hours: string;
   suggestedCategories: string[];
+  suggestedCuisines: string[];
   /** Public Storage URLs (PHOTO_BUCKET), ready to feed straight into AdminBoatPhotosField — never data URLs, see PHOTO_BUCKET's own comment. */
   photos: string[];
   /**
@@ -295,6 +336,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
     lng: body.location?.longitude ?? NaN,
     hours: (body.regularOpeningHours?.weekdayDescriptions ?? []).join("; "),
     suggestedCategories: guessCategories(body.types ?? []),
+    suggestedCuisines: guessCuisines(body.types ?? []),
     photos,
     rating: body.rating ?? null,
     reviewCount: body.userRatingCount ?? null,

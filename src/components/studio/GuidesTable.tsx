@@ -26,6 +26,8 @@ export interface GuideRowData {
   inviteUrl: string | null;
   tipsSaved: number;
   bookClicks: number;
+  directionsAsked: number;
+  directionsFinished: number;
 }
 
 const STATUS_TONES: Record<GuideStatus, StudioStatusTone> = {
@@ -44,6 +46,8 @@ export default function GuidesTable({ guides }: { guides: GuideRowData[] }) {
           <th>Status</th>
           <th className="text-right">Tips saved</th>
           <th className="text-right">Book clicks</th>
+          <th className="text-right">Directions asked</th>
+          <th className="text-right">Directions finished</th>
           <th>Link &amp; QR</th>
           <th className="text-right">Actions</th>
         </>
@@ -62,6 +66,8 @@ export default function GuidesTable({ guides }: { guides: GuideRowData[] }) {
             </td>
             <td className="text-right tabular-nums text-[var(--studio-ink-soft)]">{guide.tipsSaved}</td>
             <td className="text-right tabular-nums text-[var(--studio-ink-soft)]">{guide.bookClicks}</td>
+            <td className="text-right tabular-nums text-[var(--studio-ink-soft)]">{guide.directionsAsked}</td>
+            <td className="text-right tabular-nums text-[var(--studio-ink-soft)]">{guide.directionsFinished}</td>
             <td>
               <details>
                 <summary className="cursor-pointer text-[var(--studio-accent)] underline decoration-dotted underline-offset-2">
@@ -96,7 +102,7 @@ export default function GuidesTable({ guides }: { guides: GuideRowData[] }) {
       })}
       {guides.length === 0 ? (
         <tr>
-          <td className="text-[var(--studio-ink-soft)]" colSpan={7}>
+          <td className="text-[var(--studio-ink-soft)]" colSpan={9}>
             No guides yet — invite your first one above.
           </td>
         </tr>

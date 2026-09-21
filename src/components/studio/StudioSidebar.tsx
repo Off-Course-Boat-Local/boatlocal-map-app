@@ -16,6 +16,7 @@ import { usePathname } from "next/navigation";
 import MapAppMark from "@/components/MapAppMark";
 import {
   AnchorIcon,
+  CalendarIcon,
   GearIcon,
   GridIcon,
   LinkIcon,
@@ -26,6 +27,7 @@ import {
   PhoneIcon,
   PinListIcon,
   ReportIcon,
+  RouteIcon,
   UsersIcon,
 } from "@/components/PortalIcons";
 import { logoutAction } from "@/lib/studio/actions";
@@ -39,6 +41,8 @@ const NAV_ICONS: Record<string, typeof GridIcon> = {
   guides: UsersIcon,
   recommendations: PinListIcon,
   "boat-tours": AnchorIcon,
+  routes: RouteIcon,
+  events: CalendarIcon,
   campaign: MegaphoneIcon,
   report: ReportIcon,
   "link-qr": LinkIcon,

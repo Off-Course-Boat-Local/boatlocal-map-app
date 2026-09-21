@@ -43,6 +43,7 @@ import { ADMIN_RECOMMENDATION_CATEGORIES, NOTE_MAX_LENGTH } from "@/lib/admin/ad
 import { FIELD_CLASS, FIELD_LABEL_CLASS, GHOST_BUTTON_CLASS, PRIMARY_BUTTON_CLASS } from "./primitives";
 import AdminBoatPhotosField from "./AdminBoatPhotosField";
 import GooglePlaceSearchField from "./GooglePlaceSearchField";
+import CuisineTagField from "@/components/CuisineTagField";
 
 const initialState: AdminRecommendationFormState = {};
 
@@ -94,6 +95,10 @@ export default function AdminRecommendationForm({
   const [googleReviewCount, setGoogleReviewCount] = useState<number | null>(
     recommendation?.googleReviewCount ?? null,
   );
+  const [cuisineTypes, setCuisineTypes] = useState<string[]>(
+    recommendation?.cuisineTypes ?? [],
+  );
+  const [suggestedCuisines, setSuggestedCuisines] = useState<string[]>([]);
 
   function toggleCategory(id: CategoryId) {
     setCategories((prev) =>
@@ -111,6 +116,16 @@ export default function AdminRecommendationForm({
         const merged = [...prev];
         for (const c of details.suggestedCategories) {
           if (!merged.includes(c as CategoryId)) merged.push(c as CategoryId);
+        }
+        return merged;
+      });
+    }
+    if (details.suggestedCuisines && details.suggestedCuisines.length > 0) {
+      setSuggestedCuisines(details.suggestedCuisines);
+      setCuisineTypes((prev) => {
+        const merged = [...prev];
+        for (const c of details.suggestedCuisines) {
+          if (!merged.includes(c)) merged.push(c);
         }
         return merged;
       });
@@ -231,6 +246,15 @@ export default function AdminRecommendationForm({
             className={inputClass}
           />
         </label>
+      </div>
+
+      <div className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-bg)] p-3.5">
+        <CuisineTagField
+          value={cuisineTypes}
+          onChange={setCuisineTypes}
+          suggested={suggestedCuisines}
+          theme="admin"
+        />
       </div>
 
       <AddressField

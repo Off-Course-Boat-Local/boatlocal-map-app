@@ -43,6 +43,8 @@ export interface GuidePerformance {
   appOpens: number;
   tipsSaved: number;
   bookClicks: number;
+  directionsAsked: number;
+  directionsFinished: number;
 }
 
 export type CompanyPerformance = GuidePerformance;
@@ -56,6 +58,8 @@ export async function guidePerformance(
     appOpens: sum(rows, ["app_open"]),
     tipsSaved: sum(rows, ["tip_saved"]),
     bookClicks: sum(rows, ["boat_book_click"]),
+    directionsAsked: sum(rows, ["directions_requested"]),
+    directionsFinished: sum(rows, ["directions_arrived"]),
   };
 }
 
@@ -68,6 +72,8 @@ export async function companyPerformance(
     appOpens: sum(rows, ["app_open"]),
     tipsSaved: sum(rows, ["tip_saved"]),
     bookClicks: sum(rows, ["boat_book_click"]),
+    directionsAsked: sum(rows, ["directions_requested"]),
+    directionsFinished: sum(rows, ["directions_arrived"]),
   };
 }
 
@@ -112,12 +118,12 @@ export async function platformEffectiveness(
     { key: "reviews-generated", label: "Reviews generated", value: sum(rows, REVIEW_EVENTS) },
     {
       key: "directions-requested",
-      label: "Directions requested",
+      label: "Directions asked",
       value: sum(rows, ["directions_requested"]),
     },
     {
       key: "directions-arrived",
-      label: "Guests who arrived",
+      label: "Directions finished",
       value: sum(rows, ["directions_arrived"]),
     },
     { key: "tips-saved", label: "Tips saved", value: sum(rows, ["tip_saved"]) },
