@@ -86,20 +86,26 @@ export interface CtaBannerContent {
   href: string;
 }
 
-export type BlockContent<T extends WelcomeBlockType> =
-  T extends "guide_hero" ? GuideHeroContent :
-  T extends "review_card" ? ReviewCardContent :
-  T extends "category_shortcuts" ? CategoryShortcutsContent :
-  T extends "featured_places" ? FeaturedPlacesContent :
-  T extends "boat_tour_card" ? BoatTourCardContent :
-  T extends "tip_box" ? TipBoxContent :
-  T extends "heading" ? HeadingContent :
-  T extends "paragraph" ? ParagraphContent :
-  T extends "image" ? ImageContent :
-  T extends "quote" ? QuoteContent :
-  T extends "faq_group" ? FaqGroupContent :
-  T extends "cta_banner" ? CtaBannerContent :
-  never;
+export interface BlockContentMap {
+  guide_hero: GuideHeroContent;
+  review_card: ReviewCardContent;
+  category_shortcuts: CategoryShortcutsContent;
+  featured_places: FeaturedPlacesContent;
+  boat_tour_card: BoatTourCardContent;
+  tip_box: TipBoxContent;
+  heading: HeadingContent;
+  paragraph: ParagraphContent;
+  image: ImageContent;
+  quote: QuoteContent;
+  faq_group: FaqGroupContent;
+  cta_banner: CtaBannerContent;
+}
+
+export type BlockContent<T extends WelcomeBlockType> = BlockContentMap[T];
+
+export function isWelcomeBlockType(type: unknown): type is WelcomeBlockType {
+  return typeof type === "string" && (WELCOME_BLOCK_TYPES as readonly string[]).includes(type);
+}
 
 export interface BaseWelcomeBlock<T extends WelcomeBlockType, C> {
   id: string;

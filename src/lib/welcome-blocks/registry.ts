@@ -24,7 +24,9 @@ export interface BlockDefinition<T extends WelcomeBlockType = WelcomeBlockType> 
   createDefaultContent: () => BlockContent<T>;
 }
 
-export const BLOCK_REGISTRY: Record<WelcomeBlockType, BlockDefinition<WelcomeBlockType>> = {
+export const BLOCK_REGISTRY: {
+  [K in WelcomeBlockType]: BlockDefinition<K>;
+} = {
   guide_hero: {
     type: "guide_hero",
     label: "Gids Introductie",
@@ -166,16 +168,16 @@ function generateUUID(): string {
 export function getBlockDefinition(
   type: string
 ): BlockDefinition<WelcomeBlockType> | undefined {
-  if (type in BLOCK_REGISTRY) {
+  if (Object.hasOwn(BLOCK_REGISTRY, type)) {
     return BLOCK_REGISTRY[type as WelcomeBlockType];
   }
   return undefined;
 }
 
-export function createDefaultBlock(
-  type: WelcomeBlockType,
+export function createDefaultBlock<T extends WelcomeBlockType>(
+  type: T,
   displayOrder: number = 0
-): WelcomeBlock {
+): Extract<WelcomeBlock, { type: T }> {
   const definition = getBlockDefinition(type);
   if (!definition) {
     throw new Error(`Unknown welcome block type: ${type}`);
@@ -186,5 +188,5 @@ export function createDefaultBlock(
     type,
     displayOrder,
     content: definition.createDefaultContent(),
-  } as WelcomeBlock;
+  } as Extract<WelcomeBlock, { type: T }>;
 }

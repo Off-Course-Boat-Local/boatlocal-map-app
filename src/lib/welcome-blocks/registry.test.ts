@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { WELCOME_BLOCK_TYPES, type WelcomeBlockType } from "@/types/welcome-blocks";
+import {
+  WELCOME_BLOCK_TYPES,
+  isWelcomeBlockType,
+  type WelcomeBlockType,
+} from "@/types/welcome-blocks";
 import {
   BLOCK_REGISTRY,
   getBlockDefinition,
@@ -11,7 +15,12 @@ describe("Welcome Blocks Registry", () => {
     for (const type of WELCOME_BLOCK_TYPES) {
       expect(BLOCK_REGISTRY[type]).toBeDefined();
       expect(BLOCK_REGISTRY[type].type).toBe(type);
+      expect(isWelcomeBlockType(type)).toBe(true);
     }
+    expect(isWelcomeBlockType("unknown_block")).toBe(false);
+    expect(isWelcomeBlockType("")).toBe(false);
+    expect(isWelcomeBlockType(null)).toBe(false);
+    expect(isWelcomeBlockType(123)).toBe(false);
     expect(Object.keys(BLOCK_REGISTRY).sort()).toEqual([...WELCOME_BLOCK_TYPES].sort());
   });
 
@@ -34,27 +43,35 @@ describe("Welcome Blocks Registry", () => {
     }
   });
 
-  it("getBlockDefinition returns the definition for valid types and undefined for unknown types", () => {
+  it("getBlockDefinition returns the definition for valid types and undefined for unknown or prototype types", () => {
     for (const type of WELCOME_BLOCK_TYPES) {
       const def = getBlockDefinition(type);
       expect(def).toBeDefined();
       expect(def?.type).toBe(type);
     }
 
-    expect(getBlockDefinition("unknown_type" as unknown as WelcomeBlockType)).toBeUndefined();
+    expect(getBlockDefinition("unknown_type")).toBeUndefined();
     expect(getBlockDefinition("")).toBeUndefined();
+    expect(getBlockDefinition("toString")).toBeUndefined();
+    expect(getBlockDefinition("constructor")).toBeUndefined();
+    expect(getBlockDefinition("valueOf")).toBeUndefined();
   });
 
-  it("createDefaultBlock returns a block with id, type, displayOrder 0, and default content", () => {
+  it("createDefaultBlock returns a block with valid UUID, type, displayOrder 0, and default content", () => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
     for (const type of WELCOME_BLOCK_TYPES) {
       const block = createDefaultBlock(type);
       expect(block.id).toBeDefined();
-      expect(typeof block.id).toBe("string");
-      expect(block.id.length).toBeGreaterThan(0);
+      expect(block.id).toMatch(uuidRegex);
       expect(block.type).toBe(type);
       expect(block.displayOrder).toBe(0);
       expect(block.content).toEqual(BLOCK_REGISTRY[type].createDefaultContent());
     }
+
+    const b1 = createDefaultBlock("heading");
+    const b2 = createDefaultBlock("heading");
+    expect(b1.id).not.toBe(b2.id);
   });
 
   it("createDefaultBlock respects custom displayOrder parameter", () => {
