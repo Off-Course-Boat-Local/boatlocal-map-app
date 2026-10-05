@@ -10,6 +10,7 @@ describe("Studio nav gating", () => {
       "Branding",
       "Guides",
       "Recommendations",
+      "Welcome Hub",
       "Tours",
       "Routes",
       "Events",

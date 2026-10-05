@@ -34,6 +34,7 @@ export const BASE_COMPANY_NAV: StudioNavItem[] = [
   { key: "branding", label: "Branding", href: "/studio/branding" },
   { key: "guides", label: "Guides", href: "/studio/guides" },
   { key: "recommendations", label: "Recommendations", href: "/studio/recommendations" },
+  { key: "welcome-hub", label: "Welcome Hub", href: "/studio/welcome-hub" },
   { key: "boat-tours", label: "Tours", href: "/studio/boat-tours" },
   { key: "routes", label: "Routes", href: "/studio/routes" },
   { key: "events", label: "Events", href: "/studio/events" },

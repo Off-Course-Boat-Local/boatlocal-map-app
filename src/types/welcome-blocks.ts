@@ -26,6 +26,8 @@ export interface GuideHeroContent {
 export interface ReviewCardContent {
   promptText?: string;
   platforms: ReviewPlatform[];
+  /** Per-platform review links (https only). Platforms without a URL are not shown to guests. */
+  urls?: Partial<Record<ReviewPlatform, string>>;
 }
 
 export interface CategoryShortcutsContent {

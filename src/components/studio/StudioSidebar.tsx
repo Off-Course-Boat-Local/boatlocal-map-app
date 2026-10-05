@@ -40,6 +40,7 @@ const NAV_ICONS: Record<string, typeof GridIcon> = {
   branding: PaletteIcon,
   guides: UsersIcon,
   recommendations: PinListIcon,
+  "welcome-hub": PersonIcon,
   "boat-tours": AnchorIcon,
   routes: RouteIcon,
   events: CalendarIcon,

@@ -8,7 +8,8 @@ const PLATFORM_LABEL: Record<ReviewPlatform, string> = {
 };
 
 export function ReviewCardBlock({ content, ctx }: { content: ReviewCardContent; ctx: WelcomeBlockContext }) {
-  const links = content.platforms.filter((p) => ctx.reviewUrls[p]);
+  const urlFor = (p: ReviewPlatform) => content.urls?.[p] || ctx.reviewUrls[p];
+  const links = content.platforms.filter((p) => urlFor(p));
   return (
     <section className="rounded-2xl border border-[#E3E4E8] bg-white p-4">
       <p aria-hidden="true" className="text-lg tracking-widest" style={{ color: ctx.brand.accent }}>
@@ -20,7 +21,7 @@ export function ReviewCardBlock({ content, ctx }: { content: ReviewCardContent; 
           {links.map((p) => (
             <a
               key={p}
-              href={ctx.reviewUrls[p]}
+              href={urlFor(p)}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-full border border-[#E3E4E8] px-3 py-1.5 text-sm font-medium text-[#17181C]"
