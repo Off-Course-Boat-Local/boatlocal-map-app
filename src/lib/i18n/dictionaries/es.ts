@@ -37,6 +37,7 @@ const es: Dictionary = {
 
   nav: {
     ariaLabel: "Navegación para huéspedes",
+    home: "Inicio",
     map: "Mapa",
     list: "Lista",
     saved: "Guardados",

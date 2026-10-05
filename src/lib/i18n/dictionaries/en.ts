@@ -51,6 +51,7 @@ const en = {
 
   nav: {
     ariaLabel: "Guest navigation",
+    home: "Home",
     map: "Map",
     list: "List",
     saved: "Saved",

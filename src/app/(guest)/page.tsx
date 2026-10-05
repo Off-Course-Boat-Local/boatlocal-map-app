@@ -15,6 +15,7 @@
 
 import GuestWelcomeScreen from "@/components/guest/GuestWelcomeScreen";
 import { getMapPins } from "@/lib/data/source";
+import { getWelcomeHub } from "@/lib/data/welcomeHub";
 import { guestQueryString } from "@/lib/guestLinks";
 import { getGuestContext } from "@/lib/guestServerContext";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
@@ -39,20 +40,38 @@ export default async function WelcomePage({
   // guide's name and their hand-written welcome pass through verbatim.
   const dict = getDictionary(await getLocale());
 
+  // Only a real, active hub renders blocks — getWelcomeHubBlocks' built-in
+  // fallback would stack a second hero under this screen's own header.
+  const hub = companyId ? await getWelcomeHub(companyId, guide?.id) : null;
+  const guideName = guide?.name ?? dict.common.yourGuide;
+  const guideAvatarInitial =
+    guide?.avatarInitial ?? (brand.companyName.trim().charAt(0).toUpperCase() || "?");
+
   return (
     <GuestWelcomeScreen
       brand={brand}
-      guideName={guide?.name ?? dict.common.yourGuide}
+      guideName={guideName}
       // No guide assigned (the platform-default company has none) — the
       // company's own initial reads as a normal identity mark; a bare "?"
       // read as a broken avatar (founder screenshot, 2026-09-02: it looked
       // exactly like a broken image, sitting in the same circle a logo
       // image would render in).
-      guideAvatarInitial={guide?.avatarInitial ?? (brand.companyName.trim().charAt(0).toUpperCase() || "?")}
+      guideAvatarInitial={guideAvatarInitial}
       guideWelcome={guide?.welcome ?? dict.welcome.defaultWelcome}
       placeCount={placeCount}
       topPick={topPick}
       qs={qs}
+      hubBlocks={hub?.blocks}
+      hubContext={{
+        brand,
+        guideName,
+        guideAvatarInitial,
+        qs,
+        pinsById: Object.fromEntries(pins.map((p) => [p.id, p])),
+        boatTour: topPick,
+        // No review-platform URLs are stored yet (Task 6's editor / a company setting will supply them).
+        reviewUrls: {},
+      }}
     />
   );
 }

@@ -40,6 +40,7 @@ const fr: Dictionary = {
 
   nav: {
     ariaLabel: "Navigation invité",
+    home: "Accueil",
     map: "Carte",
     list: "Liste",
     saved: "Favoris",

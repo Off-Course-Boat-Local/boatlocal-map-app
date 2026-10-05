@@ -1,7 +1,7 @@
 "use client";
 
-// The bottom tab bar shown on every guest page: Map · List · Saved · Review ·
-// Install. Visuals are a direct port of the reference design's TabBar
+// The bottom tab bar shown on every guest page: Home · Map · List · Saved ·
+// Install (Review lives on Home as a welcome block). Visuals are a direct port of the reference design's TabBar
 // (nice-notice's src/components/mobile-shell.tsx): a 5-column grid of Lucide
 // icons, each sitting in an h-8/w-12 pill that fills with a soft brand tint
 // when active, over an 11px medium-weight Figtree label. The bar itself is
@@ -21,9 +21,9 @@
 import {
   Download,
   Heart,
+  House,
   LayoutList,
   Map as MapIcon,
-  MessageSquareHeart,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -41,11 +41,16 @@ const ICON_STROKE = 2;
 interface NavItem {
   href: string;
   /** Dictionary key under `nav` — the LABEL is looked up per locale at render. */
-  labelKey: "map" | "list" | "saved" | "review" | "install";
+  labelKey: "home" | "map" | "list" | "saved" | "install";
   icon: (props: { active: boolean }) => ReactNode;
 }
 
 const NAV_ITEMS: NavItem[] = [
+  {
+    href: "/",
+    labelKey: "home",
+    icon: () => <House className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />,
+  },
   {
     href: "/map",
     labelKey: "map",
@@ -68,13 +73,6 @@ const NAV_ITEMS: NavItem[] = [
         fill={active ? "currentColor" : "none"}
         aria-hidden
       />
-    ),
-  },
-  {
-    href: "/review",
-    labelKey: "review",
-    icon: () => (
-      <MessageSquareHeart className={ICON_CLASS} strokeWidth={ICON_STROKE} aria-hidden />
     ),
   },
   {

@@ -22,6 +22,9 @@ import Link from "next/link";
 import { PlaceCard } from "@/components/map/PlaceCard";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import ShareQr from "@/components/ShareQr";
+import type { WelcomeBlockContext } from "@/components/welcome-blocks/context";
+import { WelcomeBlockRenderer } from "@/components/welcome-blocks/WelcomeBlockRenderer";
+import type { WelcomeBlock } from "@/types/welcome-blocks";
 import { useIsDesktopPointer } from "@/hooks/useIsDesktopPointer";
 import { useIsStandalone } from "@/hooks/useIsStandalone";
 import { useSavedPlaces } from "@/hooks/useSavedPlaces";
@@ -52,6 +55,9 @@ export interface GuestWelcomeScreenProps {
   topPick: MapPin | null;
   /** Preserved `?company=`/`?guide=` query string — see src/lib/guestLinks.ts. */
   qs: string;
+  /** Guide/company welcome-hub blocks (src/lib/data/welcomeHub.ts). Omitted or empty when no hub is set up — the screen then renders exactly as before. */
+  hubBlocks?: WelcomeBlock[];
+  hubContext?: WelcomeBlockContext;
 }
 
 function GuideAvatar({ initial, logoUrl }: { initial: string; logoUrl?: string | null }) {
@@ -315,6 +321,8 @@ export default function GuestWelcomeScreen({
   placeCount,
   topPick,
   qs,
+  hubBlocks,
+  hubContext,
 }: GuestWelcomeScreenProps) {
   // Real, persisted save state (src/lib/savedPlaces.ts via
   // src/hooks/useSavedPlaces.ts) — the same store the bottom nav badge and
@@ -427,6 +435,10 @@ export default function GuestWelcomeScreen({
               onAction={() => window.open(guestPinAction(topPick).url, "_blank", "noopener,noreferrer")}
             />
           </div>
+        ) : null}
+
+        {hubBlocks && hubBlocks.length > 0 && hubContext ? (
+          <WelcomeBlockRenderer blocks={hubBlocks} ctx={hubContext} />
         ) : null}
 
         <ShareSection />

@@ -38,6 +38,7 @@ const nl: Dictionary = {
 
   nav: {
     ariaLabel: "Gastnavigatie",
+    home: "Home",
     map: "Kaart",
     list: "Lijst",
     saved: "Bewaard",
