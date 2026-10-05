@@ -330,12 +330,34 @@ export default function GuestWelcomeScreen({
   // shows up there too, rather than a Welcome-only ephemeral toggle.
   const { isSaved, toggle } = useSavedPlaces();
   const { t } = useI18n();
+  // A hero with the guide's photo leads the page (right under the slim bar);
+  // every other block stays below the Map/List CTAs.
+  const photoHero = hubBlocks?.find((b) => b.type === "guide_hero" && !!b.content.photoUrl);
+  const hasHeroPhoto = !!photoHero;
+  const otherBlocks = hubBlocks?.filter((b) => b !== photoHero) ?? [];
 
   return (
     <div className="no-scrollbar flex h-full w-full flex-col overflow-y-auto bg-white">
       <InstallBanner qs={qs} />
 
-      {/* Header — guide avatar, app identity, personal welcome quote. */}
+      {/* When the hub opens with a hero that already carries the guide's large
+          photo, name and greeting, the avatar/quote header would say the same
+          thing twice — keep only a slim brand bar (with the language switcher,
+          which must stay reachable on this first screen). */}
+      {hasHeroPhoto ? (
+        <header
+          className="flex shrink-0 items-center justify-between px-5 pb-3 text-white"
+          style={{
+            background: "var(--brand-primary)",
+            paddingTop: "calc(env(safe-area-inset-top) + 12px)",
+          }}
+        >
+          <span className="text-[15px]" style={{ fontFamily: displayFontFamily }}>
+            {brand.appName}
+          </span>
+          <LanguageSwitcher tone="header" />
+        </header>
+      ) : (
       <header
         className="shrink-0 px-6 pb-7 text-center text-white"
         // See GuestListScreen's header comment — safe-area top for
@@ -377,8 +399,11 @@ export default function GuestWelcomeScreen({
         </p>
         <p className="mt-2 text-[12.5px] opacity-75">— {guideName}</p>
       </header>
+      )}
 
       <div className="flex flex-1 flex-col gap-6 px-5 py-6">
+        {photoHero && hubContext ? <WelcomeBlockRenderer blocks={[photoHero]} ctx={hubContext} /> : null}
+
         {/* Primary / secondary CTAs */}
         <div>
           <Link
@@ -437,8 +462,8 @@ export default function GuestWelcomeScreen({
           </div>
         ) : null}
 
-        {hubBlocks && hubBlocks.length > 0 && hubContext ? (
-          <WelcomeBlockRenderer blocks={hubBlocks} ctx={hubContext} />
+        {otherBlocks.length > 0 && hubContext ? (
+          <WelcomeBlockRenderer blocks={otherBlocks} ctx={hubContext} />
         ) : null}
 
         <ShareSection />
