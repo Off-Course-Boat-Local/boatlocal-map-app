@@ -30,8 +30,13 @@ export async function GET(request: NextRequest) {
   // pass it, so that flow's cost/latency is unchanged.
   const withVibe = searchParams.get("withVibe") === "1";
 
+  // Callers that only need a hero image (route form) pass ?photos=1 so we
+  // don't download/store 8 photos per lookup.
+  const photosParam = Number(searchParams.get("photos"));
+  const maxPhotos = Number.isInteger(photosParam) && photosParam >= 0 ? photosParam : undefined;
+
   try {
-    const details = await getPlaceDetails(placeId.trim());
+    const details = await getPlaceDetails(placeId.trim(), maxPhotos);
     const vibeSummary = withVibe ? await summarizeVibe(details.reviewSnippets).catch(() => null) : null;
     return NextResponse.json({ details, vibeSummary });
   } catch {

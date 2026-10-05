@@ -68,7 +68,10 @@ interface PhotonFeature {
 
 /** Joins address parts, dropping blanks so we never emit ", , Amsterdam". */
 function join(parts: (string | undefined)[], sep = ", "): string {
-  return parts.map((p) => (p ?? "").trim()).filter(Boolean).join(sep);
+  return parts
+    .map((p) => (p ?? "").trim())
+    .filter(Boolean)
+    .join(sep);
 }
 
 /**
@@ -76,7 +79,10 @@ function join(parts: (string | undefined)[], sep = ", "): string {
  * "OSM tags" to "what a guide expects to see in the Address box" is the
  * fiddly part worth pinning down, not the fetch around it.
  */
-export function toGeocodeResult(feature: PhotonFeature, index: number): GeocodeResult | null {
+export function toGeocodeResult(
+  feature: PhotonFeature,
+  index: number,
+): GeocodeResult | null {
   const coords = feature.geometry?.coordinates;
   if (!coords || coords.length < 2) return null;
   const [lng, lat] = coords;
@@ -89,7 +95,8 @@ export function toGeocodeResult(feature: PhotonFeature, index: number): GeocodeR
   // address `name` is absent, so the street line has to stand in as the
   // headline or the suggestion renders with an empty first line.
   const streetLine = join([join([p.street, p.housenumber], " ")], " ");
-  const label = p.name?.trim() || streetLine || p.city?.trim() || "Unnamed place";
+  const label =
+    p.name?.trim() || streetLine || p.city?.trim() || "Unnamed place";
 
   // The address we store: prefer the real street line; fall back to the
   // name so the field is never blank (it's `required` on the form).
@@ -172,6 +179,36 @@ export async function geocodeSearch(
     .filter((r): r is GeocodeResult => r !== null);
 }
 
+/**
+ * Reverse lookup for a point someone clicked on the map — gives the route
+ * form a name/address to pre-fill. Photon's /reverse sits next to /api, so
+ * it's derived from the same base URL; a custom STUDIO_GEOCODER_URL that
+ * doesn't end in /api just opts out (null) rather than guessing.
+ */
+export async function geocodeReverse(
+  point: { lng: number; lat: number },
+  signal?: AbortSignal,
+): Promise<GeocodeResult | null> {
+  const base = process.env.STUDIO_GEOCODER_URL || DEFAULT_GEOCODER_URL;
+  if (!/\/api\/?$/.test(base)) return null;
+  const url = new URL(base.replace(/\/api\/?$/, "/reverse"));
+  url.searchParams.set("lat", String(point.lat));
+  url.searchParams.set("lon", String(point.lng));
+  url.searchParams.set("lang", "en");
+
+  const res = await fetch(url, {
+    signal,
+    headers: {
+      "User-Agent": "MapApp-Studio/1.0 (+https://map.boatlocal.nl)",
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) throw new Error(`Geocoder returned ${res.status}`);
+  const body = (await res.json()) as { features?: PhotonFeature[] };
+  const first = Array.isArray(body.features) ? body.features[0] : undefined;
+  return first ? toGeocodeResult(first, 0) : null;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Google Maps URL parsing                                            */
 /* ------------------------------------------------------------------ */
@@ -228,7 +265,9 @@ function isValidCoord(lat: number, lng: number): boolean {
  *  - `?q={lat},{lng}` — the older link form, e.g.
  *    `https://maps.google.com/?q=52.3702,4.8952`
  */
-export function parseGoogleMapsUrl(input: string): { lat: number; lng: number } | null {
+export function parseGoogleMapsUrl(
+  input: string,
+): { lat: number; lng: number } | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
