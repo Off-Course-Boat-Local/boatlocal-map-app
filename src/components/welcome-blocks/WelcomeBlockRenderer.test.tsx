@@ -52,6 +52,16 @@ describe("WelcomeBlockRenderer", () => {
     expect(text.indexOf("Welkom!")).toBeLessThan(text.indexOf("Local tip"));
   });
 
+  it("shows a large guide photo in the hero when photoUrl is set", () => {
+    render(
+      <WelcomeBlockRenderer
+        blocks={[b("h", 0, "guide_hero", { title: "Hi", photoUrl: "https://img.example/sergio.jpg" })]}
+        ctx={ctx}
+      />,
+    );
+    expect(screen.getByRole("img", { name: "Sergio" })).toHaveAttribute("src", "https://img.example/sergio.jpg");
+  });
+
   it("renders null for unknown block types without crashing", () => {
     const { container } = render(<WelcomeBlockRenderer blocks={[b("x", 0, "nonsense", {})]} ctx={ctx} />);
     expect(container.textContent).toBe("");

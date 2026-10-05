@@ -100,6 +100,7 @@ function BlockFields({
         <div className="space-y-3">
           {text("title", "Title")}
           {text("greeting", "Greeting", true)}
+          {text("photoUrl", "Large photo URL (https://…, optional)")}
           {checkbox(c.showAvatar !== false, "Show avatar", () => set({ showAvatar: c.showAvatar === false }))}
         </div>
       );

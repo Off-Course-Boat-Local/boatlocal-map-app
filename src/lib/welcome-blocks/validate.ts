@@ -57,6 +57,11 @@ export function validateWelcomeBlocks(input: unknown): WelcomeBlock[] {
         throw new WelcomeBlockValidationError(`Block ${index + 1}: link must be http(s) or an in-app path.`);
       }
     }
+    if (raw.type === "guide_hero" && content.photoUrl !== undefined && content.photoUrl !== "") {
+      const safe = safeHttpUrl(content.photoUrl);
+      if (!safe) throw new WelcomeBlockValidationError(`Block ${index + 1}: photo URL must be http(s).`);
+      content.photoUrl = safe;
+    }
     if (raw.type === "image" && content.url !== undefined && !safeHttpUrl(content.url)) {
       throw new WelcomeBlockValidationError(`Block ${index + 1}: image URL must be http(s).`);
     }

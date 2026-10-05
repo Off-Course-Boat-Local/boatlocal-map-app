@@ -21,6 +21,8 @@ export interface GuideHeroContent {
   title?: string;
   greeting?: string;
   showAvatar?: boolean;
+  /** Large photo of the guide shown at the top of the hero (https URL). */
+  photoUrl?: string;
 }
 
 export interface ReviewCardContent {
