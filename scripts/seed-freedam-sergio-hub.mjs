@@ -152,7 +152,12 @@ const blocks = [
   ["tip_box", { title: "What I'd avoid", body: "Stroopwafels at €8–10 in tourist shops (get them fresh and cheap at bakeries or markets). Tourist-trap restaurants around Dam Square, Leidseplein and the Red Light District. Renting a bike if you're not confident in dense city traffic. Madame Tussauds — Amsterdam has world-class museums with real art instead.", style: "warning" }],
   p("Tot ziens! 🇳🇱 Thanks again for joining me today — I hope to see you again on another FreeDam Tours experience. – Sergio"),
   p("FreeDam Tours · Meeting point: Beursplein 5, 1012 JW Amsterdam · info@freedamtours.com · +31 (0)6 40 79 02 79"),
-].map(([block_type, content], display_order) => ({ id: randomUUID(), block_type, display_order, content }));
+].filter(([type, content], i, all) => {
+  // A featured_places block with no resolved places is dropped together with the heading introducing it.
+  if (type === "featured_places" && content.placeIds.length === 0) return false;
+  if (type === "heading" && all[i + 1]?.[0] === "featured_places" && all[i + 1][1].placeIds.length === 0) return false;
+  return true;
+}).map(([block_type, content], display_order) => ({ id: randomUUID(), block_type, display_order, content }));
 
 console.log(`Blocks: ${blocks.length}`);
 if (dryRun) {
