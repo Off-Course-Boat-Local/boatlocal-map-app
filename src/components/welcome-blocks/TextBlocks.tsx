@@ -49,9 +49,11 @@ function isSafeHref(href: string): boolean {
 
 export function CtaBannerBlock({ content, ctx }: { content: CtaBannerContent; ctx: WelcomeBlockContext }) {
   if (!isSafeHref(content.href)) return null;
+  const external = /^https?:\/\//i.test(content.href);
   return (
     <a
       href={content.href}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className="block rounded-2xl px-4 py-3 text-center text-sm font-semibold text-white"
       style={{ background: ctx.brand.primary }}
     >
