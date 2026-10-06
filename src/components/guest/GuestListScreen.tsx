@@ -188,7 +188,7 @@ export default function GuestListScreen({
         </div>
       </div>
 
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white">
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white pb-20">
         {!filter && events.length > 0 && (
           <div className="border-b border-[#F1F3F6] pb-2">
             <GuestEventsSection events={events} />

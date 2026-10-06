@@ -1,0 +1,1643 @@
+[
+  {
+    "list": "lunch",
+    "name": "Amsterdam Lunch",
+    "items": [
+      {
+        "title": "The Boulevard - Sando Sandwiches & Pokébowls",
+        "body": "The Boulevard - Sando Sandwiches & Pokébowls4,9Aziatisch fusion-restaurant",
+        "allText": "The Boulevard - Sando Sandwiches & Pokébowls\n4,9\nAziatisch fusion-restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Omelegg Centrum",
+        "body": "Omelegg Centrum4,6Ontbijtrestaurant",
+        "allText": "Omelegg Centrum\n4,6\nOntbijtrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Effendy Lahmacun Cafe - Rozengracht",
+        "body": "Effendy Lahmacun Cafe - Rozengracht4,8Turks restaurant",
+        "allText": "Effendy Lahmacun Cafe - Rozengracht\n4,8\nTurks restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Stacks Deli",
+        "body": "Stacks Deli4,4Delicatessenwinkel",
+        "allText": "Stacks Deli\n4,4\nDelicatessenwinkel",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Flo’s Deli",
+        "body": "Flo’s Deli4,5Bakkerij",
+        "allText": "Flo’s Deli\n4,5\nBakkerij",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Slagerij Vet",
+        "body": "Slagerij Vet4,4Slagerij",
+        "allText": "Slagerij Vet\n4,4\nSlagerij",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Toastable Koningsplein",
+        "body": "Toastable Koningsplein4,7Restaurant",
+        "allText": "Toastable Koningsplein\n4,7\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "De Drie Graefjes - Dam",
+        "body": "De Drie Graefjes - Dam4,3Theehuis",
+        "allText": "De Drie Graefjes - Dam\n4,3\nTheehuis",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Dignita Hoftuin",
+        "body": "Dignita Hoftuin4,4Restaurant",
+        "allText": "Dignita Hoftuin\n4,4\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Pannenkoekenhuis Upstairs",
+        "body": "Pannenkoekenhuis Upstairs4,6Pannenkoekrestaurant",
+        "allText": "Pannenkoekenhuis Upstairs\n4,6\nPannenkoekrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Waterkant",
+        "body": "Waterkant4,4Bar",
+        "allText": "Waterkant\n4,4\nBar",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Morlang Steak & Fries Cafe restaurant",
+        "body": "Morlang Steak & Fries Cafe restaurant4,3Restaurant",
+        "allText": "Morlang Steak & Fries Cafe restaurant\n4,3\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Café de Jaren",
+        "body": "Café de Jaren4,2Koffiehuis",
+        "allText": "Café de Jaren\n4,2\nKoffiehuis",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Winkel 43",
+        "body": "Winkel 434,5Koffiehuis",
+        "allText": "Winkel 43\n4,5\nKoffiehuis",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Hannekes Boom",
+        "body": "Hannekes Boom4,3Restaurant",
+        "allText": "Hannekes Boom\n4,3\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Badhuis Amsterdam | Restaurant Amsterdam",
+        "body": "Badhuis Amsterdam | Restaurant Amsterdam4,2Restaurant",
+        "allText": "Badhuis Amsterdam | Restaurant Amsterdam\n4,2\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Bar Botanique | Restaurant Amsterdam-Oost",
+        "body": "Bar Botanique | Restaurant Amsterdam-Oost4,3Restaurant",
+        "allText": "Bar Botanique | Restaurant Amsterdam-Oost\n4,3\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Omelegg de Pijp 🍳",
+        "body": "Omelegg de Pijp 🍳4,6Ontbijtrestaurant",
+        "allText": "Omelegg de Pijp 🍳\n4,6\nOntbijtrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Omelegg Jordaan 🍳",
+        "body": "Omelegg Jordaan 🍳4,7Ontbijtrestaurant",
+        "allText": "Omelegg Jordaan 🍳\n4,7\nOntbijtrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Café Restaurant De Ysbreeker",
+        "body": "Café Restaurant De Ysbreeker4,2Restaurant",
+        "allText": "Café Restaurant De Ysbreeker\n4,2\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Bakkerswinkel Westerpark Amsterdam",
+        "body": "Bakkerswinkel Westerpark Amsterdam4,3Restaurant",
+        "allText": "Bakkerswinkel Westerpark Amsterdam\n4,3\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "De Bakkerswinkel Centrum",
+        "body": "De Bakkerswinkel Centrum4,6Restaurant",
+        "allText": "De Bakkerswinkel Centrum\n4,6\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Pension Homeland",
+        "body": "Pension Homeland4,4Hotel",
+        "allText": "Pension Homeland\n4,4\nHotel",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Benji's",
+        "body": "Benji's4,5Brunchrestaurant",
+        "allText": "Benji's\n4,5\nBrunchrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Benji's",
+        "body": "Benji's4,4Brunchrestaurant",
+        "allText": "Benji's\n4,4\nBrunchrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Zuivelhoeve by Kaashuis Tromp Amsterdam Utrechtsestraat",
+        "body": "Zuivelhoeve by Kaashuis Tromp Amsterdam Utrechtsestraat4,5Kaaswinkel",
+        "allText": "Zuivelhoeve by Kaashuis Tromp Amsterdam Utrechtsestraat\n4,5\nKaaswinkel",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Zuivelhoeve Elandsgracht",
+        "body": "Zuivelhoeve Elandsgracht4,5Kaaswinkel",
+        "allText": "Zuivelhoeve Elandsgracht\n4,5\nKaaswinkel",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Staring at Jacob",
+        "body": "Staring at Jacob4,5Brunchrestaurant",
+        "allText": "Staring at Jacob\n4,5\nBrunchrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Bakers & Roasters",
+        "body": "Bakers & Roasters4,6Brunchrestaurant",
+        "allText": "Bakers & Roasters\n4,6\nBrunchrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Bakers & Roasters",
+        "body": "Bakers & Roasters4,6Brunchrestaurant",
+        "allText": "Bakers & Roasters\n4,6\nBrunchrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "SAINT-JEAN Amsterdam",
+        "body": "SAINT-JEAN Amsterdam4,4Banketbakker",
+        "allText": "SAINT-JEAN Amsterdam\n4,4\nBanketbakker",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Proeflokaal 't Blauwe Theehuis",
+        "body": "Proeflokaal 't Blauwe Theehuis4,4Brouwerijcafé",
+        "allText": "Proeflokaal 't Blauwe Theehuis\n4,4\nBrouwerijcafé",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Bouchon du Centre",
+        "body": "Bouchon du Centre4,7Permanent gesloten",
+        "allText": "Bouchon du Centre\n4,7\nPermanent gesloten",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Saigon Caphé Gelderlandplein",
+        "body": "Saigon Caphé Gelderlandplein4,1Vietnamees restaurant",
+        "allText": "Saigon Caphé Gelderlandplein\n4,1\nVietnamees restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Saigon Caphe CS",
+        "body": "Saigon Caphe CS3,8Vietnamees restaurant",
+        "allText": "Saigon Caphe CS\n3,8\nVietnamees restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Flo's Appetizing Bagels Amsterdam",
+        "body": "Flo's Appetizing Bagels Amsterdam4,5Bagelwinkel",
+        "allText": "Flo's Appetizing Bagels Amsterdam\n4,5\nBagelwinkel",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Brasserie Bâton/ Espressamente Baton",
+        "body": "Brasserie Bâton/ Espressamente Baton4,5Brasserie",
+        "allText": "Brasserie Bâton/ Espressamente Baton\n4,5\nBrasserie",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Il Panorama",
+        "body": "Il Panorama4,3Restaurant",
+        "allText": "Il Panorama\n4,3\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "FEBO Amsterdam - Leidsestraat",
+        "body": "FEBO Amsterdam - Leidsestraat4,2Snackbar",
+        "allText": "FEBO Amsterdam - Leidsestraat\n4,2\nSnackbar",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "FEBO Amsterdam - Oudezijds Voorburgwal",
+        "body": "FEBO Amsterdam - Oudezijds Voorburgwal4,3Snackbar",
+        "allText": "FEBO Amsterdam - Oudezijds Voorburgwal\n4,3\nSnackbar",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Shiki Restaurant",
+        "body": "Shiki Restaurant4,1Japans restaurant",
+        "allText": "Shiki Restaurant\n4,1\nJapans restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Coffee & Coconuts",
+        "body": "Coffee & Coconuts4,3Permanent gesloten",
+        "allText": "Coffee & Coconuts\n4,3\nPermanent gesloten",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Coffee & Coconuts | Specialty Coffee | Pastry | Matcha | Food to go",
+        "body": "Coffee & Coconuts | Specialty Coffee | Pastry | Matcha | Food to go4,2Koffiebar",
+        "allText": "Coffee & Coconuts | Specialty Coffee | Pastry | Matcha | Food to go\n4,2\nKoffiebar",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "De Deli - Plantagebuurt",
+        "body": "De Deli - Plantagebuurt4,6Ontbijtrestaurant",
+        "allText": "De Deli - Plantagebuurt\n4,6\nOntbijtrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Lokaal 't Loosje",
+        "body": "Lokaal 't Loosje4,3Bar",
+        "allText": "Lokaal 't Loosje\n4,3\nBar",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Tigris En Eufraat",
+        "body": "Tigris En Eufraat4,4Supermarkt",
+        "allText": "Tigris En Eufraat\n4,4\nSupermarkt",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "The Kitchen",
+        "body": "The Kitchen4,2Eclectisch restaurant",
+        "allText": "The Kitchen\n4,2\nEclectisch restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Zero Zero",
+        "body": "Zero Zero4,4Broodjeswinkel",
+        "allText": "Zero Zero\n4,4\nBroodjeswinkel",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Zero Zero",
+        "body": "Zero Zero4,6Broodjeswinkel",
+        "allText": "Zero Zero\n4,6\nBroodjeswinkel",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Café Fonteyn",
+        "body": "Café Fonteyn4,5Café",
+        "allText": "Café Fonteyn\n4,5\nCafé",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "DITO DELI",
+        "body": "DITO DELI4,7Delicatessenwinkel",
+        "allText": "DITO DELI\n4,7\nDelicatessenwinkel",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Eetcafé de Magere Brug",
+        "body": "Eetcafé de Magere Brug4,2Nederlands restaurant",
+        "allText": "Eetcafé de Magere Brug\n4,2\nNederlands restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Tony's NY City Bagels",
+        "body": "Tony's NY City Bagels4,5Bakkerij",
+        "allText": "Tony's NY City Bagels\n4,5\nBakkerij",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Gartine",
+        "body": "Gartine4,8Permanent gesloten",
+        "allText": "Gartine\n4,8\nPermanent gesloten",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Tokoman",
+        "body": "Tokoman4,1Snackbar",
+        "allText": "Tokoman\n4,1\nSnackbar",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Tokoman",
+        "body": "Tokoman4,3Surinaams restaurant",
+        "allText": "Tokoman\n4,3\nSurinaams restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Restaurant Oké",
+        "body": "Restaurant Oké4,4Kebabzaak",
+        "allText": "Restaurant Oké\n4,4\nKebabzaak",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Beste Doner",
+        "body": "Beste Doner4,6Döner kebab-restaurant",
+        "allText": "Beste Doner\n4,6\nDöner kebab-restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "MOAK Pancakes De Pijp",
+        "body": "MOAK Pancakes De Pijp4,7Brunchrestaurant",
+        "allText": "MOAK Pancakes De Pijp\n4,7\nBrunchrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "MOAK Pancakes",
+        "body": "MOAK Pancakes4,6Brunchrestaurant",
+        "allText": "MOAK Pancakes\n4,6\nBrunchrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Het Stadspaleis",
+        "body": "Het Stadspaleis4,6Biologisch restaurant",
+        "allText": "Het Stadspaleis\n4,6\nBiologisch restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Bistro Berlage",
+        "body": "Bistro Berlage4,0Bistro",
+        "allText": "Bistro Berlage\n4,0\nBistro",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Cut Throat Amsterdam - Bar & Restaurant",
+        "body": "Cut Throat Amsterdam - Bar & Restaurant4,7Caribisch restaurant",
+        "allText": "Cut Throat Amsterdam - Bar & Restaurant\n4,7\nCaribisch restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Polly Goudvisch",
+        "body": "Polly Goudvisch4,3Restaurant",
+        "allText": "Polly Goudvisch\n4,3\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Lunchcafé Waterloo",
+        "body": "Lunchcafé Waterloo4,7Lunchrestaurant",
+        "allText": "Lunchcafé Waterloo\n4,7\nLunchrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Broodje Bert",
+        "body": "Broodje Bert4,6Restaurant",
+        "allText": "Broodje Bert\n4,6\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Caldi e freddi",
+        "body": "Caldi e freddi4,8Afhaalrestaurant",
+        "allText": "Caldi e freddi\n4,8\nAfhaalrestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Van Kerkwijk",
+        "body": "Van Kerkwijk4,6Restaurant",
+        "allText": "Van Kerkwijk\n4,6\nRestaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "Eetsalon Van Dobben",
+        "body": "Eetsalon Van Dobben4,4Cafetaria",
+        "allText": "Eetsalon Van Dobben\n4,4\nCafetaria",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      },
+      {
+        "title": "De Hapjeshoek",
+        "body": "De Hapjeshoek4,4Surinaams restaurant",
+        "allText": "De Hapjeshoek\n4,4\nSurinaams restaurant",
+        "sourceList": "lunch",
+        "sourceListName": "Amsterdam Lunch"
+      }
+    ]
+  },
+  {
+    "list": "dinner",
+    "name": "Amsterdam Dinner",
+    "items": [
+      {
+        "title": "Gifu Ramen Bar",
+        "body": "Gifu Ramen Bar4,7Restaurant",
+        "allText": "Gifu Ramen Bar\n4,7\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Huis van de Wijk Olympus (St. SOOZ)",
+        "body": "Huis van de Wijk Olympus (St. SOOZ)4,5Buurthuis",
+        "allText": "Huis van de Wijk Olympus (St. SOOZ)\n4,5\nBuurthuis",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "The Boulevard - Sando Sandwiches & Pokébowls",
+        "body": "The Boulevard - Sando Sandwiches & Pokébowls4,9Aziatisch fusion-restaurant",
+        "allText": "The Boulevard - Sando Sandwiches & Pokébowls\n4,9\nAziatisch fusion-restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Kuuma Marineterrein",
+        "body": "Kuuma Marineterrein4,8Sauna",
+        "allText": "Kuuma Marineterrein\n4,8\nSauna",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Café Sonneveld",
+        "body": "Café Sonneveld4,6Europees restaurant",
+        "allText": "Café Sonneveld\n4,6\nEuropees restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Castell",
+        "body": "Castell4,3Bar & Grill",
+        "allText": "Castell\n4,3\nBar & Grill",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Madam Amsterdam",
+        "body": "Madam Amsterdam4,1Dansrestaurant",
+        "allText": "Madam Amsterdam\n4,1\nDansrestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Brasserie Margaux",
+        "body": "Brasserie Margaux4,4Frans restaurant",
+        "allText": "Brasserie Margaux\n4,4\nFrans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Cantine",
+        "body": "Cantine4,3Modern-Frans restaurant",
+        "allText": "Cantine\n4,3\nModern-Frans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Sushi Fanatics",
+        "body": "Sushi Fanatics4,5Sushirestaurant",
+        "allText": "Sushi Fanatics\n4,5\nSushirestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Sushi HANABI",
+        "body": "Sushi HANABI4,8Sushirestaurant",
+        "allText": "Sushi HANABI\n4,8\nSushirestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Ken Sushi",
+        "body": "Ken Sushi4,8Sushirestaurant",
+        "allText": "Ken Sushi\n4,8\nSushirestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Tomo Sushi",
+        "body": "Tomo Sushi4,4Sushirestaurant",
+        "allText": "Tomo Sushi\n4,4\nSushirestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "De Japanner",
+        "body": "De Japanner4,6Japans restaurant",
+        "allText": "De Japanner\n4,6\nJapans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Ku Kitchen & Bar",
+        "body": "Ku Kitchen & Bar4,7Japans restaurant",
+        "allText": "Ku Kitchen & Bar\n4,7\nJapans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Vatten Ramen Zeedijk",
+        "body": "Vatten Ramen Zeedijk4,5Ramen-noedelrestaurant",
+        "allText": "Vatten Ramen Zeedijk\n4,5\nRamen-noedelrestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Bird Thais Restaurant",
+        "body": "Bird Thais Restaurant4,2Thais restaurant",
+        "allText": "Bird Thais Restaurant\n4,2\nThais restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Salmuera",
+        "body": "Salmuera4,5Latijns-Amerikaans restaurant",
+        "allText": "Salmuera\n4,5\nLatijns-Amerikaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Cabron",
+        "body": "Cabron4,4Tacorestaurant",
+        "allText": "Cabron\n4,4\nTacorestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Cut Throat Amsterdam - Bar & Restaurant",
+        "body": "Cut Throat Amsterdam - Bar & Restaurant4,7Caribisch restaurant",
+        "allText": "Cut Throat Amsterdam - Bar & Restaurant\n4,7\nCaribisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Reggae Rita",
+        "body": "Reggae Rita4,3Permanent gesloten",
+        "allText": "Reggae Rita\n4,3\nPermanent gesloten",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Mondi Amsterdam New-West Caribbean Cuisine",
+        "body": "Mondi Amsterdam New-West Caribbean Cuisine4,5Caribisch restaurant",
+        "allText": "Mondi Amsterdam New-West Caribbean Cuisine\n4,5\nCaribisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Mangia Pizza",
+        "body": "Mangia Pizza4,3Pizzeria",
+        "allText": "Mangia Pizza\n4,3\nPizzeria",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "FIKO",
+        "body": "FIKO4,4Italiaans restaurant",
+        "allText": "FIKO\n4,4\nItaliaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Volare",
+        "body": "Volare4,1Italiaans restaurant",
+        "allText": "Volare\n4,1\nItaliaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "De Italiaan",
+        "body": "De Italiaan4,3Italiaans restaurant",
+        "allText": "De Italiaan\n4,3\nItaliaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "nNea Pizza",
+        "body": "nNea Pizza4,6Pizzeria",
+        "allText": "nNea Pizza\n4,6\nPizzeria",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "il Pecorino",
+        "body": "il Pecorino4,2Italiaans restaurant",
+        "allText": "il Pecorino\n4,2\nItaliaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Bello Gio's by the River",
+        "body": "Bello Gio's by the River4,4Italiaans restaurant",
+        "allText": "Bello Gio's by the River\n4,4\nItaliaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "La Perla Pizzeria",
+        "body": "La Perla Pizzeria4,4Pizzeria",
+        "allText": "La Perla Pizzeria\n4,4\nPizzeria",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "SECRET GARDEN",
+        "body": "SECRET GARDEN4,5Restaurant",
+        "allText": "SECRET GARDEN\n4,5\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "La Zoccola Singel - PIZZERIA",
+        "body": "La Zoccola Singel - PIZZERIA4,7Pizzeria",
+        "allText": "La Zoccola Singel - PIZZERIA\n4,7\nPizzeria",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Golden Temple Vegetarisch Restaurant",
+        "body": "Golden Temple Vegetarisch Restaurant4,5Vegetarisch restaurant",
+        "allText": "Golden Temple Vegetarisch Restaurant\n4,5\nVegetarisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Vegan Temple Bar",
+        "body": "Vegan Temple Bar4,6Veganistisch restaurant",
+        "allText": "Vegan Temple Bar\n4,6\nVeganistisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "SOIL Vegan Café - WEST",
+        "body": "SOIL Vegan Café - WEST4,6Veganistisch restaurant",
+        "allText": "SOIL Vegan Café - WEST\n4,6\nVeganistisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Toko Bersama",
+        "body": "Toko Bersama4,9Indonesisch restaurant",
+        "allText": "Toko Bersama\n4,9\nIndonesisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Cafe Kadijk",
+        "body": "Cafe Kadijk4,4Indonesisch restaurant",
+        "allText": "Cafe Kadijk\n4,4\nIndonesisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Restaurant Moeders",
+        "body": "Restaurant Moeders4,5Nederlands restaurant",
+        "allText": "Restaurant Moeders\n4,5\nNederlands restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Supper Dining & Club",
+        "body": "Supper Dining & Club4,1Restaurant",
+        "allText": "Supper Dining & Club\n4,1\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "De Pizzabakkers NDSM",
+        "body": "De Pizzabakkers NDSM4,1Pizzeria",
+        "allText": "De Pizzabakkers NDSM\n4,1\nPizzeria",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "De Pizzabakkers Haarlemmerdijk",
+        "body": "De Pizzabakkers Haarlemmerdijk4,4Pizzeria",
+        "allText": "De Pizzabakkers Haarlemmerdijk\n4,4\nPizzeria",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Café-Restaurant De Plantage",
+        "body": "Café-Restaurant De Plantage4,2Restaurant",
+        "allText": "Café-Restaurant De Plantage\n4,2\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Mata Hari",
+        "body": "Mata Hari4,3Restaurant",
+        "allText": "Mata Hari\n4,3\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Tapas Bar Català",
+        "body": "Tapas Bar Català4,2Tapasbar",
+        "allText": "Tapas Bar Català\n4,2\nTapasbar",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "d'Vijff Vlieghen",
+        "body": "d'Vijff Vlieghen4,4Europees restaurant",
+        "allText": "d'Vijff Vlieghen\n4,4\nEuropees restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Loetje Amsterdam Centraal",
+        "body": "Loetje Amsterdam Centraal4,1Restaurant",
+        "allText": "Loetje Amsterdam Centraal\n4,1\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Loetje Amsterdam aan 't IJ",
+        "body": "Loetje Amsterdam aan 't IJ4,2Restaurant",
+        "allText": "Loetje Amsterdam aan 't IJ\n4,2\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Warung Spang Makandra",
+        "body": "Warung Spang Makandra4,2Surinaams restaurant",
+        "allText": "Warung Spang Makandra\n4,2\nSurinaams restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Zoldering",
+        "body": "Zoldering4,7Bistro",
+        "allText": "Zoldering\n4,7\nBistro",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Xi'an Delicious Foods Zeedijk",
+        "body": "Xi'an Delicious Foods Zeedijk4,2Chinees noedelrestaurant",
+        "allText": "Xi'an Delicious Foods Zeedijk\n4,2\nChinees noedelrestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Eetcafé Wijmpje Beukers",
+        "body": "Eetcafé Wijmpje Beukers4,7Eclectisch restaurant",
+        "allText": "Eetcafé Wijmpje Beukers\n4,7\nEclectisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "TerraZen Centre",
+        "body": "TerraZen Centre4,5Veganistisch restaurant",
+        "allText": "TerraZen Centre\n4,5\nVeganistisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Takumi Tonkotsu Ramen and Sushi Amsterdam Centraal",
+        "body": "Takumi Tonkotsu Ramen and Sushi Amsterdam Centraal4,6Ramen-noedelrestaurant",
+        "allText": "Takumi Tonkotsu Ramen and Sushi Amsterdam Centraal\n4,6\nRamen-noedelrestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Sjefietshé",
+        "body": "Sjefietshé4,4Restaurant",
+        "allText": "Sjefietshé\n4,4\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Scheepskameel",
+        "body": "Scheepskameel4,6Modern-Europees restaurant",
+        "allText": "Scheepskameel\n4,6\nModern-Europees restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Rue d’Alger",
+        "body": "Rue d’Alger4,9Mediterraans restaurant",
+        "allText": "Rue d’Alger\n4,9\nMediterraans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Ram's Roti",
+        "body": "Ram's Roti4,3Surinaams restaurant",
+        "allText": "Ram's Roti\n4,3\nSurinaams restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Sampurna Singel",
+        "body": "Sampurna Singel4,2Indonesisch restaurant",
+        "allText": "Sampurna Singel\n4,2\nIndonesisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Onze Zaak - Italiaans Restaurant",
+        "body": "Onze Zaak - Italiaans Restaurant4,6Italiaans restaurant",
+        "allText": "Onze Zaak - Italiaans Restaurant\n4,6\nItaliaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "The Seafood Bar",
+        "body": "The Seafood Bar4,7Visrestaurant",
+        "allText": "The Seafood Bar\n4,7\nVisrestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Pesca Amsterdam",
+        "body": "Pesca Amsterdam4,6Visrestaurant",
+        "allText": "Pesca Amsterdam\n4,6\nVisrestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Nam Kee",
+        "body": "Nam Kee4,0Chinees restaurant",
+        "allText": "Nam Kee\n4,0\nChinees restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Restaurant MOZO",
+        "body": "Restaurant MOZO4,4Marokkaans restaurant",
+        "allText": "Restaurant MOZO\n4,4\nMarokkaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Bistro Berlage",
+        "body": "Bistro Berlage4,0Bistro",
+        "allText": "Bistro Berlage\n4,0\nBistro",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Mamas & Tapas",
+        "body": "Mamas & Tapas4,8Tapas restaurant",
+        "allText": "Mamas & Tapas\n4,8\nTapas restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Loulou Pizzabar",
+        "body": "Loulou Pizzabar4,6Pizzeria",
+        "allText": "Loulou Pizzabar\n4,6\nPizzeria",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Koh-I-Noor restaurant",
+        "body": "Koh-I-Noor restaurant4,4Indiaas restaurant",
+        "allText": "Koh-I-Noor restaurant\n4,4\nIndiaas restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Kilimanjaro Restaurant",
+        "body": "Kilimanjaro Restaurant4,7Afrikaans restaurant",
+        "allText": "Kilimanjaro Restaurant\n4,7\nAfrikaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Kapitein Zeppos",
+        "body": "Kapitein Zeppos4,4Restaurant",
+        "allText": "Kapitein Zeppos\n4,4\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Kaagman & Kortekaas",
+        "body": "Kaagman & Kortekaas4,5Haute-cuisinerestaurant",
+        "allText": "Kaagman & Kortekaas\n4,5\nHaute-cuisinerestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Bakkerij Heemelrijck",
+        "body": "Bakkerij Heemelrijck4,1Bakkerij",
+        "allText": "Bakkerij Heemelrijck\n4,1\nBakkerij",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Hemelse Modder",
+        "body": "Hemelse Modder4,5Nederlands restaurant",
+        "allText": "Hemelse Modder\n4,5\nNederlands restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Hannekes Boom",
+        "body": "Hannekes Boom4,3Restaurant",
+        "allText": "Hannekes Boom\n4,3\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Gent aan de Schinkel",
+        "body": "Gent aan de Schinkel4,3Belgisch restaurant",
+        "allText": "Gent aan de Schinkel\n4,3\nBelgisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Foodhallen",
+        "body": "Foodhallen4,4Foodcourt",
+        "allText": "Foodhallen\n4,4\nFoodcourt",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Pllek",
+        "body": "Pllek4,4Restaurant",
+        "allText": "Pllek\n4,4\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Café de Ceuvel",
+        "body": "Café de Ceuvel4,5Veganistisch restaurant",
+        "allText": "Café de Ceuvel\n4,5\nVeganistisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Ceppi's",
+        "body": "Ceppi's4,2Italiaans restaurant",
+        "allText": "Ceppi's\n4,2\nItaliaans restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Canvas",
+        "body": "Canvas4,2Restaurant",
+        "allText": "Canvas\n4,2\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Café-Restaurant Amsterdam",
+        "body": "Café-Restaurant Amsterdam4,2Restaurant",
+        "allText": "Café-Restaurant Amsterdam\n4,2\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Café De Prins",
+        "body": "Café De Prins4,4Koffiehuis",
+        "allText": "Café De Prins\n4,4\nKoffiehuis",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Café Caron",
+        "body": "Café Caron4,6Restaurant",
+        "allText": "Café Caron\n4,6\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Café Bern",
+        "body": "Café Bern4,3Zwitsers restaurant",
+        "allText": "Café Bern\n4,3\nZwitsers restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Thaise Snackbar Bird",
+        "body": "Thaise Snackbar Bird4,5Thais restaurant",
+        "allText": "Thaise Snackbar Bird\n4,5\nThais restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Bar Grill Marathonweg",
+        "body": "Bar Grill Marathonweg4,5Restaurant",
+        "allText": "Bar Grill Marathonweg\n4,5\nRestaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      },
+      {
+        "title": "Aneka Rasa",
+        "body": "Aneka Rasa4,2Indonesisch restaurant",
+        "allText": "Aneka Rasa\n4,2\nIndonesisch restaurant",
+        "sourceList": "dinner",
+        "sourceListName": "Amsterdam Dinner"
+      }
+    ]
+  },
+  {
+    "list": "vegan",
+    "name": "Vegan restaurants & Bakeries",
+    "items": [
+      {
+        "title": "Freedam Tours",
+        "body": "Freedam Tours5,0Touroperator",
+        "allText": "Freedam Tours\n5,0\nTouroperator",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "soupenzo - jodenbree",
+        "body": "soupenzo - jodenbree4,7Health Food-restaurant",
+        "allText": "soupenzo - jodenbree\n4,7\nHealth Food-restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "soupenzo - spiegel",
+        "body": "soupenzo - spiegel4,6Health Food-restaurant",
+        "allText": "soupenzo - spiegel\n4,6\nHealth Food-restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Parck Amsterdam",
+        "body": "Parck Amsterdam4,8Veganistisch restaurant",
+        "allText": "Parck Amsterdam\n4,8\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Alchemist Garden Community",
+        "body": "Alchemist Garden Community4,1Gemeenschappelijk gezondheidscentrum",
+        "allText": "Alchemist Garden Community\n4,1\nGemeenschappelijk gezondheidscentrum",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "SLA",
+        "body": "SLA4,4Health Food-restaurant",
+        "allText": "SLA\n4,4\nHealth Food-restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "SLA",
+        "body": "SLA4,3Health Food-restaurant",
+        "allText": "SLA\n4,3\nHealth Food-restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "SLA",
+        "body": "SLA4,1Health Food-restaurant",
+        "allText": "SLA\n4,1\nHealth Food-restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "SLA",
+        "body": "SLA4,2Biologisch restaurant",
+        "allText": "SLA\n4,2\nBiologisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Oliver Green",
+        "body": "Oliver Green4,1Health Food-restaurant",
+        "allText": "Oliver Green\n4,1\nHealth Food-restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "De Waaghals",
+        "body": "De Waaghals4,6Vegetarisch restaurant",
+        "allText": "De Waaghals\n4,6\nVegetarisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "The Meets",
+        "body": "The Meets4,8Fusion-restaurant",
+        "allText": "The Meets\n4,8\nFusion-restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Benji's",
+        "body": "Benji's4,4Brunchrestaurant",
+        "allText": "Benji's\n4,4\nBrunchrestaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Coffee & Coconuts",
+        "body": "Coffee & Coconuts4,3Permanent gesloten",
+        "allText": "Coffee & Coconuts\n4,3\nPermanent gesloten",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Vegan Burger Brothers Amsterdam",
+        "body": "Vegan Burger Brothers Amsterdam3,8Maaltijdbezorging",
+        "allText": "Vegan Burger Brothers Amsterdam\n3,8\nMaaltijdbezorging",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Pllek",
+        "body": "Pllek4,4Restaurant",
+        "allText": "Pllek\n4,4\nRestaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "NENI Amsterdam",
+        "body": "NENI Amsterdam4,6Restaurant",
+        "allText": "NENI Amsterdam\n4,6\nRestaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Wild & The Moon",
+        "body": "Wild & The Moon4,0Permanent gesloten",
+        "allText": "Wild & The Moon\n4,0\nPermanent gesloten",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Margo's Amsterdam",
+        "body": "Margo's Amsterdam4,8Bakkerij",
+        "allText": "Margo's Amsterdam\n4,8\nBakkerij",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Meatless District",
+        "body": "Meatless District4,5Permanent gesloten",
+        "allText": "Meatless District\n4,5\nPermanent gesloten",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Spirit Amsterdam",
+        "body": "Spirit Amsterdam4,4Vegetarisch restaurant",
+        "allText": "Spirit Amsterdam\n4,4\nVegetarisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Mediamatic",
+        "body": "Mediamatic4,3Kunstorganisatie",
+        "allText": "Mediamatic\n4,3\nKunstorganisatie",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Golden Temple Vegetarisch Restaurant",
+        "body": "Golden Temple Vegetarisch Restaurant4,5Vegetarisch restaurant",
+        "allText": "Golden Temple Vegetarisch Restaurant\n4,5\nVegetarisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Trevi’s Amsterdam",
+        "body": "Trevi’s Amsterdam4,7Veganistisch restaurant",
+        "allText": "Trevi’s Amsterdam\n4,7\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Koffie ende Koeck",
+        "body": "Koffie ende Koeck4,7Veganistisch restaurant",
+        "allText": "Koffie ende Koeck\n4,7\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "SAINT-JEAN Amsterdam",
+        "body": "SAINT-JEAN Amsterdam4,4Banketbakker",
+        "allText": "SAINT-JEAN Amsterdam\n4,4\nBanketbakker",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "De Patchka",
+        "body": "De Patchka4,8Veganistisch restaurant",
+        "allText": "De Patchka\n4,8\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Kitchen Impossible Amsterdam",
+        "body": "Kitchen Impossible Amsterdam4,8Restaurant",
+        "allText": "Kitchen Impossible Amsterdam\n4,8\nRestaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Little Plant Pantry",
+        "body": "Little Plant Pantry5,0Biologische kruidenier",
+        "allText": "Little Plant Pantry\n5,0\nBiologische kruidenier",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Morris & Bella",
+        "body": "Morris & Bella4,8Veganistisch restaurant",
+        "allText": "Morris & Bella\n4,8\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Café de Ceuvel",
+        "body": "Café de Ceuvel4,5Veganistisch restaurant",
+        "allText": "Café de Ceuvel\n4,5\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Mr Blou I Love You",
+        "body": "Mr Blou I Love You4,3Veganistisch restaurant",
+        "allText": "Mr Blou I Love You\n4,3\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Yemayá’s Vegan Corner",
+        "body": "Yemayá’s Vegan Corner4,8Restaurant",
+        "allText": "Yemayá’s Vegan Corner\n4,8\nRestaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "TerraZen Centre",
+        "body": "TerraZen Centre4,5Veganistisch restaurant",
+        "allText": "TerraZen Centre\n4,5\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Men Impossible",
+        "body": "Men Impossible4,9Restaurant",
+        "allText": "Men Impossible\n4,9\nRestaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Vegan Junk Food Bar",
+        "body": "Vegan Junk Food Bar4,5Permanent gesloten",
+        "allText": "Vegan Junk Food Bar\n4,5\nPermanent gesloten",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Hearth",
+        "body": "Hearth4,8Restaurant",
+        "allText": "Hearth\n4,8\nRestaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Vegan Sushi Bar",
+        "body": "Vegan Sushi Bar4,7Veganistisch restaurant",
+        "allText": "Vegan Sushi Bar\n4,7\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "SOIL Vegan Café - WEST",
+        "body": "SOIL Vegan Café - WEST4,6Veganistisch restaurant",
+        "allText": "SOIL Vegan Café - WEST\n4,6\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Madre",
+        "body": "Madre4,5Mexicaans restaurant",
+        "allText": "Madre\n4,5\nMexicaans restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Veganees | Vegan Aziatisch Streetfood Restaurant",
+        "body": "Veganees | Vegan Aziatisch Streetfood Restaurant4,5Veganistisch restaurant",
+        "allText": "Veganees | Vegan Aziatisch Streetfood Restaurant\n4,5\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      },
+      {
+        "title": "Bonboon",
+        "body": "Bonboon4,6Veganistisch restaurant",
+        "allText": "Bonboon\n4,6\nVeganistisch restaurant",
+        "sourceList": "vegan",
+        "sourceListName": "Vegan restaurants & Bakeries"
+      }
+    ]
+  },
+  {
+    "list": "nightlife",
+    "name": "Amsterdam Nightlife",
+    "items": [
+      {
+        "title": "Oliva (club & evenementenlocatie)",
+        "body": "Oliva (club & evenementenlocatie)3,8Club",
+        "allText": "Oliva (club & evenementenlocatie)\n3,8\nClub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "The Waterhole",
+        "body": "The Waterhole4,5Locatie voor live muziek",
+        "allText": "The Waterhole\n4,5\nLocatie voor live muziek",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Café Restaurant Dauphine",
+        "body": "Café Restaurant Dauphine4,1Brasserie",
+        "allText": "Café Restaurant Dauphine\n4,1\nBrasserie",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "De Vondelbunker",
+        "body": "De Vondelbunker4,6Cultureel centrum",
+        "allText": "De Vondelbunker\n4,6\nCultureel centrum",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Warehouse Elementenstraat",
+        "body": "Warehouse Elementenstraat4,3Nachtclub",
+        "allText": "Warehouse Elementenstraat\n4,3\nNachtclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Canvas",
+        "body": "Canvas4,2Restaurant",
+        "allText": "Canvas\n4,2\nRestaurant",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Radio Radio",
+        "body": "Radio Radio3,8Nachtclub",
+        "allText": "Radio Radio\n3,8\nNachtclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Escape",
+        "body": "Escape4,6Nachtclub",
+        "allText": "Escape\n4,6\nNachtclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Lellebel: Queer Bar",
+        "body": "Lellebel: Queer Bar4,6Bar",
+        "allText": "Lellebel: Queer Bar\n4,6\nBar",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Club NYX",
+        "body": "Club NYX3,6Club",
+        "allText": "Club NYX\n3,6\nClub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "OT301",
+        "body": "OT3014,6Cultureel centrum",
+        "allText": "OT301\n4,6\nCultureel centrum",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Jimmy Woo",
+        "body": "Jimmy Woo3,0Nachtclub",
+        "allText": "Jimmy Woo\n3,0\nNachtclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Melkweg",
+        "body": "Melkweg4,5Locatie voor live muziek",
+        "allText": "Melkweg\n4,5\nLocatie voor live muziek",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Garage Noord",
+        "body": "Garage Noord3,8Club",
+        "allText": "Garage Noord\n3,8\nClub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Shelter Amsterdam",
+        "body": "Shelter Amsterdam3,6Nachtclub",
+        "allText": "Shelter Amsterdam\n3,6\nNachtclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "De Engelbewaarder",
+        "body": "De Engelbewaarder4,4Café",
+        "allText": "De Engelbewaarder\n4,4\nCafé",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Parallel",
+        "body": "Parallel4,1Nachtclub",
+        "allText": "Parallel\n4,1\nNachtclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "RADION Amsterdam",
+        "body": "RADION Amsterdam4,4Club",
+        "allText": "RADION Amsterdam\n4,4\nClub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Oosterbar",
+        "body": "Oosterbar4,3Bar",
+        "allText": "Oosterbar\n4,3\nBar",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Paradiso",
+        "body": "Paradiso4,6Locatie voor live muziek",
+        "allText": "Paradiso\n4,6\nLocatie voor live muziek",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Bourbon Street",
+        "body": "Bourbon Street4,5Locatie voor live muziek",
+        "allText": "Bourbon Street\n4,5\nLocatie voor live muziek",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Volkshotel",
+        "body": "Volkshotel4,5Hotel",
+        "allText": "Volkshotel\n4,5\nHotel",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "nachbar",
+        "body": "nachbar3,1Nachtclub",
+        "allText": "nachbar\n3,1\nNachtclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Leidseplein",
+        "body": "Leidseplein",
+        "allText": "Leidseplein",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Levenslang Amsterdam",
+        "body": "Levenslang Amsterdam3,7Nachtclub",
+        "allText": "Levenslang Amsterdam\n3,7\nNachtclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Bitterzoet",
+        "body": "Bitterzoet4,2Club",
+        "allText": "Bitterzoet\n4,2\nClub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Jazz Café Alto",
+        "body": "Jazz Café Alto4,6Jazzclub",
+        "allText": "Jazz Café Alto\n4,6\nJazzclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Badhuis Amsterdam | Restaurant Amsterdam",
+        "body": "Badhuis Amsterdam | Restaurant Amsterdam4,2Restaurant",
+        "allText": "Badhuis Amsterdam | Restaurant Amsterdam\n4,2\nRestaurant",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Club RAUM",
+        "body": "Club RAUM3,7Nachtclub",
+        "allText": "Club RAUM\n3,7\nNachtclub",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Lofi",
+        "body": "Lofi4,4Evenementenlocatie",
+        "allText": "Lofi\n4,4\nEvenementenlocatie",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Rembrandtplein",
+        "body": "Rembrandtplein4,6",
+        "allText": "Rembrandtplein\n4,6",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Chicago Social Club B.V..",
+        "body": "Chicago Social Club B.V..2,7Sociale club",
+        "allText": "Chicago Social Club B.V..\n2,7\nSociale club",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      },
+      {
+        "title": "Skatecafe Karin & Yvonne",
+        "body": "Skatecafe Karin & Yvonne4,3Dansrestaurant",
+        "allText": "Skatecafe Karin & Yvonne\n4,3\nDansrestaurant",
+        "sourceList": "nightlife",
+        "sourceListName": "Amsterdam Nightlife"
+      }
+    ]
+  }
+]

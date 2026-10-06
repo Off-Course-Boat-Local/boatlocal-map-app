@@ -20,6 +20,9 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const appName = brand.appName || brand.companyName || "BoatLocal Map App";
   const companyName = brand.companyName || "Boat Local";
 
+  const iconUrl = brand.logoUrl || "/icons/icon.svg";
+  const isSvg = iconUrl.endsWith(".svg");
+
   return {
     name: appName,
     short_name: appName,
@@ -31,15 +34,15 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     theme_color: brand.primary || "#2B4FE0",
     icons: [
       {
-        src: "/icons/icon.svg",
+        src: iconUrl,
         sizes: "any",
-        type: "image/svg+xml",
+        type: isSvg ? "image/svg+xml" : "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-maskable.svg",
+        src: iconUrl,
         sizes: "any",
-        type: "image/svg+xml",
+        type: isSvg ? "image/svg+xml" : "image/png",
         purpose: "maskable",
       },
     ],

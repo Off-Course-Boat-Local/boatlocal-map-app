@@ -1732,6 +1732,25 @@ describe("getActiveCompanyRecord (guest-facing gate on company status)", () => {
     await setCompanyStatus({ role: "admin" }, COMPANY_ID, "setup");
     expect(await getActiveCompanyRecord(COMPANY_ID)).toBeNull();
   });
+
+  it("resolves active company by friendly name or slug", async () => {
+    // Exact name match
+    expect((await getActiveCompanyRecord("Boat Local"))?.id).toBe(COMPANY_ID);
+    // Slug match
+    expect((await getActiveCompanyRecord("boat-local"))?.id).toBe(COMPANY_ID);
+    // App name slug match
+    expect((await getActiveCompanyRecord("boatlocal-map-app"))?.id).toBe(COMPANY_ID);
+    // Prefix match
+    expect((await getActiveCompanyRecord("boatlocal"))?.id).toBe(COMPANY_ID);
+    // Unknown name returns null
+    expect(await getActiveCompanyRecord("unknown-co")).toBeNull();
+  });
+
+  it("getCompanyBrand resolves brand by friendly name or slug as well", async () => {
+    const brand = await getCompanyBrand("boat-local");
+    expect(brand?.id).toBe(COMPANY_ID);
+    expect(brand?.companyName).toBe("Boat Local");
+  });
 });
 
 const adminActor = { role: "admin" as const };

@@ -122,7 +122,7 @@ export default function GuestSavedScreen({
         action={<LanguageSwitcher tone="header" />}
       />
 
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white">
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white pb-20">
         {savedPins.length === 0 ? (
           // Empty state — open, centered composition (no card chrome): a
           // soft brand-tint heart badge, display-face headline, and a real

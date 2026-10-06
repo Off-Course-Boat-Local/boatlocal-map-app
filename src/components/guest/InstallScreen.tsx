@@ -26,6 +26,7 @@ import { useIsDesktopPointer } from "@/hooks/useIsDesktopPointer";
 import { useIsStandalone } from "@/hooks/useIsStandalone";
 import { displayFontFamily, bodyFontFamily } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
+import { photoUrl } from "@/lib/photoUrl";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import {
   BORDER,
@@ -142,19 +143,32 @@ export default function InstallScreen({ brand, companyId }: InstallScreenProps) 
         action={<LanguageSwitcher tone="header" />}
       />
 
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6">
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white px-5 py-6 pb-20">
         {/* App-identity card — what lands on the home screen. */}
         <div
           className="flex items-center gap-4 rounded-2xl p-4"
           style={{ border: `1px solid ${BORDER}`, boxShadow: SHADOW_CARD }}
         >
-          <span
-            className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl text-2xl font-semibold text-white"
-            style={{ background: BRAND_GRADIENT, fontFamily: displayFontFamily }}
-            aria-hidden="true"
-          >
-            {appInitials(brand.appName)}
-          </span>
+          {brand.logoUrl ? (
+            <span
+              className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-2"
+              style={{ border: `1px solid ${BORDER}`, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+            >
+              <img
+                src={photoUrl(brand.logoUrl, { width: 64 })}
+                alt={brand.appName}
+                className="h-full w-full object-contain"
+              />
+            </span>
+          ) : (
+            <span
+              className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl text-2xl font-semibold text-white"
+              style={{ background: BRAND_GRADIENT, fontFamily: displayFontFamily }}
+              aria-hidden="true"
+            >
+              {appInitials(brand.appName)}
+            </span>
+          )}
           <div className="min-w-0">
             <p
               className="truncate text-base font-semibold"

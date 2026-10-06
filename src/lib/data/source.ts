@@ -63,7 +63,7 @@ import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
 import { CATEGORY_MAP } from "../categories";
 import type { MapPin } from "../data";
 import { parseBoatLocalCruise } from "../boatlocalCatalog";
-import { initialFromName, uniqueSlug } from "../slug";
+import { initialFromName, slugify, uniqueSlug } from "../slug";
 import type { Brand, CategoryId, CompanyEvent, CompanyModules, Guide, Place, Route, RouteStop, RouteTransportMode, TourTransportType } from "../types";
 import type { BoatTour as BoatTourView } from "../types";
 import { fakeId, fakeStore } from "./fakeStore";
@@ -638,31 +638,73 @@ function isUuid(value: string): boolean {
 }
 
 /**
+ * Resolves an active company from a friendly name or URL slug
+ * (e.g. "freedam-tours", "freedam", "FreeDam Tours", "off-course").
+ */
+export function findCompanyByNameOrSlug<
+  T extends { name: string; appName?: string | null; app_name?: string | null },
+>(companies: T[], identifier: string): T | null {
+  const trimmed = identifier.trim().toLowerCase();
+  if (!trimmed) return null;
+  const inputSlug = slugify(trimmed);
+  const inputClean = trimmed.replace(/[^a-z0-9]/g, "");
+
+  const getAppName = (c: T) => c.appName ?? c.app_name ?? null;
+
+  // 1. Exact name / appName (case-insensitive)
+  const exact = companies.find((c) => {
+    const appName = getAppName(c);
+    return c.name.toLowerCase() === trimmed || (appName && appName.toLowerCase() === trimmed);
+  });
+  if (exact) return exact;
+
+  // 2. Exact slug match (e.g. "freedam-tours" matches slugify("FreeDam Tours"))
+  const slugMatch = companies.find((c) => {
+    const appName = getAppName(c);
+    return slugify(c.name) === inputSlug || (appName ? slugify(appName) === inputSlug : false);
+  });
+  if (slugMatch) return slugMatch;
+
+  // 3. Clean alphanumeric match (e.g. "freedamtours" vs "FreeDam Tours")
+  if (inputClean.length >= 3) {
+    const cleanMatch = companies.find((c) => {
+      const appName = getAppName(c);
+      const cClean = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const aClean = (appName || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return cClean === inputClean || aClean === inputClean;
+    });
+    if (cleanMatch) return cleanMatch;
+
+    // 4. Prefix match (e.g. "freedam" starts "freedam-tours")
+    const prefixMatch = companies.find((c) => {
+      const appName = getAppName(c);
+      const cSlug = slugify(c.name);
+      const aSlug = appName ? slugify(appName) : "";
+      const cClean = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const aClean = (appName || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return (
+        cSlug.startsWith(inputSlug) ||
+        (aSlug && aSlug.startsWith(inputSlug)) ||
+        cClean.startsWith(inputClean) ||
+        (aClean && aClean.startsWith(inputClean))
+      );
+    });
+    if (prefixMatch) return prefixMatch;
+  }
+
+  return null;
+}
+
+/**
  * Id -> brand resolution (PRD §11, superseding §13.1's subdomain-routing
  * plan — see src/lib/guestBrand.ts's header comment for why `?company=<id>`
  * is now the real, permanent mechanism). Called from Proxy in the real app
  * to resolve the guest's `?company=` query param before rendering.
- *
- * Real backend: anon client, plain select filtered to status='active' —
- * previously an RPC (`company_by_subdomain`), but a direct-by-id lookup
- * needs no server-side helper function of its own; guest_public_read
- * (status='active') still does the RLS-level filtering redundantly.
+ * Supports UUIDs as well as friendly names / slugs.
  */
-export async function getCompanyBrand(id: string): Promise<Brand | null> {
-  if (isTestEnv) {
-    const company = fakeStore.companies.find((c) => c.id === id && c.status === "active");
-    return company ? toBrand(company) : null;
-  }
-  if (!isUuid(id)) return null;
-
-  const { data, error } = await anonClient()
-    .from("companies")
-    .select("*")
-    .eq("id", id)
-    .eq("status", "active")
-    .maybeSingle();
-  if (error) throw error;
-  return data ? toBrand(fromCompanyRow(data as CompanyRow)) : null;
+export async function getCompanyBrand(idOrSlug: string): Promise<Brand | null> {
+  const company = await getActiveCompanyRecord(idOrSlug);
+  return company ? toBrand(company) : null;
 }
 
 /**
@@ -701,25 +743,50 @@ export async function getCompanyRecord(id: string): Promise<CompanyRecord | null
  * that still unlocks a deactivated tenant's data through getPlaces /
  * getBoatTours / getMapPins.
  *
+ * Supports lookup by company UUID as well as friendly name or slug (e.g.
+ * "freedam-tours", "FreeDam Tours", "freedam").
+ *
  * Real backend: anon client, own direct query (not a delegation to
  * getCompanyRecord, which is deliberately authed-only) — guest_public_read
  * enforces status='active' redundantly server-side too.
  */
-export async function getActiveCompanyRecord(id: string): Promise<CompanyRecord | null> {
-  if (isTestEnv) {
-    const company = fakeStore.companies.find((c) => c.id === id);
-    return company && company.status === "active" ? company : null;
-  }
-  if (!isUuid(id)) return null;
+export async function getActiveCompanyRecord(idOrSlug: string): Promise<CompanyRecord | null> {
+  const trimmed = idOrSlug?.trim();
+  if (!trimmed) return null;
 
+  if (isTestEnv) {
+    if (isUuid(trimmed)) {
+      const company = fakeStore.companies.find((c) => c.id === trimmed);
+      return company && company.status === "active" ? company : null;
+    }
+    const company = findCompanyByNameOrSlug(
+      fakeStore.companies.filter((c) => c.status === "active"),
+      trimmed,
+    );
+    return company ?? null;
+  }
+
+  if (isUuid(trimmed)) {
+    const { data, error } = await anonClient()
+      .from("companies")
+      .select("*")
+      .eq("id", trimmed)
+      .eq("status", "active")
+      .maybeSingle();
+    if (error) throw error;
+    return data ? fromCompanyRow(data as CompanyRow) : null;
+  }
+
+  // Fallback: match by company name or friendly slug among active companies
   const { data, error } = await anonClient()
     .from("companies")
     .select("*")
-    .eq("id", id)
-    .eq("status", "active")
-    .maybeSingle();
+    .eq("status", "active");
   if (error) throw error;
-  return data ? fromCompanyRow(data as CompanyRow) : null;
+  if (!data || data.length === 0) return null;
+
+  const matched = findCompanyByNameOrSlug(data as CompanyRow[], trimmed);
+  return matched ? fromCompanyRow(matched) : null;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
@@ -49,5 +49,58 @@ describe("GuestBottomNav", () => {
     renderNav();
     expect(screen.getByRole("link", { name: "Home" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("is expanded by default and expands on click when collapsed", () => {
+    const { container } = renderNav();
+    const nav = container.querySelector("nav")!;
+    expect(nav).toHaveAttribute("data-expanded", "true");
+
+    const homeLink = screen.getByRole("link", { name: "Home" });
+    // Clicking active tab collapses it
+    act(() => {
+      fireEvent.click(homeLink);
+    });
+    expect(nav).toHaveAttribute("data-expanded", "false");
+
+    // Clicking anywhere on the nav while collapsed expands it again
+    act(() => {
+      fireEvent.click(nav);
+    });
+    expect(nav).toHaveAttribute("data-expanded", "true");
+  });
+
+  it("collapses when scrolling down and expands when scrolling up", () => {
+    const { container } = renderNav();
+    const nav = container.querySelector("nav")!;
+    expect(nav).toHaveAttribute("data-expanded", "true");
+
+    // Create a mock scrolling div with overflow
+    const scrollContainer = document.createElement("div");
+    Object.defineProperty(scrollContainer, "scrollHeight", { value: 1000, configurable: true });
+    Object.defineProperty(scrollContainer, "clientHeight", { value: 500, configurable: true });
+    document.body.appendChild(scrollContainer);
+
+    // Initial position at top
+    Object.defineProperty(scrollContainer, "scrollTop", { value: 0, configurable: true, writable: true });
+    act(() => {
+      fireEvent.scroll(scrollContainer);
+    });
+
+    // Scroll down to 80px (scrolling down by 80px from 0)
+    Object.defineProperty(scrollContainer, "scrollTop", { value: 80, configurable: true, writable: true });
+    act(() => {
+      fireEvent.scroll(scrollContainer);
+    });
+    expect(nav).toHaveAttribute("data-expanded", "false");
+
+    // Scroll up to 40px (scrolling up by 40px)
+    Object.defineProperty(scrollContainer, "scrollTop", { value: 40, configurable: true, writable: true });
+    act(() => {
+      fireEvent.scroll(scrollContainer);
+    });
+    expect(nav).toHaveAttribute("data-expanded", "true");
+
+    document.body.removeChild(scrollContainer);
   });
 });

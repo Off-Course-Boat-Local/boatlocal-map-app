@@ -337,7 +337,7 @@ export default function GuestWelcomeScreen({
   const otherBlocks = hubBlocks?.filter((b) => b !== photoHero) ?? [];
 
   return (
-    <div className="no-scrollbar flex h-full w-full flex-col overflow-y-auto bg-white">
+    <div className="no-scrollbar flex h-full w-full flex-col overflow-y-auto bg-white pb-20">
       <InstallBanner qs={qs} />
 
       {/* When the hub opens with a hero that already carries the guide's large

@@ -194,7 +194,9 @@ export function GuestPlaceRow({
             {(item.durationLabel || item.meta) && (
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {item.durationLabel || relativeHoursLabel(item.meta)}
+                <span suppressHydrationWarning>
+                  {item.durationLabel || relativeHoursLabel(item.meta)}
+                </span>
               </span>
             )}
           </div>

@@ -44,9 +44,16 @@ import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { brandId, guideSlug } = await getGuestContext();
+  const { brand, brandId, guideSlug } = await getGuestContext();
   const params = new URLSearchParams({ company: brandId, guide: guideSlug });
-  return { manifest: `/manifest.webmanifest?${params.toString()}` };
+  const iconUrl = brand.logoUrl || "/icons/icon.svg";
+  return {
+    manifest: `/manifest.webmanifest?${params.toString()}`,
+    icons: {
+      icon: iconUrl,
+      apple: iconUrl,
+    },
+  };
 }
 
 export default async function GuestLayout({
@@ -127,7 +134,7 @@ export default async function GuestLayout({
             why this is the "easy" way to keep the category filter in sync
             between the Map and List screens without a new persistence layer. */}
         <GuestFilterProvider>
-          <div className="flex h-full w-full flex-col">
+          <div className="relative flex h-full w-full flex-col overflow-hidden">
             <div className="min-h-0 flex-1">{children}</div>
             {/* useSearchParams (inside GuestBottomNav, to carry ?company=/?guide=
                 across tabs) requires a Suspense boundary — see Next.js docs on
