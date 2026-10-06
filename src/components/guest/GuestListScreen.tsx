@@ -10,7 +10,8 @@
 // See that module's header comment for why a Context was the "easy" lift
 // rather than URL params or a global store.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
@@ -31,7 +32,8 @@ import { guestPinAction } from "@/lib/guestActions";
 import { recordGuestEvent } from "@/lib/guestEvents";
 import { installPlatformToEventPlatform, detectInstallPlatform } from "@/lib/installPlatform";
 import { bodyFontFamily } from "@/lib/fonts";
-import { CATEGORIES } from "@/lib/categories";
+import { CATEGORIES, CATEGORY_MAP } from "@/lib/categories";
+import type { CategoryId } from "@/lib/types";
 import { BORDER, MUTED } from "@/lib/guestTheme";
 import type { MapPin } from "@/lib/data";
 import type { Brand, CompanyEvent, Route } from "@/lib/types";
@@ -69,6 +71,14 @@ export default function GuestListScreen({
   events = [],
 }: GuestListScreenProps) {
   const { filter, setFilter } = useGuestFilter();
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams?.get("category");
+  useEffect(() => {
+    if (categoryParam && categoryParam in CATEGORY_MAP) {
+      setFilter(categoryParam as CategoryId);
+    }
+  }, [categoryParam, setFilter]);
+
   const { isSaved, toggle } = useSavedPlaces();
   const { t } = useI18n();
   const [detailItem, setDetailItem] = useState<MapPin | null>(null);

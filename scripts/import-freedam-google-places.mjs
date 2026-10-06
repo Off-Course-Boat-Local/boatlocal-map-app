@@ -140,9 +140,11 @@ function guessArea(components) {
 const CUISINE_RULES = [
   { match: (t, n) => t.includes("vegan_restaurant") || n.includes("vegan"), cuisine: "Vegan" },
   { match: (t, n) => t.includes("vegetarian_restaurant") || n.includes("vegetarisch"), cuisine: "Vegetarian" },
-  { match: (t, n) => t.includes("bakery") || t.includes("pastry_shop") || n.includes("bakker"), cuisine: "Bakery" },
-  { match: (t, n) => t.includes("dutch_restaurant") || n.includes("nederlands") || n.includes("hollands"), cuisine: "Dutch" },
-  { match: (t, n) => t.includes("indonesian_restaurant") || n.includes("indonesisch") || n.includes("toko"), cuisine: "Indonesian" },
+  { match: (t, n) => t.includes("bakery") || t.includes("pastry_shop") || n.includes("bakker") || n.includes("bagel"), cuisine: "Bakery" },
+  { match: (t, n) => t.includes("breakfast_restaurant") || t.includes("brunch_restaurant") || n.includes("ontbijt") || n.includes("brunch") || n.includes("omelegg"), cuisine: "Breakfast & Brunch" },
+  { match: (t, n) => n.includes("pancake") || n.includes("pannenkoek"), cuisine: "Pancakes" },
+  { match: (t, n) => t.includes("dutch_restaurant") || n.includes("nederlands") || n.includes("hollands") || n.includes("bruin café") || n.includes("stamppot"), cuisine: "Dutch" },
+  { match: (t, n) => t.includes("indonesian_restaurant") || n.includes("indonesisch") || n.includes("toko") || n.includes("rijsttafel"), cuisine: "Indonesian" },
   { match: (t, n) => n.includes("surinaams") || n.includes("roti") || n.includes("tokoman"), cuisine: "Surinamese" },
   { match: (t, n) => t.includes("italian_restaurant") || t.includes("pizza_restaurant") || n.includes("pizza") || n.includes("italiaans"), cuisine: "Italian" },
   { match: (t, n) => t.includes("french_restaurant") || n.includes("bistro") || n.includes("brasserie"), cuisine: "French" },
@@ -158,9 +160,8 @@ const CUISINE_RULES = [
   { match: (t, n) => n.includes("tapas") || n.includes("spaans"), cuisine: "Spanish / Tapas" },
   { match: (t, n) => t.includes("seafood_restaurant") || n.includes("vis") || n.includes("seafood"), cuisine: "Seafood" },
   { match: (t, n) => t.includes("steak_house") || n.includes("steak"), cuisine: "Steakhouse" },
-  { match: (t, n) => t.includes("sandwich_shop") || n.includes("sando") || n.includes("broodjes") || n.includes("deli") || n.includes("bagel"), cuisine: "Sandwiches" },
-  { match: (t, n) => n.includes("pancake") || n.includes("pannenkoek"), cuisine: "Pancakes" },
-  { match: (t, n) => t.includes("coffee_shop") || t.includes("cafe") && !t.includes("bar"), cuisine: "Coffee & Bakery" },
+  { match: (t, n) => t.includes("sandwich_shop") || n.includes("sando") || n.includes("broodjes") || n.includes("deli"), cuisine: "Sandwiches" },
+  { match: (t, n) => t.includes("coffee_shop") || (t.includes("cafe") && !t.includes("bar")), cuisine: "Coffee & Bakery" },
   { match: (t, n) => t.includes("night_club") || t.includes("bar") || t.includes("pub"), cuisine: "Drinks & Cocktails" },
 ];
 

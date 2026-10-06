@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BRANDS, brandCssVars } from "./brand";
+import { BRANDS, brandCssVars, defaultAppName, resolveBrandAppName } from "./brand";
 import { CATEGORIES } from "./categories";
 
 function rgb(hex: string): [number, number, number] {
@@ -120,5 +120,24 @@ describe("category colours vs brand colours", () => {
     expect(new Set(CATEGORIES.map((c) => c.id)).size).toBe(CATEGORIES.length);
     expect(new Set(CATEGORIES.map((c) => c.label)).size).toBe(CATEGORIES.length);
     expect(new Set(CATEGORIES.map((c) => c.glyph)).size).toBe(CATEGORIES.length);
+  });
+});
+
+describe("defaultAppName and resolveBrandAppName", () => {
+  it("generates default app name based on company name", () => {
+    expect(defaultAppName("FreeDam Tours")).toBe("FreeDam Tours Local Tips");
+    expect(defaultAppName("Those Amsterdames")).toBe("Those Amsterdames Local Tips");
+    expect(defaultAppName("Boat Local")).toBe("Boat Local Tips");
+    expect(defaultAppName("Map App")).toBe("Local Tips");
+    expect(defaultAppName("")).toBe("Local Tips");
+    expect(defaultAppName(null)).toBe("Local Tips");
+  });
+
+  it("resolves brand app name with company name fallback", () => {
+    expect(resolveBrandAppName({ companyName: "FreeDam Tours", appName: "FreeDam Tours" })).toBe("FreeDam Tours Local Tips");
+    expect(resolveBrandAppName({ companyName: "FreeDam Tours", appName: "FreeDam Tours Local Tips" })).toBe("FreeDam Tours Local Tips");
+    expect(resolveBrandAppName({ companyName: "FreeDam Tours", appName: "Custom Guide" })).toBe("Custom Guide");
+    expect(resolveBrandAppName({ companyName: "FreeDam Tours", appName: "Map App" })).toBe("FreeDam Tours Local Tips");
+    expect(resolveBrandAppName({ companyName: "Map App", appName: "Map App" })).toBe("Local Tips");
   });
 });

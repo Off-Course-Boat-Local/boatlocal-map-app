@@ -60,6 +60,7 @@
 
 import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
 
+import { defaultAppName, resolveBrandAppName } from "../brand";
 import { CATEGORY_MAP } from "../categories";
 import type { MapPin } from "../data";
 import { parseBoatLocalCruise } from "../boatlocalCatalog";
@@ -561,7 +562,7 @@ export function toBrand(company: CompanyRecord): Brand {
   return {
     id: company.id,
     companyName: company.name,
-    appName: company.appName,
+    appName: resolveBrandAppName({ appName: company.appName, companyName: company.name }),
     primary: company.brandPrimary,
     primaryDark: company.brandPrimaryDark,
     accent: company.brandAccent,
@@ -3671,13 +3672,15 @@ export async function createCompany(
   const ownerEmail = input.ownerEmail.trim();
   if (!ownerEmail) throw new Error("Owner email is required.");
 
+  const appName = input.appName?.trim() || defaultAppName(name);
+
   if (isTestEnv) {
     const created = new Date().toISOString();
     const record: CompanyRecord = {
       id: fakeId("company"),
       name,
       companyType: input.companyType?.trim() || null,
-      appName: name,
+      appName,
       brandPrimary: ONBOARDING_DEFAULT_BRAND.primary,
       brandPrimaryDark: ONBOARDING_DEFAULT_BRAND.primaryDark,
       brandAccent: ONBOARDING_DEFAULT_BRAND.accent,
@@ -3708,7 +3711,7 @@ export async function createCompany(
     .insert({
       name,
       company_type: input.companyType?.trim() || null,
-      app_name: name,
+      app_name: appName,
       brand_primary: ONBOARDING_DEFAULT_BRAND.primary,
       brand_primary_dark: ONBOARDING_DEFAULT_BRAND.primaryDark,
       brand_accent: ONBOARDING_DEFAULT_BRAND.accent,

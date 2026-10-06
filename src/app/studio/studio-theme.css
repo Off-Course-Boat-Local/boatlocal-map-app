@@ -28,15 +28,15 @@
   --studio-sidebar-border: #ececE6;
   --studio-sidebar-ink: #1a1c22;
   --studio-sidebar-ink-dim: #8b8f99;
-  --studio-accent: #1b5fe3;
-  --studio-accent-strong: #1b5fe3;
+  --studio-accent: #091747;
+  --studio-accent-strong: #091747;
   /* Hover-only shade of the shared accent — derived, not a second brand
      colour, so PORTAL_ACCENT (MapAppMark.tsx) stays the single source of
-     truth for "the" blue. Mirrors the Admin agent's identical token in
+     truth for "the" color. Mirrors the Admin agent's identical token in
      admin-theme.css (--admin-accent-hover), same color-mix technique
      src/lib/guestTheme.ts already uses for its own derived tints. */
   --studio-accent-hover: color-mix(in srgb, var(--studio-accent) 82%, black);
-  --studio-nav-active-bg: #e8effc;
+  --studio-nav-active-bg: #eef2ff;
 
   /* Card/table shadow pair — same values as Admin's
      --admin-shadow-card/--admin-shadow-float (admin-theme.css), which were

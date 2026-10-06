@@ -55,17 +55,12 @@ import type { Brand, Guide } from "./types";
 const NEUTRAL_FALLBACK_BRAND: Brand = {
   id: "map-app",
   companyName: "Map App",
-  appName: "Map App",
+  appName: "Local Tips",
   primary: PORTAL_ACCENT,
-  primaryDark: "#14449E",
-  accent: "#FF7A45",
-  // The exact background the Admin/Studio dashboards use — founder-specified
-  // (#F6F6F3, 2026-08-24, correcting an earlier #E8E6DF guess): the guest
-  // app's desktop surround must stay in the same family as the portals.
-  // PhoneFrame's own `var(--brand-surround, ...)` fallback carries the same
-  // value.
-  surround: "#F6F6F3",
-  logoUrl: null,
+  primaryDark: "#060F30",
+  accent: "#FF6301",
+  surround: "#F6F9FA",
+  logoUrl: "/logo.png",
 };
 
 export interface GuestContext {

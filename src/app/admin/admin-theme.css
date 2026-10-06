@@ -30,14 +30,14 @@
   --admin-sidebar-border: #ececE6;
   --admin-sidebar-ink: #1a1c22;
   --admin-sidebar-ink-dim: #8b8f99;
-  --admin-accent: #1b5fe3;
-  --admin-accent-strong: #1b5fe3;
+  --admin-accent: #091747;
+  --admin-accent-strong: #091747;
   /* Hover-only shade of the shared accent — derived, not a second brand
      colour, so PORTAL_ACCENT (MapAppMark.tsx) stays the single source of
-     truth for "the" blue. Same color-mix technique src/lib/guestTheme.ts
+     truth for "the" color. Same color-mix technique src/lib/guestTheme.ts
      already uses for its own derived tints. */
   --admin-accent-hover: color-mix(in srgb, var(--admin-accent) 82%, black);
-  --admin-nav-active-bg: #e8effc;
+  --admin-nav-active-bg: #eef2ff;
 
   /* Card/table shadow pair, ported from the reference design system
      (nice-notice's src/styles.css --shadow-card/--shadow-float, itself

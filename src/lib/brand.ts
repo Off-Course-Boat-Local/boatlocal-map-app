@@ -15,11 +15,11 @@ export const BRANDS: Record<string, Brand> = {
     id: "coastal",
     companyName: "Boat Local",
     appName: "BoatLocal Map App",
-    primary: "#2B4FE0",
-    primaryDark: "#1D37A8",
-    accent: "#6E8CFF",
-    surround: "#E8E6DF",
-    logoUrl: null,
+    primary: "#091747",
+    primaryDark: "#060F30",
+    accent: "#FF6301",
+    surround: "#F6F9FA",
+    logoUrl: "/logo.png",
   },
   coral: {
     id: "coral",
@@ -79,3 +79,35 @@ export function brandCssVars(brand: Brand): Record<string, string> {
     "--brand-surround": brand.surround,
   };
 }
+
+/**
+ * Resolves the default guest map app name based on the company name.
+ * e.g. "FreeDam Tours" -> "FreeDam Tours Local Tips"
+ * e.g. "Boat Local" -> "Boat Local Tips"
+ * e.g. "Map App" -> "Local Tips"
+ */
+export function defaultAppName(companyName?: string | null): string {
+  const trimmed = companyName?.trim();
+  if (!trimmed || trimmed === "Map App") {
+    return "Local Tips";
+  }
+  if (trimmed.toLowerCase().endsWith("local")) {
+    return `${trimmed} Tips`;
+  }
+  return `${trimmed} Local Tips`;
+}
+
+/**
+ * Returns the effective app name for a brand, ensuring it is based on the company name
+ * ("<Company Name> Local Tips") unless explicitly customized to something distinct.
+ */
+export function resolveBrandAppName(brand: {
+  appName?: string | null;
+  companyName?: string | null;
+}): string {
+  if (brand.appName && brand.appName !== "Map App" && brand.appName !== brand.companyName) {
+    return brand.appName;
+  }
+  return defaultAppName(brand.companyName);
+}
+

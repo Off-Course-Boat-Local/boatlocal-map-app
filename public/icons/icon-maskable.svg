@@ -1,17 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!--
-    Maskable variant of icon.svg (see that file's comment) — the OS may crop
-    this to a circle, squircle, or any other shape, so the artwork keeps to
-    the "safe zone" (the inner ~80% diameter) per the maskable icon spec:
-    https://developer.mozilla.org/docs/Web/Progressive_web_apps/Manifest/Reference/icons#maskable
-    Full-bleed background, smaller centred glyph, no rounded corners of our
-    own (the OS mask supplies those).
-  -->
-  <rect width="512" height="512" fill="#17181C" />
-  <g transform="translate(148 148) scale(9)">
+  <rect width="512" height="512" fill="#ff6301" />
+  <g transform="translate(100 100) scale(0.524)">
     <path
-      d="M12 3v8H6l6-8zm1 0v8h5l-5-8zM3.5 14h17l-2.2 4.2a3 3 0 0 1-2.7 1.6H8.4a3 3 0 0 1-2.7-1.6L3.5 14z"
-      fill="#FFFFFF"
+      d="M212.91,381.02c55.06,0,55.06,28.29,110.12,28.29,41.51,0,51.74-16.08,77.85-23.99,8.39-16.23,12.62-37.26,12.62-63.19,0-33.66-7.18-59.08-21.53-76.29-14.36-17.2-34.77-25.8-61.25-25.8-22.52,0-40.84,7.55-54.94,22.64v-91.32h-73.87v230.09c3.42-.27,7.06-.43,11.01-.43ZM275.03,316.56c0-12.37,2.72-22.46,8.17-30.26,5.44-7.79,13.61-11.69,24.5-11.69,21.28,0,31.93,12.75,31.93,38.24v19.67c0,25.24-10.65,37.86-31.93,37.86-10.89,0-19.06-3.83-24.5-11.51-5.45-7.67-8.17-17.69-8.17-30.07v-12.25Z"
+      fill="#fbf2ef"
     />
   </g>
 </svg>

@@ -2,10 +2,10 @@
 // staff-facing surface (Admin, Studio) that isn't a guest-facing, tenant-
 // branded screen.
 //
-// Badge uses the solid black background (#17181C) with white sailboat glyph.
+// Badge uses the BoatLocal brand navy (#091747) with white sailboat glyph.
 
-export const PORTAL_ACCENT = "#1B5FE3";
-export const PORTAL_NAV_ACTIVE_BG = "#E8EFFC";
+export const PORTAL_ACCENT = "#091747";
+export const PORTAL_NAV_ACTIVE_BG = "#EEF2FF";
 
 export interface MapAppMarkProps {
   className?: string;
@@ -21,7 +21,7 @@ export default function MapAppMark({ className, iconSize = 26 }: MapAppMarkProps
         style={{
           width: iconSize,
           height: iconSize,
-          background: "#17181C",
+          background: "#091747",
         }}
       >
         <svg

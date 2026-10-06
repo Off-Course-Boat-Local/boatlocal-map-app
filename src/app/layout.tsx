@@ -28,12 +28,12 @@ const hankenGrotesk = Hanken_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Map App",
+  title: "Local Tips",
   description: "A white-labelled local guide app, with Boat Local tours always one tap away.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Boat Local",
+    title: "Local Tips",
   },
 };
 

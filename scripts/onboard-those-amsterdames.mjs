@@ -30,7 +30,7 @@ async function run() {
     .insert({
       name: companyName,
       company_type: companyType,
-      app_name: companyName,
+      app_name: `${companyName} Local Tips`,
       brand_primary: "#52525B",
       brand_primary_dark: "#3F3F46",
       brand_accent: "#A1A1AA",

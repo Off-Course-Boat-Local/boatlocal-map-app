@@ -82,7 +82,7 @@ import {
   markPlaceViewed,
 } from "@/lib/reviewPrompt";
 import { useGuestFilter } from "@/lib/guestFilterContext";
-import { CATEGORIES } from "@/lib/categories";
+import { CATEGORIES, CATEGORY_MAP } from "@/lib/categories";
 import { groupPinsByLocation } from "@/lib/mapPinClusters";
 import { AMSTERDAM_CENTER } from "@/lib/data";
 import type { MapPin } from "@/lib/data";
@@ -148,6 +148,12 @@ export default function GuestMapScreen({
   const { filter, setFilter } = useGuestFilter();
   const { t } = useI18n();
   const searchParams = useSearchParams();
+  const categoryParam = searchParams.get("category");
+  useEffect(() => {
+    if (categoryParam && categoryParam in CATEGORY_MAP) {
+      setFilter(categoryParam as CategoryId);
+    }
+  }, [categoryParam, setFilter]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const { isSaved, toggle: toggleSaved } = useSavedPlaces();

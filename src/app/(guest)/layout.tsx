@@ -36,7 +36,7 @@ import ShareQr from "@/components/ShareQr";
 import GuestAppOpenTracker from "@/components/guest/GuestAppOpenTracker";
 import GuestBottomNav from "@/components/guest/GuestBottomNav";
 import ServiceWorkerRegister from "@/components/guest/ServiceWorkerRegister";
-import { brandCssVars } from "@/lib/brand";
+import { brandCssVars, resolveBrandAppName } from "@/lib/brand";
 import { GuestFilterProvider } from "@/lib/guestFilterContext";
 import { getGuestContext } from "@/lib/guestServerContext";
 import { isPreviewRequest } from "@/lib/guestPreview";
@@ -47,7 +47,14 @@ export async function generateMetadata(): Promise<Metadata> {
   const { brand, brandId, guideSlug } = await getGuestContext();
   const params = new URLSearchParams({ company: brandId, guide: guideSlug });
   const iconUrl = brand.logoUrl || "/icons/icon.svg";
+  const appName = resolveBrandAppName(brand);
   return {
+    title: appName,
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: appName,
+    },
     manifest: `/manifest.webmanifest?${params.toString()}`,
     icons: {
       icon: iconUrl,

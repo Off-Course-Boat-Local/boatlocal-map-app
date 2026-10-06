@@ -11,13 +11,14 @@
 
 import type { MetadataRoute } from "next";
 
+import { resolveBrandAppName } from "@/lib/brand";
 import { getGuestContext } from "@/lib/guestServerContext";
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const context = await getGuestContext();
   const brand = context.brand;
 
-  const appName = brand.appName || brand.companyName || "BoatLocal Map App";
+  const appName = resolveBrandAppName(brand);
   const companyName = brand.companyName || "Boat Local";
 
   const iconUrl = brand.logoUrl || "/icons/icon.svg";

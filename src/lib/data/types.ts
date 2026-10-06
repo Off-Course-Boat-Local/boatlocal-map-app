@@ -564,6 +564,8 @@ export interface CreateCompanyInput {
   name: string;
   /** Free text, optional — e.g. "Hotel", "Shop", "Bar". Purely descriptive. */
   companyType?: string;
+  /** Optional custom app name. Defaults to `${name} Local Tips`. */
+  appName?: string;
   /**
    * Required, not optional — mirrors PRD §6.1's guide invite exactly: this
    * is who signs in to manage the company in Studio, not a general contact

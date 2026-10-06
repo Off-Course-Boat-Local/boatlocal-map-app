@@ -16,6 +16,7 @@ vi.mock("@/lib/guestEvents", () => ({ recordGuestEvent: vi.fn().mockResolvedValu
 // context defaults to "en".
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const brand = BRANDS.coastal;

@@ -258,7 +258,7 @@ export default function BrandingForm({
           type="text"
           value={appName}
           onChange={(e) => handleAppNameChange(e.target.value)}
-          placeholder="e.g. Amsterdam by Canal Voyagers"
+          placeholder="e.g. FreeDam Tours Local Tips"
           className={inputClass}
         />
         <p className="text-xs text-[var(--studio-ink-soft)]">Shown in the guest app header.</p>
