@@ -102,6 +102,9 @@ export interface PlaceSearchResult {
   name: string;
   address: string;
   types: string[];
+  /** From the search response itself (no Details call) — null if Google omitted it. */
+  lat: number | null;
+  lng: number | null;
 }
 
 interface SearchTextResponseBody {
@@ -110,6 +113,7 @@ interface SearchTextResponseBody {
     displayName?: { text?: string };
     formattedAddress?: string;
     types?: string[];
+    location?: { latitude?: number; longitude?: number };
   }>;
 }
 
@@ -128,7 +132,7 @@ export async function searchPlaces(query: string): Promise<PlaceSearchResult[]> 
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey(),
-      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.types",
+      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.types,places.location",
     },
     body: JSON.stringify({
       textQuery: q,
@@ -154,6 +158,8 @@ export async function searchPlaces(query: string): Promise<PlaceSearchResult[]> 
       name: p.displayName?.text?.trim() || "Unnamed place",
       address: p.formattedAddress?.trim() || "",
       types: p.types ?? [],
+      lat: p.location?.latitude ?? null,
+      lng: p.location?.longitude ?? null,
     }));
 }
 
@@ -298,7 +304,7 @@ async function fetchAndStorePlacePhoto(photoName: string): Promise<string | null
 const MAX_REVIEW_SNIPPETS = 5;
 const REVIEW_SNIPPET_MAX_CHARS = 500;
 
-export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
+export async function getPlaceDetails(placeId: string, maxPhotos: number = MAX_PHOTOS): Promise<PlaceDetails> {
   const res = await fetch(`${PLACES_BASE}/places/${encodeURIComponent(placeId)}`, {
     headers: {
       "X-Goog-Api-Key": apiKey(),
@@ -317,7 +323,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
   const photoNames = (body.photos ?? [])
     .map((p) => p.name)
     .filter((n): n is string => Boolean(n))
-    .slice(0, MAX_PHOTOS);
+    .slice(0, Math.min(Math.max(maxPhotos, 0), MAX_PHOTOS));
   const photos = (await Promise.all(photoNames.map(fetchAndStorePlacePhoto))).filter(
     (p): p is string => p !== null,
   );
