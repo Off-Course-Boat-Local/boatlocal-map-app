@@ -103,4 +103,22 @@ describe("GuestBottomNav", () => {
 
     document.body.removeChild(scrollContainer);
   });
+
+  it("collapses when swiping / panning with touch", () => {
+    const { container } = renderNav();
+    const nav = container.querySelector("nav")!;
+    expect(nav).toHaveAttribute("data-expanded", "true");
+
+    act(() => {
+      fireEvent.touchStart(window, {
+        touches: [{ clientX: 100, clientY: 100 }],
+      });
+      fireEvent.touchMove(window, {
+        touches: [{ clientX: 150, clientY: 100 }],
+      });
+    });
+
+    expect(nav).toHaveAttribute("data-expanded", "false");
+  });
 });
+

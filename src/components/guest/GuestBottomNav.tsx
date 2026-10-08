@@ -164,8 +164,47 @@ export default function GuestBottomNav() {
     };
 
     window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+
+    // Swipe / touch drag listener (e.g. panning on the map or swipe gestures)
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let isTouchSwiping = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+        isTouchSwiping = true;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isTouchSwiping || e.touches.length === 0) return;
+      const currentY = e.touches[0].clientY;
+      const currentX = e.touches[0].clientX;
+      const diffY = currentY - touchStartY;
+      const diffX = currentX - touchStartX;
+      const dist = Math.hypot(diffX, diffY);
+
+      // If user moved finger more than 20px, minimize the menu
+      if (dist > 20) {
+        setIsExpanded(false);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      isTouchSwiping = false;
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+
     return () => {
       window.removeEventListener("scroll", handleScroll, { capture: true });
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
     };
   }, []);
 

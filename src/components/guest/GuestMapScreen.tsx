@@ -681,7 +681,7 @@ export default function GuestMapScreen({
           can slide up and cover the nav bar entirely, the same way a native
           app's sheet would. See PlaceCard's `asDrawer` doc comment. */}
       {selected ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 flex flex-col items-center">
+        <div className="fixed inset-x-0 bottom-0 z-50 flex flex-col items-center">
           <div className="pointer-events-none mb-2 flex justify-center px-4">
             <div className="rounded-full bg-white/95 px-3.5 py-1.5 shadow-sm backdrop-blur">
               {walkLine ? (
