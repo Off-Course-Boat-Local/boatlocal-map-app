@@ -35,6 +35,13 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Local Tips",
   },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-icon.png",
+  },
 };
 
 // `viewportFit: "cover"` is load-bearing, not cosmetic: every

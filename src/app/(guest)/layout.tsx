@@ -57,7 +57,10 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     manifest: `/manifest.webmanifest?${params.toString()}`,
     icons: {
-      icon: iconUrl,
+      icon: [
+        { url: iconUrl },
+        { url: "/favicon.ico", sizes: "any" },
+      ],
       apple: iconUrl,
     },
   };

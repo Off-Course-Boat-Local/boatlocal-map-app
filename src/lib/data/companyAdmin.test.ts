@@ -35,7 +35,7 @@ describe("createCompany", () => {
     expect(company.status).toBe("setup");
     expect(company.id).toBeTruthy();
     expect(company.companyType).toBe("hotel");
-    expect(company.appName).toBe("Hotel V Nesplein");
+    expect(company.appName).toBe("Hotel V Nesplein Local Tips");
     expect(company.ownerEmail).toBe("owner@hotelv.example");
     expect(company.ownerStatus).toBe("invited");
 

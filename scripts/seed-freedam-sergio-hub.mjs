@@ -111,9 +111,11 @@ function ids(...names) {
 const cta = (label, href) => ["cta_banner", { label, href }];
 const h = (text, level = 2) => ["heading", { text, level }];
 const p = (text) => ["paragraph", { text }];
+const img = (url, alt, caption) => ["image", { url, alt, caption }];
 
 const blocks = [
   ["guide_hero", { title: "Thank you for joining the tour!", greeting: "I hope you enjoyed discovering Amsterdam with me today. A tour can only scratch the surface, so this page is here to help you keep exploring with confidence. Bookmark it and use it throughout your stay.", showAvatar: true, photoUrl: guide.avatar_url }],
+  img("https://hacjzxdyxudcldzwzhbr.supabase.co/storage/v1/object/public/recommendation-photos/freedam/bloemenvelden.jpg", "Amsterdam flower fields", "Tulips in the Dutch countryside"),
   ["review_card", { promptText: "Recommend us! A review keeps me motivated as a guide — and I get a small bonus for every 5-star review, so mention my name 😉", platforms: ["tripadvisor", "guruwalk", "google"], urls: REVIEW_URLS }],
   h("Explore Amsterdam by water"),
   p("BoatLocal.nl: independent skippers open their boats (and their stories) to small groups. Boats that feel like floating living rooms, skippers who know the city like an old friend, and a slow, intimate pace — the opposite of the big tourist boats."),
@@ -130,6 +132,7 @@ const blocks = [
   cta("Reserve a table at Bistro Berlage", "https://bistroberlage.com/en/book-a-table/"),
   h("Amsterdam maps"),
   p("Together with the other FreeDam guides we made Google Maps lists of our favourite restaurants, bars, cafés, bakeries, nightlife spots and hidden gems."),
+  img("https://hacjzxdyxudcldzwzhbr.supabase.co/storage/v1/object/public/recommendation-photos/freedam/maps-screenshot.png", "FreeDam Tours Google Maps lists", "Our curated Google Maps lists"),
   ["category_shortcuts", { categoryKeys: ["breakfast", "lunch", "dinner", "drinks", "dancing"] }],
   cta("Lunch map", "https://maps.app.goo.gl/Dwn7mtC9to5aAHc26"),
   cta("Dinner map", "https://maps.app.goo.gl/FZeVuPQi8MdWC95H9"),

@@ -158,6 +158,23 @@ export default function GuestMapScreen({
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const { isSaved, toggle: toggleSaved } = useSavedPlaces();
 
+  const placeParam = searchParams.get("place");
+  useEffect(() => {
+    if (placeParam) {
+      setSelectedId(placeParam);
+      notePlaceViewed(placeParam);
+      const pin = allPins.find((p) => p.id === placeParam);
+      if (pin) {
+        if (filter && !pin.categories.includes(filter)) {
+          setFilter(null);
+        }
+        if (map) {
+          map.panTo({ lat: pin.lat, lng: pin.lng });
+        }
+      }
+    }
+  }, [placeParam, allPins, map, filter, setFilter]);
+
   // Real walking distance/duration for the currently-selected place, once
   // DirectionLine's route fetch lands — null while loading, on fetch
   // failure, or when nothing selected. See walkLine below for how this
