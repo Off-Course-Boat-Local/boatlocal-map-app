@@ -7,10 +7,6 @@
       "schedule": "30 3 * * *"
     },
     {
-      "path": "/api/cron/outreach-reminders",
-      "schedule": "0 7 * * 1-5"
-    },
-    {
       "path": "/api/cron/daily-ops-digest",
       "schedule": "0 20 * * 1-5"
     }
