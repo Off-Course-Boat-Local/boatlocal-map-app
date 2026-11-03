@@ -76,7 +76,7 @@ if (!company) {
 const logoUrl = await upload("company-logos", `${company.id}.png`, "logo.png", "image/png");
 await db
   .from("companies")
-  .update({ logo_url: logoUrl, google_review_url: REVIEW_URLS.google, tripadvisor_review_url: REVIEW_URLS.tripadvisor }).eq("id", company.id);
+  .update({ brand_primary: "#FF6600", brand_primary_dark: "#CC5200", brand_accent: "#FF6600", logo_url: logoUrl, google_review_url: REVIEW_URLS.google, tripadvisor_review_url: REVIEW_URLS.tripadvisor }).eq("id", company.id);
 
 // ---- guide -----------------------------------------------------------------
 let { data: guide } = await db.from("guides").select("*").eq("company_id", company.id).eq("slug", GUIDE.slug).maybeSingle();
@@ -141,7 +141,8 @@ let blocks = srcBlocks
     if (b.block_type === "guide_hero") content.photoUrl = photoUrl;
     if (b.block_type === "cta_banner") content.href = content.href.replace(/\?partner=.*/, "");
     if (b.block_type === "cta_banner" && /boatlocal/i.test(content.label)) content.label = "See all boats on BoatLocal";
-    if (b.block_type === "boat_tour_card") content.headline = "Tonight's pick";
+    // No headline: the card then shows "<guide>'s favourite".
+    if (b.block_type === "boat_tour_card") delete content.headline;
     if (b.block_type === "featured_places") {
       content.showDiscountBadge = false; // the discounts are FreeDam Tours' deals
       content.placeIds = content.placeIds.map((id) => idMap.get(id)).filter(Boolean);
@@ -164,8 +165,9 @@ if (bh >= 0) {
     i++;
   } while (i < blocks.length && blocks[i - 1].block_type !== "cta_banner");
 }
-// Review prompt at the very top (FreeDam's own review card was dropped above).
-blocks.splice(0, 0, {
+// Review prompt right above the BoatLocal panel.
+const boatPanel = blocks.findIndex((b) => b.block_type === "heading" && b.content.text === "Explore Amsterdam by water");
+blocks.splice(boatPanel >= 0 ? boatPanel : 2, 0, {
   block_type: "review_card",
   content: {
     promptText: "If you enjoyed the tour, please leave a review",
@@ -176,6 +178,15 @@ blocks.splice(0, 0, {
 // The "Amsterdam maps" heading was dropped, so the category shortcuts need their own.
 const sc = blocks.findIndex((b) => b.block_type === "category_shortcuts");
 if (sc >= 0) blocks.splice(sc, 0, { block_type: "heading", content: { text: "Find places by category", level: 2 } });
+// Category tiles (heading + shortcuts) sit above the first places section.
+{
+  const catAt = blocks.findIndex((b) => b.block_type === "category_shortcuts");
+  const lunchAt = blocks.findIndex((b) => b.block_type === "heading" && b.content.text === "Lunch near Dam Square");
+  if (catAt > 0 && lunchAt >= 0 && catAt > lunchAt) {
+    const moved = blocks.splice(catAt - 1, 2); // heading + shortcuts
+    blocks.splice(lunchAt, 0, ...moved);
+  }
+}
 blocks.push({
   block_type: "cta_banner",
   content: { label: "Book a tour with 360 Amsterdam Tours", href: SITE },

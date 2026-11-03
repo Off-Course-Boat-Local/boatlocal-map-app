@@ -1,5 +1,6 @@
-import { Clock } from "lucide-react";
+import { Clock, Heart } from "lucide-react";
 
+import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { photoUrl } from "@/lib/photoUrl";
 import type { BoatTourCardContent } from "@/types/welcome-blocks";
 import type { WelcomeBlockContext } from "./context";
@@ -11,6 +12,7 @@ export function BoatTourCardBlock({
   content: BoatTourCardContent;
   ctx: WelcomeBlockContext;
 }) {
+  const { t } = useI18n();
   const tour = ctx.boatTour;
   if (!tour) return null;
   const photo = tour.photos[0] ? photoUrl(tour.photos[0], { width: 240 }) : "";
@@ -19,6 +21,14 @@ export function BoatTourCardBlock({
     : (tour.priceLabel ?? tour.meta);
   return (
     <section className="rounded-3xl border border-[#E1E7EE] bg-white p-4">
+      {/* Defaults to "<guide>'s favourite"; a block's own headline overrides it. */}
+      <p
+        className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider"
+        style={{ color: ctx.brand.primaryDark }}
+      >
+        <Heart size={12} fill="currentColor" aria-hidden="true" />
+        {content.headline || t.welcome.topPick(ctx.guideName)}
+      </p>
       <div className="flex items-start gap-3">
         {photo && (
           <div className="relative h-[76px] w-[76px] shrink-0 overflow-hidden rounded-[18px] bg-[#EDF1F5]">

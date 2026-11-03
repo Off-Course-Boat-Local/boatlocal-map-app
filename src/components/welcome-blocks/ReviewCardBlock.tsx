@@ -24,8 +24,8 @@ export function ReviewCardBlock({ content, ctx }: { content: ReviewCardContent; 
               href={urlFor(p)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full px-4 py-2.5 text-center text-sm font-semibold text-white"
-              style={{ background: ctx.brand.primary }}
+              className="rounded-full border-2 px-4 py-2 text-center text-sm font-semibold"
+              style={{ borderColor: ctx.brand.primary, color: ctx.brand.primaryDark }}
             >
               Review us on {PLATFORM_LABEL[p]}
             </a>

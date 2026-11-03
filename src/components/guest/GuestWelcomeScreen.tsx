@@ -425,7 +425,7 @@ export default function GuestWelcomeScreen({
             {t.welcome.browseList}
           </Link>
           {placeCount > 0 ? (
-            <p className="mt-2.5 text-center text-[12px]" style={{ color: MUTED }}>
+            <p className="mt-2.5 text-center text-[13px]" style={{ color: "#4B5563" }}>
               {t.welcome.spotsFrom(placeCount, guideName)}
             </p>
           ) : null}

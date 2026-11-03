@@ -41,7 +41,7 @@ describe("WelcomeBlockRenderer", () => {
     expect(screen.getByRole("link", { name: /TripAdvisor/ })).toBeInTheDocument();
     // no URL configured for guruwalk → not rendered
     expect(screen.queryByRole("link", { name: /GuruWalk/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "lunch" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Lunch" })).toHaveAttribute(
       "href",
       "/map?company=coastal&guide=sergio&category=lunch",
     );
