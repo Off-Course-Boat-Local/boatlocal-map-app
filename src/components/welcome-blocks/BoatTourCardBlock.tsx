@@ -1,9 +1,11 @@
 import { Clock, Heart } from "lucide-react";
 
+import { guestPinAction } from "@/lib/guestActions";
 import { useI18n } from "@/lib/i18n/LocaleProvider";
 import { photoUrl } from "@/lib/photoUrl";
 import type { BoatTourCardContent } from "@/types/welcome-blocks";
 import type { WelcomeBlockContext } from "./context";
+import { trackWelcomeClick } from "./trackClick";
 
 export function BoatTourCardBlock({
   content,
@@ -16,6 +18,11 @@ export function BoatTourCardBlock({
   const tour = ctx.boatTour;
   if (!tour) return null;
   const photo = tour.photos[0] ? photoUrl(tour.photos[0], { width: 240 }) : "";
+  // Same hand-off as the Map/List "Book" buttons: carries company/guide
+  // attribution plus a click id the booking webhook can match.
+  const booking = tour.bookingUrl
+    ? guestPinAction(tour, { companySlug: ctx.brand.id, guideSlug: ctx.guideSlug ?? undefined })
+    : null;
   const detail = tour.durationLabel
     ? [tour.durationLabel, tour.priceLabel].filter(Boolean).join(" · ")
     : (tour.priceLabel ?? tour.meta);
@@ -59,11 +66,17 @@ export function BoatTourCardBlock({
           )}
         </div>
       </div>
-      {tour.bookingUrl && (
+      {booking && (
         <a
-          href={tour.bookingUrl}
+          href={booking.url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() =>
+            trackWelcomeClick(ctx, "boat_book_click", {
+              boatTourId: tour.id,
+              metadata: booking.clickId ? { clickId: booking.clickId } : undefined,
+            })
+          }
           className="mt-3.5 flex h-11 items-center justify-center rounded-full text-[15px] font-semibold text-white"
           style={{ background: ctx.brand.primary }}
         >

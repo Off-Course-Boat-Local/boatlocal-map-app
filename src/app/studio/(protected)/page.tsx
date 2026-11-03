@@ -10,13 +10,10 @@
 // lean on src/lib/studio/mockAnalytics.ts for exactly that shortcut, which
 // is why it existed and why it's gone now.
 //
-// Two things PRD §7.1 asks for — a day-by-day guest-activity chart and a
-// most-saved-tips ranking — are NOT shown here: AnalyticsSummaryRow only
-// groups by eventType + guideId today, and neither a by-day nor a
-// by-recommendation grouping exists in the data layer yet. Rather than
-// fabricate one or silently render an empty chart, this page says so
-// plainly (see the note below the leaderboard) until that aggregation
-// exists for real.
+// App opens per day come from getDailyActivity (real `events` rows bucketed
+// by Amsterdam day). The most-saved-tips ranking from PRD §7.1 is NOT shown:
+// no by-recommendation grouping exists in the data layer yet, so the page
+// says so plainly (see the note below the leaderboard) instead of faking it.
 //
 // Every display component (src/components/studio/dashboard/*.tsx) takes
 // its numbers through plain props, so wiring in the missing groupings later
@@ -24,9 +21,11 @@
 
 import CompanyPublishToggle from "@/components/studio/CompanyPublishToggle";
 import GuideLeaderboard from "@/components/studio/dashboard/GuideLeaderboard";
+import ActivityChart from "@/components/studio/dashboard/ActivityChart";
 import KpiRow from "@/components/studio/dashboard/KpiRow";
 import { PageHeader, TableShell } from "@/components/studio/primitives";
 import {
+  getDailyActivity,
   getCompanyAnalyticsSummary,
   getCompanyForStudio,
   getGuideAnalyticsSummary,
@@ -47,10 +46,11 @@ export default async function StudioDashboardPage() {
   const recommendations = await getRecommendationsForStudio(actor);
 
   if (session.role === "company") {
-    const [guides, company, analytics] = await Promise.all([
+    const [guides, company, analytics, activity] = await Promise.all([
       getGuidesForCompany(actor, session.companyId),
       getCompanyForStudio(actor, session.companyId),
       getCompanyAnalyticsSummary(actor, session.companyId),
+      getDailyActivity(actor, { companyId: session.companyId }),
     ]);
     const activeGuides = guides.filter((g) => g.status === "active").length;
 
@@ -67,14 +67,13 @@ export default async function StudioDashboardPage() {
 
         <div className="space-y-6">
           <KpiRow items={kpis} />
+          <ActivityChart points={activity} />
           <GuideLeaderboard rows={leaderboard} />
         </div>
 
         <p className="rounded-2xl border border-dashed border-[var(--studio-border)] bg-[var(--studio-surface)]/60 p-4 text-sm text-[var(--studio-ink-soft)]">
-          Day-by-day guest activity and a most-saved-tips ranking
-          aren&rsquo;t available yet — the totals above are real, but there
-          isn&rsquo;t a day-level or per-tip breakdown in the data layer
-          today. Nothing to show here yet.
+          A most-saved-tips ranking isn&rsquo;t available yet — there isn&rsquo;t
+          a per-tip breakdown in the data layer today.
         </p>
       </div>
     );
@@ -84,7 +83,10 @@ export default async function StudioDashboardPage() {
   const ownRecommendations = recommendations.filter(
     (r) => r.ownerType === "guide" && r.guideId === session.guideId,
   );
-  const analytics = await getGuideAnalyticsSummary(actor, session.guideId);
+  const [analytics, activity] = await Promise.all([
+    getGuideAnalyticsSummary(actor, session.guideId),
+    getDailyActivity(actor, { guideId: session.guideId }),
+  ]);
   const kpis = guideDashboardKpis(analytics, recommendations.length);
   const totalEvents = analytics.reduce((sum, row) => sum + row.count, 0);
 
@@ -100,6 +102,7 @@ export default async function StudioDashboardPage() {
       />
 
       <KpiRow items={kpis} />
+      <ActivityChart points={activity} />
 
       <p className="text-sm text-[var(--studio-ink-soft)]">
         {ownRecommendations.length} of your own picks, plus the base list

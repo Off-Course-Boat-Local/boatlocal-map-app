@@ -9,6 +9,10 @@ export interface WelcomeBlockContext {
   guideAvatarInitial: string;
   /** Preserved `?company=`/`?guide=` query string — see src/lib/guestLinks.ts. */
   qs: string;
+  /** Who a tracked click belongs to (analytics + booking attribution). Absent = clicks aren't recorded. */
+  companyId?: string | null;
+  guideId?: string | null;
+  guideSlug?: string | null;
   /** Places referenced by featured_places blocks, keyed by id. Missing ids are skipped. */
   pinsById: Record<string, MapPin>;
   /** Tour referenced by boat_tour_card (or the tenant's default featured tour). */

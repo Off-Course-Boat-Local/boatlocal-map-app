@@ -8,7 +8,7 @@ import type { KpiItem } from "./types";
 
 export default function KpiRow({ items }: { items: KpiItem[] }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))]">
       {items.map((item) => (
         <KpiCard key={item.key} item={item} />
       ))}

@@ -3169,6 +3169,91 @@ export async function getCompanyAnalyticsSummary(
   }));
 }
 
+export interface DailyActivity {
+  /** YYYY-MM-DD in Amsterdam time. */
+  date: string;
+  appOpens: number;
+  /** review_click_google + review_click_tripadvisor. */
+  reviewClicks: number;
+  /** boat_book_click — any tap out to book on BoatLocal. */
+  boatClicks: number;
+}
+
+const AMSTERDAM_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Amsterdam",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const DAILY_EVENT_TYPES: EventType[] = ["app_open", "review_click_google", "review_click_tripadvisor", "boat_book_click"];
+
+/**
+ * App opens, review clicks and BoatLocal booking clicks per day (Amsterdam
+ * time) for the last `days` days, oldest first, zero-filled so a quiet day
+ * still shows on a chart. Scoped to one company or one guide; test/staging
+ * events never count (same rule as the summaries above). Reads `events` rows
+ * directly (RLS scopes them) and buckets in JS, which is plenty at one row
+ * per click — no new RPC/migration needed.
+ */
+export async function getDailyActivity(
+  actor: StudioActor,
+  scope: { companyId: string } | { guideId: string },
+  days = 30,
+): Promise<DailyActivity[]> {
+  if ("companyId" in scope) assertCompanyScope(actor, scope.companyId);
+  else if (actor.role === "guide" && actor.guideId !== scope.guideId) {
+    throw new StudioPermissionError(`Guide actor may not read analytics for guide ${scope.guideId}.`);
+  }
+
+  const since = new Date(Date.now() - (days + 1) * 24 * 60 * 60 * 1000);
+  let rows: Array<{ type: EventType; at: string }>;
+  if (isTestEnv) {
+    rows = fakeStore.events
+      .filter(
+        (e) =>
+          DAILY_EVENT_TYPES.includes(e.eventType) &&
+          !e.isTest &&
+          ("companyId" in scope ? e.companyId === scope.companyId : e.guideId === scope.guideId) &&
+          new Date(e.occurredAt) >= since,
+      )
+      .map((e) => ({ type: e.eventType, at: e.occurredAt }));
+  } else {
+    const supabase = await authedClient();
+    let query = supabase
+      .from("events")
+      .select("event_type, occurred_at")
+      .in("event_type", DAILY_EVENT_TYPES)
+      .eq("is_test", false)
+      .gte("occurred_at", since.toISOString())
+      .limit(50000);
+    query = "companyId" in scope ? query.eq("company_id", scope.companyId) : query.eq("guide_id", scope.guideId);
+    const { data, error } = await query;
+    if (error) throw error;
+    rows = ((data ?? []) as Array<{ event_type: EventType; occurred_at: string }>).map((r) => ({
+      type: r.event_type,
+      at: r.occurred_at,
+    }));
+  }
+
+  const byDay = new Map<string, DailyActivity>();
+  const blank = (date: string): DailyActivity => ({ date, appOpens: 0, reviewClicks: 0, boatClicks: 0 });
+  for (const { type, at } of rows) {
+    const date = AMSTERDAM_DAY.format(new Date(at));
+    const day = byDay.get(date) ?? blank(date);
+    if (type === "app_open") day.appOpens += 1;
+    else if (type === "boat_book_click") day.boatClicks += 1;
+    else day.reviewClicks += 1;
+    byDay.set(date, day);
+  }
+  const out: DailyActivity[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const date = AMSTERDAM_DAY.format(new Date(Date.now() - i * 24 * 60 * 60 * 1000));
+    out.push(byDay.get(date) ?? blank(date));
+  }
+  return out;
+}
+
 /** Real backend: authed client, RPC `guide_analytics_summary`. */
 export async function getGuideAnalyticsSummary(
   actor: StudioActor,

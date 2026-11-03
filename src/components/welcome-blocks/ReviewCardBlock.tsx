@@ -1,5 +1,7 @@
+import { reviewClickEventType } from "@/lib/guestReview";
 import type { ReviewCardContent, ReviewPlatform } from "@/types/welcome-blocks";
 import type { WelcomeBlockContext } from "./context";
+import { trackWelcomeClick } from "./trackClick";
 
 const PLATFORM_LABEL: Record<ReviewPlatform, string> = {
   tripadvisor: "TripAdvisor",
@@ -24,6 +26,7 @@ export function ReviewCardBlock({ content, ctx }: { content: ReviewCardContent; 
               href={urlFor(p)}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => p !== "guruwalk" && trackWelcomeClick(ctx, reviewClickEventType(p), { metadata: { platform: p } })}
               className="rounded-full border-2 px-4 py-2 text-center text-sm font-semibold"
               style={{ borderColor: ctx.brand.primary, color: ctx.brand.primaryDark }}
             >

@@ -25,7 +25,7 @@ export default async function WelcomePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { brand, guide, companyId } = await getGuestContext();
+  const { brand, guide, guideSlug, companyId } = await getGuestContext();
   const [pins, boatTours] = companyId
     ? await Promise.all([getMapPins(companyId), getBoatTours(companyId)])
     : [[], []];
@@ -70,6 +70,9 @@ export default async function WelcomePage({
         guideName,
         guideAvatarInitial,
         qs,
+        companyId,
+        guideId: guide?.id ?? null,
+        guideSlug: guide ? guideSlug : null,
         pinsById: Object.fromEntries(pins.map((p) => [p.id, p])),
         boatTour: topPick,
         // No review-platform URLs are stored yet (Task 6's editor / a company setting will supply them).

@@ -1,5 +1,6 @@
 import type { CtaBannerContent, FaqGroupContent, HeadingContent, ImageContent, ParagraphContent, QuoteContent } from "@/types/welcome-blocks";
 import type { WelcomeBlockContext } from "./context";
+import { trackWelcomeClick } from "./trackClick";
 
 export function HeadingBlock({ content }: { content: HeadingContent }) {
   const Tag = content.level === 3 ? "h3" : "h2";
@@ -54,6 +55,12 @@ export function CtaBannerBlock({ content, ctx }: { content: CtaBannerContent; ct
     <a
       href={content.href}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      onClick={() => {
+        // Any link out to boatlocal.nl counts as a booking-intent click.
+        if (/^https?:\/\/([^/]+\.)?boatlocal\.nl(\/|$)/i.test(content.href)) {
+          trackWelcomeClick(ctx, "boat_book_click", { metadata: { label: content.label } });
+        }
+      }}
       className="block rounded-2xl px-4 py-3 text-center text-sm font-semibold text-white"
       style={{ background: ctx.brand.primary }}
     >

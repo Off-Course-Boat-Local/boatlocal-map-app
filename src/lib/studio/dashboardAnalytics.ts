@@ -41,6 +41,8 @@ export function companyDashboardKpis(rows: AnalyticsSummaryRow[], activeGuides: 
     { key: "active-guides", label: "Active guides", value: activeGuides },
     { key: "app-opens", label: "App opens", value: sum(rows, ["app_open"]) },
     { key: "tips-saved", label: "Tips saved", value: sum(rows, ["tip_saved"]) },
+    { key: "boat-clicks", label: "BoatLocal clicks", value: sum(rows, ["boat_book_click"]) },
+    { key: "review-clicks", label: "Review clicks", value: sum(rows, ["review_click_google", "review_click_tripadvisor"]) },
     { key: "directions-asked", label: "Directions asked", value: sum(rows, ["directions_requested"]) },
     { key: "directions-finished", label: "Directions finished", value: sum(rows, ["directions_arrived"]) },
   ];

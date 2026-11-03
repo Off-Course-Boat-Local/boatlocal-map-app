@@ -20,6 +20,12 @@
 // opening the form, optimistically, rolling back if the Server Action
 // refuses. Same switch component as the one at the top of the form.
 //
+// CARD GRID + CATEGORY FILTER: places are shown as photo cards rather than
+// table rows (a place is recognised by its picture far faster than by its
+// name), with category chips and a name search on top — at 200+ places a
+// flat table was unscannable. Both filters are client-side, same reasoning
+// as the owner filter above.
+//
 // Uses CATEGORY_MAP directly (src/lib/categories.ts) rather than importing
 // categoryLabel from src/lib/data/source.ts, so this Client Component
 // doesn't pull the whole data-access module (fake store included) into the
@@ -27,19 +33,22 @@
 // this component needs as plain props.
 
 import { useMemo, useState } from "react";
-import { Mic, Plus } from "lucide-react";
+import { EyeOff, ImageOff, MapPin, Mic, Pencil, Plus, Search, Trash2 } from "lucide-react";
 
 import PortalModal from "@/components/PortalModal";
 import PortalSelect from "@/components/PortalSelect";
 import PortalToggle from "@/components/PortalToggle";
-import { CATEGORY_MAP } from "@/lib/categories";
+import { CategoryGlyph } from "@/components/map/Pin";
+import { CATEGORIES, CATEGORY_MAP } from "@/lib/categories";
+import { photoUrl } from "@/lib/photoUrl";
 import type { RecommendationRecord } from "@/lib/data/types";
+import type { CategoryId } from "@/lib/types";
 import type { StudioRole } from "@/lib/studio/session";
 import {
   deleteRecommendationAction,
   setRecommendationVisibilityAction,
 } from "@/lib/studio/recommendationActions";
-import { GhostButton, PageHeader, PrimaryButton, TableShell } from "./primitives";
+import { GhostButton, PageHeader, PrimaryButton } from "./primitives";
 import RecommendationForm, { type RecommendationFormProps } from "./RecommendationForm";
 import VoiceAddPlaces from "./VoiceAddPlaces";
 
@@ -64,6 +73,31 @@ type EditingState = { mode: "new" } | { mode: "edit"; recommendation: Recommenda
 
 type OwnerFilter = "all" | "mine" | "base" | "guides";
 
+function CategoryChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
+        active
+          ? "border-[var(--studio-accent)] bg-[var(--studio-accent)] text-white"
+          : "border-[var(--studio-border)] bg-[var(--studio-surface)] text-[var(--studio-ink)] hover:bg-[var(--studio-bg)]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function RecommendationsManager({
   recommendations,
   role,
@@ -77,6 +111,8 @@ export default function RecommendationsManager({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryId | null>(null);
+  const [query, setQuery] = useState("");
 
   // Optimistic visibility overlay: id -> pending value. Rows read this
   // first and fall back to the server-rendered `visible`, so a toggle feels
@@ -108,7 +144,9 @@ export default function RecommendationsManager({
     { value: "base", label: "From the company" },
   ];
 
-  const visibleRows = useMemo(() => {
+  // Per-category counts for the chips, over the owner-filtered set so the
+  // numbers always match what clicking the chip will show.
+  const ownerRows = useMemo(() => {
     return recommendations.filter((rec) => {
       switch (ownerFilter) {
         case "mine":
@@ -122,6 +160,21 @@ export default function RecommendationsManager({
       }
     });
   }, [recommendations, ownerFilter, currentGuideId]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<CategoryId, number>();
+    for (const rec of ownerRows) for (const c of rec.categories) counts.set(c, (counts.get(c) ?? 0) + 1);
+    return CATEGORIES.filter((c) => counts.has(c.id)).map((c) => ({ ...c, count: counts.get(c.id)! }));
+  }, [ownerRows]);
+
+  const visibleRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return ownerRows.filter(
+      (rec) =>
+        (!categoryFilter || rec.categories.includes(categoryFilter)) &&
+        (!q || rec.name.toLowerCase().includes(q) || rec.area.toLowerCase().includes(q)),
+    );
+  }, [ownerRows, categoryFilter, query]);
 
   async function handleDelete(rec: RecommendationRecord) {
     if (
@@ -185,23 +238,56 @@ export default function RecommendationsManager({
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3">
-        {showOwnerFilter ? (
-          <div className="w-full sm:w-72">
-            <PortalSelect
-              name="owner-filter"
-              options={filterOptions}
-              defaultValue="all"
-              onValueChange={(v) => setOwnerFilter(v as OwnerFilter)}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="relative w-full sm:w-72">
+            <span className="sr-only">Search places</span>
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--studio-ink-soft)]"
             />
-          </div>
-        ) : null}
-        <p className="text-xs text-[var(--studio-ink-soft)]">
-          {showOwnerFilter
-            ? `Showing ${visibleRows.length} of ${recommendations.length}`
-            : `${recommendations.length} ${recommendations.length === 1 ? "place" : "places"}`}
-          {hiddenCount > 0 ? ` · ${hiddenCount} hidden from guests` : ""}
-        </p>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name or area"
+              className="h-10 w-full rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface)] pl-9 pr-3 text-sm text-[var(--studio-ink)] outline-none focus:border-[var(--studio-accent)]"
+            />
+          </label>
+          {showOwnerFilter ? (
+            <div className="w-full sm:w-64">
+              <PortalSelect
+                name="owner-filter"
+                options={filterOptions}
+                defaultValue="all"
+                onValueChange={(v) => setOwnerFilter(v as OwnerFilter)}
+              />
+            </div>
+          ) : null}
+          <p className="text-xs text-[var(--studio-ink-soft)]">
+            Showing {visibleRows.length} of {recommendations.length}
+            {hiddenCount > 0 ? ` · ${hiddenCount} hidden from guests` : ""}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+          <CategoryChip active={categoryFilter === null} onClick={() => setCategoryFilter(null)}>
+            All <span className="tabular-nums opacity-70">{ownerRows.length}</span>
+          </CategoryChip>
+          {categoryCounts.map((cat) => {
+            const active = categoryFilter === cat.id;
+            return (
+              <CategoryChip
+                key={cat.id}
+                active={active}
+                onClick={() => setCategoryFilter(active ? null : cat.id)}
+              >
+                <CategoryGlyph category={cat.id} size={14} color={active ? "#FFFFFF" : cat.color} />
+                {cat.label} <span className="tabular-nums opacity-70">{cat.count}</span>
+              </CategoryChip>
+            );
+          })}
+        </div>
       </div>
 
       {deleteError ? (
@@ -215,90 +301,135 @@ export default function RecommendationsManager({
         </p>
       ) : null}
 
-      <TableShell
-        className="min-w-0"
-        head={
-          <>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Area</th>
-            <th>Photos</th>
-            <th>Live</th>
-            <th className="text-right">Actions</th>
-          </>
-        }
-      >
-        {visibleRows.map((rec) => {
-          const editable = canEdit(rec);
-          const live = isVisible(rec);
-          return (
-            <tr key={rec.id}>
-              <td className="font-medium text-[var(--studio-ink)]">
-                {rec.name}
-                {/* Stands in for the Owner column this table used to
-                    have. A guide's own rows need no label (obviously
-                    theirs); their company's base-list rows get this one
-                    badge, which already answers "can I edit this" —
-                    exactly what the removed column's badge did. */}
-                {!editable ? (
-                  <span className="ml-2 rounded bg-[var(--studio-bg)] px-1.5 py-0.5 text-[10px] text-[var(--studio-ink-soft)] uppercase">
-                    read-only
-                  </span>
-                ) : null}
-              </td>
-              <td className="text-[var(--studio-ink-soft)]">
-                {rec.categories.map((c) => CATEGORY_MAP[c]?.label ?? c).join(", ")}
-              </td>
-              <td className="text-[var(--studio-ink-soft)]">{rec.area}</td>
-              <td className="text-[var(--studio-ink-soft)] tabular-nums">{rec.photos.length}</td>
-              <td>
-                {editable ? (
-                  <PortalToggle
-                    size="sm"
-                    checked={live}
-                    onChange={(next) => handleToggleVisible(rec, next)}
-                    ariaLabel={`${live ? "Hide" : "Show"} ${rec.name} on the guest map`}
-                  />
-                ) : (
-                  <span className="text-xs text-[var(--studio-ink-soft)]">{live ? "Yes" : "No"}</span>
-                )}
-              </td>
-              <td className="text-right">
-                {editable ? (
-                  <div className="flex justify-end gap-4 text-xs font-semibold">
-                    <button
-                      type="button"
-                      onClick={() => setEditing({ mode: "edit", recommendation: rec })}
-                      className="text-[var(--studio-accent)] hover:opacity-80"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(rec)}
-                      disabled={deletingId === rec.id}
-                      className="text-red-600 hover:opacity-80 disabled:opacity-50"
-                    >
-                      {deletingId === rec.id ? "Deleting…" : "Delete"}
-                    </button>
+      {visibleRows.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-[var(--studio-border)] bg-[var(--studio-surface)] p-8 text-center text-sm text-[var(--studio-ink-soft)]">
+          {recommendations.length === 0
+            ? "No places yet — add your first one to put it on the guest map."
+            : "Nothing matches this filter."}
+        </p>
+      ) : (
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4">
+          {visibleRows.map((rec) => {
+            const editable = canEdit(rec);
+            const live = isVisible(rec);
+            const cover = rec.photos[0] ? photoUrl(rec.photos[0], { width: 480 }) : "";
+            return (
+              <li
+                key={rec.id}
+                className="flex flex-col overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface)] shadow-[var(--studio-shadow-card)]"
+              >
+                {/* The photo opens the editor too — the biggest target on the card. */}
+                <button
+                  type="button"
+                  disabled={!editable}
+                  onClick={() => setEditing({ mode: "edit", recommendation: rec })}
+                  aria-label={editable ? `Edit ${rec.name}` : rec.name}
+                  className="relative block aspect-[4/3] w-full overflow-hidden bg-[var(--studio-bg)] enabled:cursor-pointer"
+                >
+                  {cover ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={cover}
+                      alt=""
+                      loading="lazy"
+                      className={`h-full w-full object-cover transition-opacity ${live ? "" : "opacity-40 grayscale"}`}
+                    />
+                  ) : (
+                    <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-[var(--studio-ink-soft)]">
+                      <ImageOff className="size-5" aria-hidden="true" />
+                      No photo yet
+                    </span>
+                  )}
+                  {rec.photos.length > 1 ? (
+                    <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white">
+                      {rec.photos.length} photos
+                    </span>
+                  ) : null}
+                  {!live ? (
+                    <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-semibold text-white">
+                      <EyeOff className="size-3" aria-hidden="true" />
+                      Hidden
+                    </span>
+                  ) : null}
+                </button>
+
+                <div className="flex flex-1 flex-col gap-2 p-3.5">
+                  <div>
+                    <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--studio-ink)]">
+                      {rec.name}
+                      {/* Marks the company's base-list rows on a guide's page — answers "can I edit this". */}
+                      {!editable ? (
+                        <span className="ml-1.5 rounded bg-[var(--studio-bg)] px-1.5 py-0.5 align-middle text-[10px] font-medium uppercase text-[var(--studio-ink-soft)]">
+                          read-only
+                        </span>
+                      ) : null}
+                    </h3>
+                    {rec.area ? (
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-[var(--studio-ink-soft)]">
+                        <MapPin className="size-3 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{rec.area}</span>
+                      </p>
+                    ) : null}
                   </div>
-                ) : (
-                  <span className="text-xs text-[var(--studio-ink-soft)]">—</span>
-                )}
-              </td>
-            </tr>
-          );
-        })}
-        {visibleRows.length === 0 ? (
-          <tr>
-            <td className="text-[var(--studio-ink-soft)]" colSpan={6}>
-              {recommendations.length === 0
-                ? "No places yet — add your first one to put it on the guest map."
-                : "Nothing matches this filter."}
-            </td>
-          </tr>
-        ) : null}
-      </TableShell>
+
+                  <div className="flex flex-wrap gap-1">
+                    {rec.categories.map((c) => {
+                      const cat = CATEGORY_MAP[c];
+                      return (
+                        <span
+                          key={c}
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                          style={{ background: `${cat?.color ?? "#888888"}1A`, color: cat?.color ?? "#555555" }}
+                        >
+                          <CategoryGlyph category={c} size={11} color={cat?.color ?? "currentColor"} />
+                          {cat?.label ?? c}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-auto flex items-center justify-between gap-2 border-t border-[var(--studio-border)] pt-2.5">
+                    {editable ? (
+                      <label className="flex items-center gap-2 text-xs text-[var(--studio-ink-soft)]">
+                        <PortalToggle
+                          size="sm"
+                          checked={live}
+                          onChange={(next) => handleToggleVisible(rec, next)}
+                          ariaLabel={`${live ? "Hide" : "Show"} ${rec.name} on the guest map`}
+                        />
+                        {live ? "Live" : "Hidden"}
+                      </label>
+                    ) : (
+                      <span className="text-xs text-[var(--studio-ink-soft)]">{live ? "Live" : "Hidden"}</span>
+                    )}
+                    {editable ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditing({ mode: "edit", recommendation: rec })}
+                          aria-label={`Edit ${rec.name}`}
+                          className="rounded-lg p-1.5 text-[var(--studio-ink-soft)] hover:bg-[var(--studio-bg)] hover:text-[var(--studio-ink)]"
+                        >
+                          <Pencil className="size-4" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(rec)}
+                          disabled={deletingId === rec.id}
+                          aria-label={`Delete ${rec.name}`}
+                          className="rounded-lg p-1.5 text-[var(--studio-ink-soft)] hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {/* The dialog markup that used to be inline here is now
           src/components/PortalModal.tsx — one shared dialog for both

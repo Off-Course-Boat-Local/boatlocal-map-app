@@ -46,7 +46,10 @@ describe("WelcomeBlockRenderer", () => {
       "/map?company=coastal&guide=sergio&category=lunch",
     );
     expect(screen.getByText("Guest discount")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Book now" })).toHaveAttribute("href", "https://boatlocal.example/book");
+    // The booking link now carries company/guide attribution + a click id on top of the tour's own URL.
+    expect(screen.getByRole("link", { name: "Book now" }).getAttribute("href")).toMatch(
+      /^https:\/\/boatlocal\.example\/book\?.*ref=/,
+    );
 
     const text = container.textContent!;
     expect(text.indexOf("Welkom!")).toBeLessThan(text.indexOf("Local tip"));
