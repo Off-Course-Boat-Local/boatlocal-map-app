@@ -618,6 +618,8 @@ function toBoatTourView(tour: BoatTourRecord): BoatTourView {
     position: tour.position,
     companyId: tour.companyId ?? null,
     tourType: tour.tourType ?? "boat",
+    cruiseType: tour.cruiseType ?? null,
+    startingPriceCents: tour.startingPriceCents ?? null,
   };
 }
 

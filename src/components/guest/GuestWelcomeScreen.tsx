@@ -431,8 +431,9 @@ export default function GuestWelcomeScreen({
           ) : null}
         </div>
 
-        {/* Pinned top pick — defaults to the featured boat tour. */}
-        {topPick ? (
+        {/* Pinned top pick — defaults to the featured boat tour. Skipped when the
+            hub already shows that tour itself in a boat_tour_card block. */}
+        {topPick && !hubBlocks?.some((b) => b.type === "boat_tour_card") ? (
           <div>
             <p
               className="mb-2 text-[11px] font-semibold uppercase tracking-widest"

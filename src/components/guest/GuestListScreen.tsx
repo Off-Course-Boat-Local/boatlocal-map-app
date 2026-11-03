@@ -16,13 +16,6 @@ import { useSearchParams } from "next/navigation";
 import { GuestPlaceDetail } from "./GuestPlaceDetail";
 import { GuestPlaceRow } from "./GuestPlaceRow";
 import { GuestScreenHeader } from "./GuestScreenHeader";
-import ReviewPromptDrawer from "./ReviewPromptDrawer";
-import {
-  PLACES_VIEWED_BEFORE_PROMPT,
-  hasShownBrowsePrompt,
-  markBrowsePromptShown,
-  markPlaceViewed,
-} from "@/lib/reviewPrompt";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { CategoryGlyph } from "@/components/map/Pin";
 import { useGuestFilter } from "@/lib/guestFilterContext";
@@ -54,8 +47,33 @@ export interface GuestListScreenProps {
   /** Who that drawer is signed by — the guide, else the company. */
   reviewSignature?: string;
   pins: MapPin[];
+  /** Boat id -> shared/private + starting price, for the Boats sub-filter and price sort (absent = unknown). */
+  boatInfo?: Record<string, { cruiseType: string | null; priceCents: number | null }>;
   routes?: Route[];
   events?: CompanyEvent[];
+}
+
+function SubFilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className="h-7 shrink-0 rounded-full px-3 text-xs font-semibold transition-colors"
+      style={{
+        fontFamily: bodyFontFamily,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        WebkitTapHighlightColor: "transparent",
+        touchAction: "manipulation",
+        ...(active
+          ? { background: "var(--brand-primary)", color: "#FFFFFF", border: "1px solid var(--brand-primary)" }
+          : { background: "#FFFFFF", color: MUTED, border: `1px solid ${BORDER}` }),
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 export default function GuestListScreen({
@@ -67,6 +85,7 @@ export default function GuestListScreen({
   reviewUrl,
   reviewSignature,
   pins: allPins,
+  boatInfo = {},
   routes = [],
   events = [],
 }: GuestListScreenProps) {
@@ -83,23 +102,29 @@ export default function GuestListScreen({
   const { t } = useI18n();
   const [detailItem, setDetailItem] = useState<MapPin | null>(null);
 
-  // See GuestMapScreen for the same hook and src/lib/reviewPrompt.ts for
-  // why it counts distinct places. Both screens share the sessionStorage
-  // tally, so four places across map AND list still counts as four.
-  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
   function openDetail(item: MapPin) {
     setDetailItem(item);
-    if (!reviewUrl || hasShownBrowsePrompt()) return;
-    if (markPlaceViewed(item.id) >= PLACES_VIEWED_BEFORE_PROMPT) {
-      markBrowsePromptShown();
-      setShowReviewPrompt(true);
-    }
   }
 
-  const pins = useMemo(
-    () => (filter ? allPins.filter((p) => p.categories.includes(filter)) : allPins),
-    [allPins, filter],
-  );
+  // Shared / Private sub-filter, only meaningful while Boats is selected.
+  const [boatKind, setBoatKind] = useState<"shared" | "private" | null>(null);
+  const [priceSort, setPriceSort] = useState<"asc" | "desc" | null>(null);
+  const pins = useMemo(() => {
+    const byCategory = filter ? allPins.filter((p) => p.categories.includes(filter)) : allPins;
+    if (filter !== "boats") return byCategory;
+    const byKind = boatKind ? byCategory.filter((p) => boatInfo[p.id]?.cruiseType === boatKind) : byCategory;
+    if (!priceSort) return byKind;
+    const dir = priceSort === "asc" ? 1 : -1;
+    // Boats without a known price always sink to the bottom, whichever way we sort.
+    return [...byKind].sort((a, b) => {
+      const pa = boatInfo[a.id]?.priceCents ?? null;
+      const pb = boatInfo[b.id]?.priceCents ?? null;
+      if (pa === null && pb === null) return 0;
+      if (pa === null) return 1;
+      if (pb === null) return -1;
+      return (pa - pb) * dir;
+    });
+  }, [allPins, filter, boatKind, priceSort, boatInfo]);
 
   // Mirrors GuestMapScreen's onAction wiring (companySlug/guideSlug
   // attribution + boat_book_click analytics) so a booking tap from this
@@ -196,6 +221,32 @@ export default function GuestListScreen({
             );
           })}
         </div>
+
+        {filter === "boats" && (
+          <div className="flex items-center gap-1.5 px-5 pb-2.5" role="group" aria-label={t.list.boatKindAriaLabel}>
+            {[
+              { id: null, label: t.common.all },
+              { id: "shared" as const, label: t.list.boatShared },
+              { id: "private" as const, label: t.list.boatPrivate },
+            ].map((opt) => (
+              <SubFilterChip
+                key={opt.id ?? "all"}
+                active={boatKind === opt.id}
+                onClick={() => setBoatKind(opt.id)}
+              >
+                {opt.label}
+              </SubFilterChip>
+            ))}
+            <span className="flex-1" />
+            {/* Tap to cycle: off -> price low to high -> high to low -> off. */}
+            <SubFilterChip
+              active={priceSort !== null}
+              onClick={() => setPriceSort(priceSort === null ? "asc" : priceSort === "asc" ? "desc" : null)}
+            >
+              {t.list.boatSortPrice}{priceSort === "asc" ? " ↑" : priceSort === "desc" ? " ↓" : ""}
+            </SubFilterChip>
+          </div>
+        )}
       </div>
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-white pb-20">
@@ -238,15 +289,6 @@ export default function GuestListScreen({
           onToggleSaved={() => toggle(detailItem.id)}
           onAction={() => openAction(detailItem)}
           onClose={() => setDetailItem(null)}
-        />
-      )}
-
-      {showReviewPrompt && reviewUrl && (
-        <ReviewPromptDrawer
-          reviewUrl={reviewUrl}
-          signature={reviewSignature ?? brand.companyName}
-          logoUrl={brand.logoUrl}
-          onClose={() => setShowReviewPrompt(false)}
         />
       )}
     </div>

@@ -52,7 +52,6 @@ import PlaceCardCarousel from "@/components/map/PlaceCardCarousel";
 import GuestDot from "@/components/map/GuestDot";
 import BoatBookingPicker from "@/components/guest/BoatBookingPicker";
 import GuestNavigationScreen from "@/components/guest/GuestNavigationScreen";
-import ReviewPromptDrawer from "@/components/guest/ReviewPromptDrawer";
 
 import { useGuestLocation, guestPoint } from "@/hooks/useGuestLocation";
 import { useCompassHeading } from "@/hooks/useCompassHeading";
@@ -162,7 +161,6 @@ export default function GuestMapScreen({
   useEffect(() => {
     if (placeParam) {
       setSelectedId(placeParam);
-      notePlaceViewed(placeParam);
       const pin = allPins.find((p) => p.id === placeParam);
       if (pin) {
         if (filter && !pin.categories.includes(filter)) {
@@ -197,20 +195,6 @@ export default function GuestMapScreen({
 
   // Same category set, LABELS swapped for the guest's language — ids and
   // colours never change (see src/lib/categories.ts).
-
-  // Browse-triggered review ask: once the guest has opened
-  // PLACES_VIEWED_BEFORE_PROMPT distinct places this visit, they've used
-  // enough of the guide to have an opinion worth asking for. See
-  // src/lib/reviewPrompt.ts for why this counts distinct ids rather than
-  // taps, and why it latches per visit.
-  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
-  function notePlaceViewed(placeId: string) {
-    if (!reviewUrl || hasShownBrowsePrompt()) return;
-    if (markPlaceViewed(placeId) >= PLACES_VIEWED_BEFORE_PROMPT) {
-      markBrowsePromptShown();
-      setShowReviewPrompt(true);
-    }
-  }
 
   const localizedCategories = useMemo(
     () => CATEGORIES.map((cat) => ({ ...cat, label: t.categories[cat.id] })),
@@ -489,7 +473,6 @@ export default function GuestMapScreen({
             // never render stacked on top of each other.
             setShowBookingPicker(false);
             setSelectedId(id);
-            notePlaceViewed(id);
           }}
         />
         <GuestDot position={guest} />
@@ -693,12 +676,13 @@ export default function GuestMapScreen({
         )}
       </div>
 
-      {/* Bottom drawer — fixed to the actual viewport edge (not the map's
-          own box, which stops short of GuestBottomNav) so a selected place
+      {/* Bottom drawer — pinned to the bottom of the app shell (the guest
+          layout's wrapper, which also holds GuestBottomNav — not the map's
+          own box, which stops short of it) so a selected place
           can slide up and cover the nav bar entirely, the same way a native
           app's sheet would. See PlaceCard's `asDrawer` doc comment. */}
       {selected ? (
-        <div className="fixed inset-x-0 bottom-0 z-50 flex flex-col items-center">
+        <div className="absolute inset-x-0 bottom-0 z-50 flex flex-col items-center">
           <div className="pointer-events-none mb-2 flex justify-center px-4">
             <div className="rounded-full bg-white/95 px-3.5 py-1.5 shadow-sm backdrop-blur">
               {walkLine ? (
@@ -729,10 +713,7 @@ export default function GuestMapScreen({
               key={selectedCluster[0].id}
               items={selectedCluster}
               initialId={selected.id}
-              onActiveIdChange={(id) => {
-                setSelectedId(id);
-                notePlaceViewed(id);
-              }}
+              onActiveIdChange={(id) => setSelectedId(id)}
               isSaved={isSaved}
               onToggleSaved={(id) => toggleSaved(id)}
               onClose={() => setSelectedId(null)}
@@ -762,15 +743,6 @@ export default function GuestMapScreen({
         />
       )}
 
-
-      {showReviewPrompt && reviewUrl && (
-        <ReviewPromptDrawer
-          reviewUrl={reviewUrl}
-          signature={reviewSignature ?? brand.companyName}
-          logoUrl={brand.logoUrl}
-          onClose={() => setShowReviewPrompt(false)}
-        />
-      )}
 
       {showRoutesDrawer && (
         <div

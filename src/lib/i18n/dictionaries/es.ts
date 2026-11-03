@@ -49,6 +49,10 @@ const es: Dictionary = {
   list: {
     recommendationsFrom: (n, guide) => `${n} recomendaciones de ${guide}`,
     filterAriaLabel: "Filtrar lugares por categoría",
+    boatKindAriaLabel: "Tipo de excursión",
+    boatSortPrice: "Precio",
+    boatShared: "Compartida",
+    boatPrivate: "Privada",
     emptyCategory: "Aún no hay recomendaciones en esta categoría.",
     viewDetails: (name) => `Ver detalles de ${name}`,
   },

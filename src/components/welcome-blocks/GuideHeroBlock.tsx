@@ -13,7 +13,16 @@ export function GuideHeroBlock({ content, ctx }: { content: GuideHeroContent; ct
         // eslint-disable-next-line @next/next/no-img-element
         <img src={photo} alt={ctx.guideName} className="aspect-[4/3] w-full object-cover" />
       )}
-      <div className="p-5">
+      {photo && ctx.brand.logoUrl && (
+        // Company logo as a badge straddling the photo's bottom edge.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photoUrl(ctx.brand.logoUrl, { width: 160 })}
+          alt={ctx.brand.companyName}
+          className="relative z-10 mx-auto -mt-10 h-20 w-20 rounded-full bg-white object-cover shadow-lg ring-4 ring-white"
+        />
+      )}
+      <div className={photo && ctx.brand.logoUrl ? "px-5 pb-5 pt-3" : "p-5"}>
         {!photo && content.showAvatar !== false && (
           <div
             aria-hidden="true"

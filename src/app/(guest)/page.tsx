@@ -14,7 +14,7 @@
 // owns the install-banner and share-section browser state.
 
 import GuestWelcomeScreen from "@/components/guest/GuestWelcomeScreen";
-import { getMapPins } from "@/lib/data/source";
+import { getBoatTours, getMapPins } from "@/lib/data/source";
 import { getWelcomeHub } from "@/lib/data/welcomeHub";
 import { guestQueryString } from "@/lib/guestLinks";
 import { getGuestContext } from "@/lib/guestServerContext";
@@ -26,12 +26,15 @@ export default async function WelcomePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { brand, guide, companyId } = await getGuestContext();
-  const pins = companyId ? await getMapPins(companyId) : [];
+  const [pins, boatTours] = companyId
+    ? await Promise.all([getMapPins(companyId), getBoatTours(companyId)])
+    : [[], []];
 
-  // getMapPins puts boats first, in featured position order (see its own
-  // header comment) — so the first boat pin in the feed IS "the featured
-  // boat tour" the PRD's top-pick default refers to.
-  const topPick = pins.find((p) => p.isBoat) ?? null;
+  // The featured boat tour the PRD's top-pick default refers to: the tenant's
+  // first featured tour by position. (The pin feed puts boats first but its
+  // order among boats isn't guaranteed, so go through getBoatTours' ordering.)
+  const topPick =
+    pins.find((p) => p.isBoat && p.id === boatTours[0]?.id) ?? pins.find((p) => p.isBoat) ?? null;
   const placeCount = pins.filter((p) => !p.isBoat).length;
 
   const qs = guestQueryString(await searchParams);

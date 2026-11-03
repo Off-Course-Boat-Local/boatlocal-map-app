@@ -101,6 +101,10 @@ export interface BoatTour {
   position: number;
   companyId?: string | null;
   tourType?: TourTransportType;
+  /** BoatLocal's "shared" / "private" (null for admin-curated tours). */
+  cruiseType?: string | null;
+  /** Starting price in cents (null when unknown / admin-curated) — for sorting. */
+  startingPriceCents?: number | null;
 }
 
 export type RouteTransportMode = "bike" | "walk" | "boat" | "drive";

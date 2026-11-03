@@ -50,6 +50,10 @@ const nl: Dictionary = {
   list: {
     recommendationsFrom: (n, guide) => `${n} tips van ${guide}`,
     filterAriaLabel: "Filter plekken op categorie",
+    boatKindAriaLabel: "Type boottocht",
+    boatSortPrice: "Prijs",
+    boatShared: "Gedeeld",
+    boatPrivate: "Privé",
     emptyCategory: "Nog geen tips in deze categorie.",
     viewDetails: (name) => `Bekijk details van ${name}`,
   },

@@ -64,6 +64,10 @@ const en = {
   list: {
     recommendationsFrom: (n: number, guide: string) => `${n} recommendations from ${guide}`,
     filterAriaLabel: "Filter places by category",
+    boatKindAriaLabel: "Boat type",
+    boatSortPrice: "Price",
+    boatShared: "Shared",
+    boatPrivate: "Private",
     emptyCategory: "No recommendations in this category yet.",
     viewDetails: (name: string) => `View details for ${name}`,
   },

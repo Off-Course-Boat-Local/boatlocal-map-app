@@ -17,16 +17,17 @@ export function ReviewCardBlock({ content, ctx }: { content: ReviewCardContent; 
       </p>
       <h2 className="mt-1 text-base font-semibold text-[#17181C]">{content.promptText || "Leave a review"}</h2>
       {links.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-col gap-2">
           {links.map((p) => (
             <a
               key={p}
               href={urlFor(p)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full border border-[#E3E4E8] px-3 py-1.5 text-sm font-medium text-[#17181C]"
+              className="rounded-full px-4 py-2.5 text-center text-sm font-semibold text-white"
+              style={{ background: ctx.brand.primary }}
             >
-              {PLATFORM_LABEL[p]}
+              Review us on {PLATFORM_LABEL[p]}
             </a>
           ))}
         </div>

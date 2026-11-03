@@ -28,13 +28,35 @@ function renderBlock(block: WelcomeBlock, ctx: WelcomeBlockContext): ReactNode {
   }
 }
 
+/** Any block may set `content.panel = "dark"`; consecutive such blocks share one navy panel. */
+function inDarkPanel(block: WelcomeBlock): boolean {
+  return (block.content as { panel?: unknown }).panel === "dark";
+}
+
 export function WelcomeBlockRenderer({ blocks, ctx }: { blocks: WelcomeBlock[]; ctx: WelcomeBlockContext }) {
   const sorted = [...blocks].sort((a, b) => a.displayOrder - b.displayOrder);
+  const groups: WelcomeBlock[][] = [];
+  for (const block of sorted) {
+    const last = groups[groups.length - 1];
+    if (last && inDarkPanel(last[0]) && inDarkPanel(block)) last.push(block);
+    else groups.push([block]);
+  }
   return (
     <div className="flex flex-col gap-4">
-      {sorted.map((block) => (
-        <div key={block.id}>{renderBlock(block, ctx)}</div>
-      ))}
+      {groups.map((group) =>
+        inDarkPanel(group[0]) ? (
+          <div
+            key={group[0].id}
+            className="flex flex-col gap-4 rounded-3xl bg-[#0F2A4A] p-4 [&>div>figure>figcaption]:text-white/70 [&>div>h2]:text-white [&>div>h3]:text-white [&>div>p]:text-white/90 [&>div>a]:border [&>div>a]:border-white/40 [&>div>a]:bg-transparent!"
+          >
+            {group.map((block) => (
+              <div key={block.id}>{renderBlock(block, ctx)}</div>
+            ))}
+          </div>
+        ) : (
+          <div key={group[0].id}>{renderBlock(group[0], ctx)}</div>
+        ),
+      )}
     </div>
   );
 }

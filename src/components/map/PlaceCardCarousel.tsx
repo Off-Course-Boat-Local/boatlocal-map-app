@@ -24,6 +24,16 @@ export interface PlaceCardCarouselProps {
   style?: CSSProperties;
 }
 
+/** Slides are narrower than the track so the neighbouring cards peek in. */
+const SLIDE_WIDTH = "88%";
+const SLIDE_GAP = 8;
+
+/** Scroll distance between two neighbouring slides. */
+function slidePitch(track: HTMLElement): number {
+  const first = track.firstElementChild as HTMLElement | null;
+  return (first?.offsetWidth ?? track.clientWidth) + SLIDE_GAP;
+}
+
 export function PlaceCardCarousel({
   items,
   initialId,
@@ -49,7 +59,7 @@ export function PlaceCardCarousel({
   useEffect(() => {
     const el = trackRef.current;
     if (!el || !initialIndex) return;
-    el.scrollLeft = initialIndex * el.clientWidth;
+    el.scrollLeft = initialIndex * slidePitch(el);
     // Only ever on mount — items/initialId identify a fresh cluster
     // selection, which the caller keys a fresh component instance for.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,7 +68,7 @@ export function PlaceCardCarousel({
   const handleScroll = useCallback(() => {
     const el = trackRef.current;
     if (!el || el.clientWidth === 0) return;
-    const next = Math.max(0, Math.min(count - 1, Math.round(el.scrollLeft / el.clientWidth)));
+    const next = Math.max(0, Math.min(count - 1, Math.round(el.scrollLeft / slidePitch(el))));
     setIndex((prev) => (prev === next ? prev : next));
   }, [count]);
 
@@ -118,6 +128,10 @@ export function PlaceCardCarousel({
         onScroll={handleScroll}
         style={{
           display: "flex",
+          gap: SLIDE_GAP,
+          // Side padding lets the first/last slide centre with a neighbour peeking.
+          paddingInline: count > 1 ? "6%" : 0,
+          scrollPaddingInline: count > 1 ? "6%" : 0,
           overflowX: count > 1 ? "auto" : "hidden",
           scrollSnapType: count > 1 ? "x mandatory" : undefined,
           scrollbarWidth: "none",
@@ -129,8 +143,8 @@ export function PlaceCardCarousel({
           <div
             key={item.id}
             style={{
-              flex: "0 0 100%",
-              width: "100%",
+              flex: count > 1 ? `0 0 ${SLIDE_WIDTH}` : "0 0 100%",
+              width: count > 1 ? SLIDE_WIDTH : "100%",
               scrollSnapAlign: "center",
               scrollSnapStop: "always",
             }}

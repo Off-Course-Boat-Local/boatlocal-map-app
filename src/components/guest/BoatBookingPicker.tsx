@@ -87,7 +87,7 @@ export function BoatBookingPicker({
         left: 12,
         right: 12,
         bottom: 12,
-        zIndex: 30,
+        zIndex: 50, // above the bottom nav (z-40), like the place card drawer
         background: "#FFFFFF",
         borderRadius: 16,
         padding: 16,
