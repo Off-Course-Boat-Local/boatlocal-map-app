@@ -11,3 +11,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 # Database migrations
 
 Apply Supabase migrations via the Supabase CLI (`supabase db push`, or `supabase migration up` for local), never by pasting SQL into the Supabase Dashboard's SQL Editor by hand. If the CLI isn't installed or the project isn't linked yet, install/link it first (`npm install supabase --save-dev` or `npx supabase`, then `supabase link --project-ref hacjzxdyxudcldzwzhbr`) rather than falling back to the dashboard.
+
+# SEO / indexing — hard rule
+
+`map.boatlocal.nl` is the guest/studio app, never an SEO surface. The whole
+site must always stay noindex:
+
+- The root `src/app/layout.tsx` sets `metadata.robots = { index: false, follow: false }`. Do not remove it, and do not give any page its own `metadata.robots` that turns indexing back on.
+- `src/app/robots.ts` disallows the whole site for every crawler.
+
+Boatlocal.nl's own SEO pages live in the `boatlocal` repo, not here. If a page
+on this app ever needs to be public and indexed, that is a decision for Beer
+first, not a default.

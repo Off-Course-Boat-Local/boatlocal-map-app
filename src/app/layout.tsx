@@ -30,6 +30,13 @@ const hankenGrotesk = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "Local Tips",
   description: "A white-labelled local guide app, with Boat Local tours always one tap away.",
+  // Hard rule: map.boatlocal.nl is never meant to rank in search — see
+  // CLAUDE.md. No page below should override this without setting its own
+  // explicit `robots`.
+  robots: {
+    index: false,
+    follow: false,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
